@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="LDCookLog">
+<meta name="theme-color" content="#141414">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>LDCookLog Mobile V1.2</title>
+<style>
+:root{
+  --bg:#101010;--panel:#1a1a1a;--panel2:#242424;--line:#343434;--text:#f5f5f5;--muted:#a9a9a9;
+  --accent:#f2a13a;--good:#7ec56e;--warn:#f1c453;--danger:#e66a5e;--blue:#6aa7e8;--purple:#a487df;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+.app{max-width:900px;margin:0 auto;padding:14px}
+header{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:8px 2px 14px}
+h1{margin:0;font-size:25px;line-height:1.05}.sub{color:var(--muted);font-size:13px;margin-top:5px}
+.badge{border:1px solid var(--line);background:#171717;border-radius:999px;padding:7px 10px;color:var(--muted);font-size:12px;white-space:nowrap}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 12px;color:#ddd}
+.formrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.metric{background:var(--panel2);border-radius:13px;padding:12px;border:1px solid #303030}
+.metric .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.metric .value{font-size:23px;font-weight:700;margin-top:3px}.metric .small{font-size:12px;color:var(--muted);margin-top:2px}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:5px}
+input,select,textarea{width:100%;background:#111;border:1px solid #444;border-radius:12px;color:#fff;padding:12px;font-size:16px}
+textarea{resize:vertical;min-height:78px}
+.controls{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+button{-webkit-appearance:none;border:0;border-radius:15px;padding:16px 12px;font-size:16px;font-weight:700;color:#111;background:var(--accent);min-height:58px;touch-action:manipulation}
+button.secondary{background:#303030;color:#fff;border:1px solid #444}
+button.good{background:var(--good)}button.warn{background:var(--warn)}button.danger{background:var(--danger)}button.blue{background:var(--blue)}button.purple{background:var(--purple)}
+button.activeState{outline:3px solid #fff;outline-offset:-5px}
+button:active{transform:scale(.985)}
+.statebar{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:10px}
+.statepill{background:#161616;border:1px solid #333;border-radius:12px;padding:10px 12px}
+.statepill .k{font-size:10px;text-transform:uppercase;color:#888;letter-spacing:.04em}
+.statepill .v{font-size:15px;font-weight:700;margin-top:2px}
+.event-list{display:flex;flex-direction:column;gap:8px}
+.event{background:#161616;border:1px solid #303030;border-radius:12px;padding:10px 12px;display:grid;grid-template-columns:82px 1fr;gap:10px}
+.event time{color:var(--accent);font-variant-numeric:tabular-nums;font-size:13px}
+.event strong{display:block;font-size:14px}.event span{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar button{min-height:42px;padding:10px 12px;font-size:13px;flex:1}
+.hidden{display:none!important}.sectionNote{font-size:11px;color:#777;margin-top:-4px;margin-bottom:10px}
+.footer-note{color:#777;font-size:11px;text-align:center;padding:8px 0 18px}
+@media(max-width:520px){.grid3{grid-template-columns:1fr}.formrow{grid-template-columns:1fr 1fr}.metric .value{font-size:21px}button{font-size:15px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+<div><h1>LDCookLog Mobile</h1><div class="sub">V1.2 Stateful BBQ Control Panel</div></div>
+<div class="badge" id="saveBadge">Saved locally</div>
+</header>
+
+<section class="card">
+<h2>Cook Setup</h2>
+<div class="formrow">
+  <div><label for="smoker">Smoker</label>
+    <select id="smoker">
+      <option>Traeger Ironwood 885</option>
+      <option>Traeger Pro</option>
+      <option>Weber 22" Kettle</option>
+      <option>Other</option>
+    </select>
+  </div>
+  <div><label for="cookName">Meat / Cut</label><input id="cookName" value="Pork Butt" placeholder="Pork butt, brisket, ribs…"></div>
+</div>
+<div class="formrow" style="margin-top:10px">
+  <div><label for="weight">Weight (lb)</label><input id="weight" type="number" step="0.1" inputmode="decimal" placeholder="7.5"></div>
+  <div><label for="target">Initial Target °F</label><input id="target" type="number" inputmode="numeric" value="225"></div>
+</div>
+
+<div id="traegerFields" style="margin-top:12px">
+  <div class="formrow">
+    <div><label for="pelletFlavor">Pellet Flavor</label>
+      <select id="pelletFlavor">
+        <option>Hickory</option><option>Oak</option><option>Mesquite</option><option>Apple</option><option>Cherry</option><option>Pecan</option><option>Blend</option><option>Other</option>
+      </select>
+    </div>
+    <div><label for="smokeTube">Smoke Tube</label>
+      <select id="smokeTube"><option>None</option><option>Small / 6"</option><option>Large / 12"</option></select>
+    </div>
+  </div>
+  <div id="superSmokeWrap" style="margin-top:10px">
+    <label for="superSmoke">Super Smoke</label>
+    <select id="superSmoke"><option>Off</option><option>On</option></select>
+  </div>
+</div>
+
+<div id="weberFields" class="hidden" style="margin-top:12px">
+  <div class="formrow">
+    <div><label for="weberFuel">Fuel</label>
+      <select id="weberFuel"><option>Briquettes</option><option>Lump Charcoal</option></select>
+    </div>
+    <div><label for="woodForm">Wood Form</label>
+      <select id="woodForm"><option>None</option><option>Chips</option><option>Chunks</option></select>
+    </div>
+  </div>
+  <div style="margin-top:10px">
+    <label for="woodFlavor">Wood Flavor</label>
+    <select id="woodFlavor"><option>Hickory</option><option>Oak</option><option>Mesquite</option><option>Apple</option><option>Cherry</option><option>Pecan</option><option>Maple</option><option>Other</option></select>
+  </div>
+</div>
+</section>
+
+<section class="card">
+<h2>Current State</h2>
+<div class="statebar">
+  <div class="statepill"><div class="k">Meat</div><div class="v" id="meatState">Off</div></div>
+  <div class="statepill"><div class="k">Lid</div><div class="v" id="lidState">Closed</div></div>
+  <div class="statepill"><div class="k">Wrap</div><div class="v" id="wrapState">Unwrapped</div></div>
+  <div class="statepill"><div class="k">Phase</div><div class="v" id="phaseState">Setup</div></div>
+</div>
+<div class="grid3">
+  <div class="metric"><div class="label">Elapsed</div><div class="value" id="elapsed">00:00</div><div class="small" id="startText">Not started</div></div>
+  <div class="metric"><div class="label">Target</div><div class="value"><span id="targetDisplay">225</span>°</div><div class="small">current pit target</div></div>
+  <div class="metric"><div class="label">Events</div><div class="value" id="eventCount">0</div><div class="small">logged</div></div>
+</div>
+<div id="phaseTimerWrap" class="metric hidden" style="margin-top:10px">
+  <div class="label" id="phaseTimerLabel">Hold</div>
+  <div class="value" id="phaseTimer">00:00</div>
+  <div class="small" id="phaseTimerSmall"></div>
+</div>
+</section>
+
+<section class="card">
+<h2>Stateful Controls</h2>
+<div class="controls">
+  <button class="good" id="meatToggle">Meat On</button>
+  <button class="secondary" id="lidToggle">Lid Open</button>
+  <button class="warn" id="wrapToggle">Wrap</button>
+  <button class="blue" id="targetChange">Change Target</button>
+  <button class="purple" id="holdToggle">Start Keep Warm</button>
+  <button class="secondary" id="restToggle">Start Rest</button>
+  <button class="secondary" id="serveButton">Serve / Slice / Pull</button>
+  <button class="secondary" id="spritzButton">Spritz</button>
+</div>
+</section>
+
+<section class="card">
+<h2>Quick Note</h2>
+<textarea id="noteText" placeholder="Bark looks good, moved meat, pellets topped off, rotated brisket…"></textarea>
+<button class="secondary" id="addNote" style="width:100%;margin-top:8px">Add Note</button>
+</section>
+
+<section class="card">
+<h2>Event Log</h2>
+<div class="event-list" id="eventList"></div>
+<div class="toolbar" style="margin-top:12px">
+  <button class="secondary" id="exportCsv">Export CSV</button>
+  <button class="secondary" id="copyLog">Copy Log</button>
+  <button class="danger" id="resetCook">Reset Cook</button>
+</div>
+</section>
+
+<div class="footer-note">V1.2 stores data locally on this device. FireBoard live sync and cross-device sync come later.</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const key="ldcooklog-mobile-v1-2";
+let state={
+  smoker:"Traeger Ironwood 885",cookName:"Pork Butt",weight:"",target:225,
+  pelletFlavor:"Hickory",smokeTube:"None",superSmoke:"Off",
+  weberFuel:"Briquettes",woodForm:"None",woodFlavor:"Hickory",
+  start:null, meatOn:false, lidOpen:false, wrapped:false,
+  phase:"Setup",phaseStart:null,phaseTarget:null, events:[]
+};
+
+function load(){try{const raw=localStorage.getItem(key);if(raw)state=Object.assign(state,JSON.parse(raw));}catch(e){}}
+function save(){
+  state.smoker=$("smoker").value; state.cookName=$("cookName").value; state.weight=$("weight").value;
+  state.target=Number($("target").value)||0;
+  state.pelletFlavor=$("pelletFlavor").value; state.smokeTube=$("smokeTube").value; state.superSmoke=$("superSmoke").value;
+  state.weberFuel=$("weberFuel").value; state.woodForm=$("woodForm").value; state.woodFlavor=$("woodFlavor").value;
+  localStorage.setItem(key,JSON.stringify(state)); $("saveBadge").textContent="Saved locally";
+}
+function setupContext(){
+  if(state.smoker==="Weber 22\" Kettle"){
+    return `Fuel: ${state.weberFuel}; Wood: ${state.woodForm}${state.woodForm!=="None" ? " / "+state.woodFlavor : ""}`;
+  }
+  if(state.smoker==="Traeger Ironwood 885"){
+    return `Pellets: ${state.pelletFlavor}; Smoke tube: ${state.smokeTube}; Super Smoke: ${state.superSmoke}`;
+  }
+  if(state.smoker==="Traeger Pro"){
+    return `Pellets: ${state.pelletFlavor}; Smoke tube: ${state.smokeTube}`;
+  }
+  return "";
+}
+function logEvent(type,note=""){
+  const now=new Date();
+  state.events.push({
+    ts:now.toISOString(),type,note,target:state.target,phase:state.phase,
+    smoker:state.smoker,cookName:state.cookName,weight:state.weight,setup:setupContext()
+  });
+  save(); render();
+}
+function fmtTime(d){return new Intl.DateTimeFormat([],{hour:"numeric",minute:"2-digit"}).format(d)}
+function fmtDateTime(d){return new Intl.DateTimeFormat([],{year:"numeric",month:"2-digit",day:"2-digit",hour:"numeric",minute:"2-digit",second:"2-digit"}).format(d)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+function durString(start){
+  if(!start)return "00:00";
+  const mins=Math.floor(Math.max(0,Date.now()-new Date(start).getTime())/60000);
+  const h=Math.floor(mins/60),m=mins%60;
+  return String(h).padStart(2,"0")+":"+String(m).padStart(2,"0");
+}
+function updateTimers(){
+  $("elapsed").textContent=durString(state.start);
+  $("startText").textContent=state.start ? "Started "+fmtTime(new Date(state.start)) : "Not started";
+  if(["Keep Warm","Rest"].includes(state.phase) && state.phaseStart){
+    $("phaseTimerWrap").classList.remove("hidden");
+    $("phaseTimerLabel").textContent=state.phase;
+    $("phaseTimer").textContent=durString(state.phaseStart);
+    $("phaseTimerSmall").textContent=state.phase==="Keep Warm" && state.phaseTarget ? `${state.phaseTarget}°F hold target` : `${state.phase} duration`;
+  }else $("phaseTimerWrap").classList.add("hidden");
+}
+function smokerUI(){
+  const s=$("smoker").value;
+  $("weberFields").classList.toggle("hidden",s!=="Weber 22\" Kettle");
+  $("traegerFields").classList.toggle("hidden",!(s==="Traeger Ironwood 885"||s==="Traeger Pro"));
+  $("superSmokeWrap").classList.toggle("hidden",s!=="Traeger Ironwood 885");
+}
+function render(){
+  $("smoker").value=state.smoker;$("cookName").value=state.cookName;$("weight").value=state.weight;$("target").value=state.target;
+  $("pelletFlavor").value=state.pelletFlavor;$("smokeTube").value=state.smokeTube;$("superSmoke").value=state.superSmoke;
+  $("weberFuel").value=state.weberFuel;$("woodForm").value=state.woodForm;$("woodFlavor").value=state.woodFlavor;
+  smokerUI();
+  $("targetDisplay").textContent=state.target||"—"; $("eventCount").textContent=state.events.length;
+  $("meatState").textContent=state.meatOn?"On":"Off"; $("lidState").textContent=state.lidOpen?"Open":"Closed";
+  $("wrapState").textContent=state.wrapped?"Wrapped":"Unwrapped"; $("phaseState").textContent=state.phase;
+  $("meatToggle").textContent=state.meatOn?"Meat Off":"Meat On";
+  $("meatToggle").className=state.meatOn?"danger activeState":"good";
+  $("lidToggle").textContent=state.lidOpen?"Lid Closed":"Lid Open";
+  $("lidToggle").className=state.lidOpen?"warn activeState":"secondary";
+  $("wrapToggle").textContent=state.wrapped?"Unwrap":"Wrap";
+  $("wrapToggle").className=state.wrapped?"warn activeState":"warn";
+  $("holdToggle").textContent=state.phase==="Keep Warm"?"End Keep Warm":"Start Keep Warm";
+  $("holdToggle").className=state.phase==="Keep Warm"?"purple activeState":"purple";
+  $("restToggle").textContent=state.phase==="Rest"?"End Rest":"Start Rest";
+  $("restToggle").className=state.phase==="Rest"?"secondary activeState":"secondary";
+  const list=$("eventList"); list.innerHTML="";
+  [...state.events].reverse().forEach(ev=>{
+    const div=document.createElement("div");div.className="event";
+    div.innerHTML=`<time>${fmtTime(new Date(ev.ts))}</time><div><strong>${escapeHtml(ev.type)}</strong><span>${escapeHtml(ev.note||"")}</span></div>`;
+    list.appendChild(div);
+  });
+  if(!state.events.length)list.innerHTML='<div style="color:#777;font-size:13px">No events yet.</div>';
+  updateTimers();
+}
+$("smoker").addEventListener("change",()=>{smokerUI();save();render()});
+["cookName","weight","target","pelletFlavor","smokeTube","superSmoke","weberFuel","woodForm","woodFlavor"].forEach(id=>$(id).addEventListener("change",()=>{save();render()}));
+
+$("meatToggle").addEventListener("click",()=>{
+  if(!state.meatOn){
+    state.meatOn=true; if(!state.start)state.start=new Date().toISOString(); state.phase="Cooking"; state.phaseStart=null; state.phaseTarget=null;
+    logEvent("Meat On",setupContext());
+  }else{
+    state.meatOn=false;
+    logEvent("Meat Off",`Phase at removal: ${state.phase}`);
+  }
+});
+$("lidToggle").addEventListener("click",()=>{
+  state.lidOpen=!state.lidOpen;
+  logEvent(state.lidOpen?"Lid Open":"Lid Closed");
+});
+$("wrapToggle").addEventListener("click",()=>{
+  state.wrapped=!state.wrapped;
+  logEvent(state.wrapped?"Wrapped":"Unwrapped");
+});
+$("targetChange").addEventListener("click",()=>{
+  const val=prompt("New pit target °F:",String(state.target||""));
+  if(val===null)return;
+  const n=Number(val); if(!n)return;
+  state.target=n;$("target").value=n;
+  logEvent("Target Change",`Target changed to ${n}°F`);
+});
+$("holdToggle").addEventListener("click",()=>{
+  if(state.phase!=="Keep Warm"){
+    const val=prompt("Keep Warm / Hold target °F:",String(state.target||"165"));
+    if(val===null)return;
+    const n=Number(val); if(!n)return;
+    state.phase="Keep Warm";state.phaseStart=new Date().toISOString();state.phaseTarget=n;state.target=n;$("target").value=n;
+    logEvent("Keep Warm Start",`Hold target ${n}°F`);
+  }else{
+    logEvent("Keep Warm End",`Hold duration ${durString(state.phaseStart)}`);
+    state.phase="Post Hold";state.phaseStart=null;state.phaseTarget=null;
+    save();render();
+  }
+});
+$("restToggle").addEventListener("click",()=>{
+  if(state.phase!=="Rest"){
+    state.phase="Rest";state.phaseStart=new Date().toISOString();state.phaseTarget=null;
+    logEvent("Rest Start");
+  }else{
+    logEvent("Rest End",`Rest duration ${durString(state.phaseStart)}`);
+    state.phase="Post Rest";state.phaseStart=null;save();render();
+  }
+});
+$("serveButton").addEventListener("click",()=>{
+  state.phase="Serve";logEvent("Serve / Slice / Pull");
+});
+$("spritzButton").addEventListener("click",()=>logEvent("Spritz"));
+$("addNote").addEventListener("click",()=>{
+  const txt=$("noteText").value.trim();if(!txt)return;logEvent("Note",txt);$("noteText").value="";
+});
+$("resetCook").addEventListener("click",()=>{
+  if(!confirm("Reset the current cook and erase this device's local log?"))return;
+  state={smoker:$("smoker").value,cookName:"",weight:"",target:225,pelletFlavor:"Hickory",smokeTube:"None",superSmoke:"Off",weberFuel:"Briquettes",woodForm:"None",woodFlavor:"Hickory",start:null,meatOn:false,lidOpen:false,wrapped:false,phase:"Setup",phaseStart:null,phaseTarget:null,events:[]};
+  save();render();
+});
+$("copyLog").addEventListener("click",async()=>{
+  const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);
+  const text=`${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");
+  try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}
+});
+$("exportCsv").addEventListener("click",()=>{
+  const rows=[["timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup"]];
+  state.events.forEach(ev=>rows.push([ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??""]));
+  const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");
+  const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
+});
+load();render();setInterval(updateTimers,15000);
+</script>
+</body>
+</html>
