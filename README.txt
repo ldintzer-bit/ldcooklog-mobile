@@ -1,6 +1,6 @@
-LDCookLog Mobile V1.2
+LDCookLog Mobile V1.2.2
 
-NEW IN V1.2
+BASE FEATURES FROM V1.2
 - Stateful Meat On / Meat Off
 - Stateful Lid Open / Lid Closed
 - Stateful Wrap / Unwrap
@@ -48,3 +48,11 @@ V1.2.2 FIX
 - Keep Warm immediately starts the live HH:MM:SS count-up timer.
 - The event log records the prior target and the automatic change to 165°F.
 - Change Target remains available during Keep Warm for later adjustments.
+
+
+V1.2.2
+- Start Keep Warm is one tap.
+- Keep Warm changes target to 165°F automatically.
+- Keep Warm starts a live HH:MM:SS timer immediately.
+- Rest also has a live HH:MM:SS timer.
+- Visible build marker: 2026-09-09B.
