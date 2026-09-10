@@ -1,4 +1,4 @@
-LDCookLog Mobile V1.3.0
+LDCookLog Mobile V1.4.0
 
 BASE FEATURES FROM V1.2
 - Stateful Meat On / Meat Off
@@ -29,7 +29,7 @@ WEBER 22" KETTLE
 - No Super Smoke
 
 DATA
-- V1.3.0 stores data locally in the browser on that device.
+- Cook state and event data are stored locally in the browser on that device.
 - Event exports include smoker, target, phase, meat/cut, weight, and setup context.
 - FireBoard live probe data is not connected yet.
 
@@ -55,7 +55,30 @@ V1.3.0
 - Existing V1.2.2 browser data remains compatible by keeping the same local-storage key.
 - Visible build marker: 2026-09-10A.
 
+V1.4.0
+- Adds service-worker.js for offline app caching.
+- The app registers the service worker automatically after an online page load.
+- The service worker caches index.html, manifest.webmanifest, icon-180.png, icon-512.png, and the site root.
+- Cached files allow the installed/site app to launch when the network is unavailable after the cache has been populated.
+- New versions use a versioned cache name so old app-shell caches can be removed during activation.
+- Existing cook data continues to use the same local-storage key and is not intentionally migrated or erased.
+- Visible build marker: 2026-09-10B.
+
+V1.4.0 OFFLINE ACCEPTANCE TEST
+1. Load V1.4.0 online at least once and confirm Build 2026-09-10B.
+2. Leave the page open briefly so the service worker can install and cache the app shell.
+3. Close the LDCookLog page/app.
+4. Disconnect the test device from the internet or use Airplane Mode.
+5. Reopen LDCookLog.
+6. Confirm the app loads while offline.
+7. Start a cook with Meat On and confirm the timer starts.
+8. Record at least one event.
+9. Close and reopen LDCookLog while still offline.
+10. Confirm the active cook, timer, phase, and event remain intact.
+11. Test Rest and Keep Warm while offline.
+12. Finish Cook while offline and verify the elapsed timer freezes.
+13. Reconnect to the internet and confirm the locally stored cook is unchanged.
+
 DEPLOYMENT
-- index.html and README.txt were updated directly in the GitHub repository for V1.3.0.
+- index.html, README.txt, and service-worker.js were updated directly in the GitHub repository for V1.4.0.
 - manifest.webmanifest and both icon files remain unchanged.
-- Refresh the GitHub Pages site on Mac and iPhone/iPad before testing.
