@@ -9,7 +9,7 @@
 <meta name="theme-color" content="#141414">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
-<title>LDCookLog Mobile V1.3.0</title>
+<title>LDCookLog Mobile V1.4.0</title>
 <style>
 :root{
   --bg:#101010;--panel:#1a1a1a;--panel2:#242424;--line:#343434;--text:#f5f5f5;--muted:#a9a9a9;
@@ -56,7 +56,7 @@ button:disabled{opacity:.45;transform:none}
 <body>
 <div class="app">
 <header>
-<div><h1>LDCookLog Mobile</h1><div class="sub">V1.3.0 Stateful BBQ Control Panel</div></div>
+<div><h1>LDCookLog Mobile</h1><div class="sub">V1.4.0 Stateful BBQ Control Panel</div></div>
 <div class="badge" id="saveBadge">Saved locally</div>
 </header>
 <section class="card">
@@ -154,7 +154,7 @@ button:disabled{opacity:.45;transform:none}
   <button class="danger" id="resetCook">Reset Cook</button>
 </div>
 </section>
-<div class="footer-note">V1.3.0 stores data locally on this device. FireBoard live sync and cross-device sync come later.<br><strong>Build 2026-09-10A</strong></div>
+<div class="footer-note">V1.4.0 stores cook data locally on this device and caches the app for offline use. FireBoard live sync and cross-device sync come later.<br><strong>Build 2026-09-10B</strong></div>
 </div>
 <script>
 const $=id=>document.getElementById(id);
@@ -295,60 +295,34 @@ $("holdToggle").addEventListener("click",()=>{
     state.phaseTarget=n;
     state.target=n;
     $("target").value=n;
-    save();
-    render();
+    save();render();
     logEvent("Keep Warm Start",`Target changed from ${previousTarget}°F to 165°F; hold timer started`);
   }else{
     const duration=durString(state.phaseStart);
     logEvent("Keep Warm End",`Hold duration ${duration}`);
-    state.phase="Post Hold";
-    state.phaseStart=null;
-    state.phaseTarget=null;
-    save();
-    render();
+    state.phase="Post Hold";state.phaseStart=null;state.phaseTarget=null;save();render();
   }
 });
 $("restToggle").addEventListener("click",()=>{
   if(state.finishTime)return;
   if(state.phase!=="Rest"){
-    state.phase="Rest";
-    state.phaseStart=new Date().toISOString();
-    state.phaseTarget=null;
-    save();
-    render();
+    state.phase="Rest";state.phaseStart=new Date().toISOString();state.phaseTarget=null;save();render();
     logEvent("Rest Start","Rest timer started");
   }else{
     const duration=durString(state.phaseStart);
     logEvent("Rest End",`Rest duration ${duration}`);
-    state.phase="Post Rest";
-    state.phaseStart=null;
-    state.phaseTarget=null;
-    save();
-    render();
+    state.phase="Post Rest";state.phaseStart=null;state.phaseTarget=null;save();render();
   }
 });
-$("serveButton").addEventListener("click",()=>{
-  if(state.finishTime)return;
-  state.phase="Serve";logEvent("Serve / Slice / Pull");
-});
+$("serveButton").addEventListener("click",()=>{if(!state.finishTime){state.phase="Serve";logEvent("Serve / Slice / Pull")}});
 $("spritzButton").addEventListener("click",()=>{if(!state.finishTime)logEvent("Spritz")});
-$("addNote").addEventListener("click",()=>{
-  const txt=$("noteText").value.trim();if(!txt)return;logEvent("Note",txt);$("noteText").value="";
-});
+$("addNote").addEventListener("click",()=>{const txt=$("noteText").value.trim();if(!txt)return;logEvent("Note",txt);$("noteText").value=""});
 $("finishButton").addEventListener("click",()=>{
   if(state.finishTime)return;
   if(!state.start){alert("Start the cook with Meat On before finishing it.");return;}
   if(!confirm("Finish this cook? The main cook timer will stop and the cook will be marked Finished."))return;
-  const now=new Date();
-  state.finishTime=now.toISOString();
-  state.meatOn=false;
-  state.phase="Finished";
-  state.phaseStart=null;
-  state.phaseTarget=null;
-  state.events.push({
-    ts:state.finishTime,type:"Cook Finished",note:`Total cook time ${durString(state.start,state.finishTime)}`,
-    target:state.target,phase:state.phase,smoker:state.smoker,cookName:state.cookName,weight:state.weight,setup:setupContext()
-  });
+  const now=new Date();state.finishTime=now.toISOString();state.meatOn=false;state.phase="Finished";state.phaseStart=null;state.phaseTarget=null;
+  state.events.push({ts:state.finishTime,type:"Cook Finished",note:`Total cook time ${durString(state.start,state.finishTime)}`,target:state.target,phase:state.phase,smoker:state.smoker,cookName:state.cookName,weight:state.weight,setup:setupContext()});
   save();render();
 });
 $("resetCook").addEventListener("click",()=>{
@@ -367,6 +341,11 @@ $("exportCsv").addEventListener("click",()=>{
   const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");
   const blob=new Blob([csv],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href);
 });
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("./service-worker.js").catch(err=>console.error("Service worker registration failed",err));
+  });
+}
 load();render();setInterval(updateTimers,1000);
 </script>
 </body>
