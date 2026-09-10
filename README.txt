@@ -1,4 +1,4 @@
-LDCookLog Mobile V1.4.0
+LDCookLog Mobile V1.5.0
 
 BASE FEATURES FROM V1.2
 - Stateful Meat On / Meat Off
@@ -60,25 +60,30 @@ V1.4.0
 - The app registers the service worker automatically after an online page load.
 - The service worker caches index.html, manifest.webmanifest, icon-180.png, icon-512.png, and the site root.
 - Cached files allow the installed/site app to launch when the network is unavailable after the cache has been populated.
-- New versions use a versioned cache name so old app-shell caches can be removed during activation.
 - Existing cook data continues to use the same local-storage key and is not intentionally migrated or erased.
 - Visible build marker: 2026-09-10B.
 
-V1.4.0 OFFLINE ACCEPTANCE TEST
-1. Load V1.4.0 online at least once and confirm Build 2026-09-10B.
-2. Leave the page open briefly so the service worker can install and cache the app shell.
-3. Close the LDCookLog page/app.
-4. Disconnect the test device from the internet or use Airplane Mode.
-5. Reopen LDCookLog.
-6. Confirm the app loads while offline.
-7. Start a cook with Meat On and confirm the timer starts.
-8. Record at least one event.
-9. Close and reopen LDCookLog while still offline.
-10. Confirm the active cook, timer, phase, and event remain intact.
-11. Test Rest and Keep Warm while offline.
-12. Finish Cook while offline and verify the elapsed timer freezes.
-13. Reconnect to the internet and confirm the locally stored cook is unchanged.
+V1.5.0
+- Adds guarded local-storage loading and saving.
+- If stored cook data cannot be parsed or fails validation, LDCookLog shows a STORAGE WARNING instead of silently replacing the stored data.
+- Automatic saving and Reset Cook are blocked after an unsafe load so the original stored value is not overwritten from that page session.
+- If a save operation fails, the header changes to SAVE FAILED and the app warns that the latest change may not survive reopening.
+- Adds short action locks to state-changing controls to prevent rapid double taps from creating contradictory or duplicate actions.
+- Protects Meat, Lid, Wrap, Target Change, Keep Warm, Rest, Serve, Spritz, Note, Finish, and Reset actions.
+- Keeps the same local-storage key so existing v1.4.0 cook data remains compatible.
+- Offline cache version advanced to ldcooklog-v1-5-0.
+- Visible build marker: 2026-09-10C.
+
+V1.5.0 RELIABILITY ACCEPTANCE TEST
+1. Load V1.5.0 online and confirm Build 2026-09-10C.
+2. Reset the test cook and press Meat On rapidly several times. Confirm only one Meat On event is created and the cook remains Cooking.
+3. Press Start Rest rapidly several times. Confirm only one Rest Start event is created and the Rest timer continues normally.
+4. End Rest normally, then press Start Keep Warm rapidly several times. Confirm only one Keep Warm Start event is created, Phase remains Keep Warm, and target remains 165°F.
+5. Finish the cook and confirm Cook Finished appears once and the elapsed timer freezes.
+6. Close and reopen LDCookLog. Confirm the finished cook remains intact.
+7. Repeat a short cook while offline and verify the v1.4.0 offline behavior still works.
+8. Normal users should continue to see Saved locally in the header. STORAGE WARNING and SAVE FAILED are failure-only messages and are not expected during ordinary testing.
 
 DEPLOYMENT
-- index.html, README.txt, and service-worker.js were updated directly in the GitHub repository for V1.4.0.
+- index.html, README.txt, and service-worker.js were updated directly in the GitHub repository for V1.5.0.
 - manifest.webmanifest and both icon files remain unchanged.
