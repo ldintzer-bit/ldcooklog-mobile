@@ -1,4 +1,4 @@
-LDCookLog Mobile V1.5.0
+LDCookLog Mobile V1.6.0
 
 BASE FEATURES FROM V1.2
 - Stateful Meat On / Meat Off
@@ -30,7 +30,7 @@ WEBER 22" KETTLE
 
 DATA
 - Cook state and event data are stored locally in the browser on that device.
-- Event exports include smoker, target, phase, meat/cut, weight, and setup context.
+- Event exports include smoker, target, phase, meat/cut, weight, setup context, and Cook ID.
 - FireBoard live probe data is not connected yet.
 
 V1.2.1 FIX
@@ -57,33 +57,45 @@ V1.3.0
 
 V1.4.0
 - Adds service-worker.js for offline app caching.
-- The app registers the service worker automatically after an online page load.
-- The service worker caches index.html, manifest.webmanifest, icon-180.png, icon-512.png, and the site root.
 - Cached files allow the installed/site app to launch when the network is unavailable after the cache has been populated.
-- Existing cook data continues to use the same local-storage key and is not intentionally migrated or erased.
 - Visible build marker: 2026-09-10B.
 
 V1.5.0
 - Adds guarded local-storage loading and saving.
-- If stored cook data cannot be parsed or fails validation, LDCookLog shows a STORAGE WARNING instead of silently replacing the stored data.
-- Automatic saving and Reset Cook are blocked after an unsafe load so the original stored value is not overwritten from that page session.
-- If a save operation fails, the header changes to SAVE FAILED and the app warns that the latest change may not survive reopening.
 - Adds short action locks to state-changing controls to prevent rapid double taps from creating contradictory or duplicate actions.
-- Protects Meat, Lid, Wrap, Target Change, Keep Warm, Rest, Serve, Spritz, Note, Finish, and Reset actions.
-- Keeps the same local-storage key so existing v1.4.0 cook data remains compatible.
-- Offline cache version advanced to ldcooklog-v1-5-0.
+- Keeps the same local-storage key so existing cook data remains compatible.
 - Visible build marker: 2026-09-10C.
 
-V1.5.0 RELIABILITY ACCEPTANCE TEST
-1. Load V1.5.0 online and confirm Build 2026-09-10C.
-2. Reset the test cook and press Meat On rapidly several times. Confirm only one Meat On event is created and the cook remains Cooking.
-3. Press Start Rest rapidly several times. Confirm only one Rest Start event is created and the Rest timer continues normally.
-4. End Rest normally, then press Start Keep Warm rapidly several times. Confirm only one Keep Warm Start event is created, Phase remains Keep Warm, and target remains 165°F.
-5. Finish the cook and confirm Cook Finished appears once and the elapsed timer freezes.
-6. Close and reopen LDCookLog. Confirm the finished cook remains intact.
-7. Repeat a short cook while offline and verify the v1.4.0 offline behavior still works.
-8. Normal users should continue to see Saved locally in the header. STORAGE WARNING and SAVE FAILED are failure-only messages and are not expected during ordinary testing.
+V1.6.0 — STAGE 2 COOK ID
+- Adds an automatic Cook ID when Meat On starts a new cook.
+- Cook ID format is YYYYMMDD-001, YYYYMMDD-002, etc.
+- The date portion uses the local date the cook started.
+- A separate local counter record tracks the highest sequence used for each date.
+- Reset Cook does not erase or reset the daily sequence counter, so an old Cook ID is not intentionally reused.
+- Cook ID remains attached to the cook after close/reopen, Rest, Keep Warm, Finish, and offline use.
+- Every new event stores the Cook ID.
+- If a legacy active cook from an earlier version has no Cook ID, the next relevant action can assign one and backfill existing events in that current cook.
+- Current State displays the Cook ID.
+- Copy Log includes the Cook ID.
+- CSV export adds a cook_id column and uses the Cook ID in the filename when available.
+- Cook ID allocation works entirely from local storage and does not require internet access.
+- If the Cook ID counter cannot be safely read or saved, the app refuses to start a new cook rather than risk assigning a duplicate ID.
+- Existing Stage 1 save/load protection and double-tap protection remain in place.
+- Offline cache version advanced to ldcooklog-v1-6-0.
+- Visible build marker: 2026-09-10D.
+
+V1.6.0 STAGE 2 ACCEPTANCE TEST
+1. Load V1.6.0 online and confirm Build 2026-09-10D.
+2. Reset the current test cook. Confirm Cook ID shows Not assigned.
+3. Press Meat On. Confirm a Cook ID appears in YYYYMMDD-NNN format.
+4. Record Spritz, Wrap, and Rest. Close and reopen LDCookLog. Confirm the same Cook ID remains.
+5. Finish the cook. Close and reopen. Confirm the same Cook ID remains with the finished cook.
+6. Use Copy Log and confirm the Cook ID appears at the top.
+7. Export CSV and confirm a cook_id column is present and rows carry the current Cook ID.
+8. Reset the finished cook. Confirm Cook ID returns to Not assigned.
+9. Press Meat On again on the same date. Confirm the new Cook ID sequence is higher and the previous ID is not reused.
+10. Repeat a new-cook start while offline. Confirm Cook ID is created and survives close/reopen without internet.
 
 DEPLOYMENT
-- index.html, README.txt, and service-worker.js were updated directly in the GitHub repository for V1.5.0.
+- index.html, README.txt, and service-worker.js were updated directly in the GitHub repository for V1.6.0.
 - manifest.webmanifest and both icon files remain unchanged.
