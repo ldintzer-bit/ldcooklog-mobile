@@ -6,13 +6,13 @@
 <title>LDCookLog Supabase Test</title>
 <style>
 :root{--bg:#101010;--panel:#1a1a1a;--line:#343434;--text:#f5f5f5;--muted:#aaa;--accent:#f2a13a;--good:#7ec56e;--danger:#e66a5e}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}.app{max-width:720px;margin:0 auto;padding:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}h1{font-size:24px;margin:0 0 6px}.sub{color:var(--muted);font-size:13px;margin-bottom:14px}label{display:block;color:var(--muted);font-size:12px;margin:10px 0 5px}input{width:100%;background:#111;border:1px solid #444;border-radius:12px;color:#fff;padding:12px;font-size:16px}button{width:100%;border:0;border-radius:14px;padding:14px 12px;font-size:16px;font-weight:700;background:var(--accent);margin-top:12px}button.secondary{background:#303030;color:#fff;border:1px solid #444}.status{padding:12px;border-radius:12px;background:#141414;border:1px solid #333;font-size:14px;white-space:pre-wrap}.status.good{border-color:#41683a}.status.bad{border-color:#7a2c2c}.cook{margin-top:10px;padding:12px;border-radius:12px;background:#141414;border:1px solid #333}.cook strong{display:block;margin-bottom:4px}.small{font-size:12px;color:var(--muted)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",Arial,sans-serif}.app{max-width:720px;margin:0 auto;padding:16px}.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}h1{font-size:24px;margin:0 0 6px}.sub{color:var(--muted);font-size:13px;margin-bottom:14px}label{display:block;color:var(--muted);font-size:12px;margin:10px 0 5px}input{width:100%;background:#111;border:1px solid #444;border-radius:12px;color:#fff;padding:12px;font-size:16px}button{width:100%;border:0;border-radius:14px;padding:14px 12px;font-size:16px;font-weight:700;background:var(--accent);margin-top:12px}button.secondary{background:#303030;color:#fff;border:1px solid #444}button.good{background:var(--good);color:#111}.status{padding:12px;border-radius:12px;background:#141414;border:1px solid #333;font-size:14px;white-space:pre-wrap}.status.good{border-color:#41683a}.status.bad{border-color:#7a2c2c}.cook{margin-top:10px;padding:12px;border-radius:12px;background:#141414;border:1px solid #333}.cook strong{display:block;margin-bottom:4px}.small{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="app">
   <h1>LDCookLog Supabase Test</h1>
-  <div class="sub">Stage 3 connection test — authentication + RLS + read-only cook retrieval</div>
+  <div class="sub">Stage 3 connection test — authentication + RLS + read/write verification</div>
 
   <section class="card">
     <div id="status" class="status">Not signed in.</div>
@@ -21,12 +21,13 @@
     <label for="password">Password</label>
     <input id="password" type="password" autocomplete="current-password" placeholder="Your Supabase Auth password">
     <button id="signIn">Sign In and Read My Cooks</button>
+    <button id="createCook" class="good" disabled>Create Test Cook and Read It Back</button>
     <button id="signOut" class="secondary">Sign Out</button>
   </section>
 
   <section class="card">
     <strong>Database result</strong>
-    <div class="small">A successful test should show TEST-20260911-001 below.</div>
+    <div class="small">Read test: TEST-20260911-001 should appear. Write test: a new CLOUDTEST cook should appear after creation.</div>
     <div id="results" style="margin-top:10px">No database request yet.</div>
   </section>
 </div>
@@ -42,31 +43,14 @@ function setStatus(message, type='') {
   el.textContent = message;
   el.className = 'status' + (type ? ' ' + type : '');
 }
-
-function saveSession(session) {
-  sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
-
-function loadSession() {
-  try {
-    const raw = sessionStorage.getItem(SESSION_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (_) {
-    return null;
-  }
-}
-
-function clearSession() {
-  sessionStorage.removeItem(SESSION_KEY);
-}
+function saveSession(session) { sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); }
+function loadSession() { try { const raw = sessionStorage.getItem(SESSION_KEY); return raw ? JSON.parse(raw) : null; } catch (_) { return null; } }
+function clearSession() { sessionStorage.removeItem(SESSION_KEY); }
 
 async function signIn(email, password) {
   const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
     method: 'POST',
-    headers: {
-      'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'Content-Type': 'application/json'
-    },
+    headers: {'apikey': SUPABASE_PUBLISHABLE_KEY,'Content-Type': 'application/json'},
     body: JSON.stringify({ email, password })
   });
   const data = await response.json();
@@ -76,49 +60,68 @@ async function signIn(email, password) {
 }
 
 async function readCooks(accessToken) {
-  const response = await fetch(`${SUPABASE_URL}/rest/v1/cooks?select=cook_id,food,phase,owner_id&order=start_time.asc`, {
-    headers: {
-      'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'Authorization': `Bearer ${accessToken}`,
-      'Accept': 'application/json'
-    }
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/cooks?select=cook_id,food,phase,owner_id,notes&order=start_time.asc`, {
+    headers: {'apikey': SUPABASE_PUBLISHABLE_KEY,'Authorization': `Bearer ${accessToken}`,'Accept': 'application/json'}
   });
   const data = await response.json();
   if (!response.ok) throw new Error(data.message || data.hint || data.details || 'Cook read failed.');
   return data;
 }
 
+async function createTestCook(accessToken) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const id = `CLOUDTEST-${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const body = {
+    cook_id: id,
+    food: 'Cloud Write Test',
+    target_temp: 225,
+    start_time: now.toISOString(),
+    phase: 'Setup',
+    notes: 'Created by LDCookLog browser write/read-back test'
+  };
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/cooks`, {
+    method: 'POST',
+    headers: {
+      'apikey': SUPABASE_PUBLISHABLE_KEY,
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=representation'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || data.hint || data.details || 'Cook write failed.');
+  return data[0];
+}
+
+async function readCookById(accessToken, cookId) {
+  const encoded = encodeURIComponent(cookId);
+  const response = await fetch(`${SUPABASE_URL}/rest/v1/cooks?cook_id=eq.${encoded}&select=cook_id,food,phase,owner_id,notes`, {
+    headers: {'apikey': SUPABASE_PUBLISHABLE_KEY,'Authorization': `Bearer ${accessToken}`,'Accept': 'application/json'}
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || data.hint || data.details || 'Read-back failed.');
+  return data;
+}
+
 function renderCooks(cooks) {
   const box = $('results');
-  if (!cooks.length) {
-    box.textContent = 'Signed in, but RLS returned 0 cooks.';
-    return;
-  }
+  if (!cooks.length) { box.textContent = 'Signed in, but RLS returned 0 cooks.'; return; }
   box.innerHTML = '';
   cooks.forEach(cook => {
-    const div = document.createElement('div');
-    div.className = 'cook';
-    const title = document.createElement('strong');
-    title.textContent = cook.cook_id;
-    const meta = document.createElement('div');
-    meta.className = 'small';
-    meta.textContent = `${cook.food} — ${cook.phase}`;
-    div.appendChild(title);
-    div.appendChild(meta);
-    box.appendChild(div);
+    const div = document.createElement('div'); div.className = 'cook';
+    const title = document.createElement('strong'); title.textContent = cook.cook_id;
+    const meta = document.createElement('div'); meta.className = 'small'; meta.textContent = `${cook.food} — ${cook.phase}`;
+    div.appendChild(title); div.appendChild(meta); box.appendChild(div);
   });
 }
 
 async function signInAndRead() {
-  const email = $('email').value.trim();
-  const password = $('password').value;
-  if (!email || !password) {
-    setStatus('Enter the email and password for the Supabase Auth user.', 'bad');
-    return;
-  }
-  $('signIn').disabled = true;
-  setStatus('Signing in…');
-  $('results').textContent = 'Waiting for authenticated database request…';
+  const email = $('email').value.trim(); const password = $('password').value;
+  if (!email || !password) { setStatus('Enter the email and password for the Supabase Auth user.', 'bad'); return; }
+  $('signIn').disabled = true; $('createCook').disabled = true;
+  setStatus('Signing in…'); $('results').textContent = 'Waiting for authenticated database request…';
   try {
     const session = await signIn(email, password);
     const userId = session.user && session.user.id ? session.user.id : 'unknown user';
@@ -126,28 +129,39 @@ async function signInAndRead() {
     const cooks = await readCooks(session.access_token);
     renderCooks(cooks);
     setStatus(`Connected to Supabase. Authenticated as ${email}. RLS returned ${cooks.length} cook(s).`, 'good');
-    $('password').value = '';
+    $('createCook').disabled = false; $('password').value = '';
   } catch (err) {
-    clearSession();
-    setStatus(`TEST FAILED: ${err.message}`, 'bad');
-    $('results').textContent = 'No cook data loaded.';
-  } finally {
-    $('signIn').disabled = false;
-  }
+    clearSession(); setStatus(`TEST FAILED: ${err.message}`, 'bad'); $('results').textContent = 'No cook data loaded.';
+  } finally { $('signIn').disabled = false; }
+}
+
+async function createAndReadBack() {
+  const session = loadSession();
+  if (!session || !session.access_token) { setStatus('Sign in first, then run the write test.', 'bad'); return; }
+  $('createCook').disabled = true;
+  setStatus('Creating one test cook in Supabase…');
+  try {
+    const created = await createTestCook(session.access_token);
+    const readBack = await readCookById(session.access_token, created.cook_id);
+    if (readBack.length !== 1) throw new Error('Cook was created but could not be read back through RLS.');
+    renderCooks(readBack);
+    setStatus(`WRITE TEST PASSED.\nCreated ${created.cook_id}.\nRead it back successfully through RLS.`, 'good');
+  } catch (err) {
+    setStatus(`WRITE TEST FAILED: ${err.message}`, 'bad');
+  } finally { $('createCook').disabled = false; }
 }
 
 $('signIn').addEventListener('click', signInAndRead);
+$('createCook').addEventListener('click', createAndReadBack);
 $('password').addEventListener('keydown', e => { if (e.key === 'Enter') signInAndRead(); });
 $('signOut').addEventListener('click', () => {
-  clearSession();
-  $('password').value = '';
-  $('results').textContent = 'No database request yet.';
-  setStatus('Signed out.');
+  clearSession(); $('password').value = ''; $('results').textContent = 'No database request yet.'; $('createCook').disabled = true; setStatus('Signed out.');
 });
 
 const existing = loadSession();
 if (existing && existing.access_token) {
-  setStatus('A temporary test session exists in this browser tab. Sign in again to rerun the test.');
+  setStatus('A temporary authenticated session exists in this browser tab. You can run the write test now, or sign in again.');
+  $('createCook').disabled = false;
 }
 </script>
 </body>
