@@ -151,9 +151,9 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
 })();
 </script>
 <script>
-// LDCookLog Mobile V1.17.0 saved-location integration
+// LDCookLog Mobile V1.17.2 saved-location integration
 (() => {
-  const BUILD = "2026-09-12B";
+  const BUILD = "2026-09-12D";
   let savedLocations = [];
   let locationLoadMessage = "Sign in to load saved locations.";
   let lastRecoveryLocation = null;
@@ -273,7 +273,7 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
   cloudCookPayload=function(){
     const payload=originalCloudCookPayloadV117();
     payload.location_id=state.locationId||null;
-    if(typeof payload.notes==="string")payload.notes=payload.notes.replace("V1.16.0","V1.17.0");
+    if(typeof payload.notes==="string")payload.notes=payload.notes.replace("V1.16.0","V1.17.2");
     return payload;
   };
 
@@ -312,7 +312,9 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
     if(state!==beforeState&&recovery&&recovery.cook&&state.cookId===recovery.cook.cook_id&&state.cloudCookUuid===recovery.cook.id){
       state.locationId=recovery.cook.location_id||null;
       state.locationName=recovery.cook.location_name||locationNameForId(state.locationId);
-      save();render();
+      render();
+      save();
+      render();
     }
   };
 
@@ -321,10 +323,10 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
   $("cloudRead").addEventListener("click",()=>setTimeout(loadSavedLocations,0));
   $("cloudSignOut").addEventListener("click",()=>{savedLocations=[];locationLoadMessage=state.locationId?"Cloud is signed out. The selected location remains saved on this device.":"Sign in to load saved locations.";renderLocationOptions();});
 
-  document.title="LDCookLog Mobile V1.17.0";
-  const headerSub=document.querySelector("header .sub");if(headerSub)headerSub.textContent="V1.17.0 Stateful BBQ Control Panel";
-  document.querySelectorAll(".sub").forEach(el=>{if(el.textContent.includes("V1.16.0 consolidates")){el.textContent="V1.17.0 adds saved-location selection from Supabase while preserving local-first cooking, recovery, and conflict protection.";}});
-  const footer=document.querySelector(".footer-note");if(footer)footer.innerHTML=`V1.17.0 begins database-driven Cook Setup with saved locations. Location loading never blocks local/offline cooking.<br><strong>Build ${BUILD}</strong>`;
+  document.title="LDCookLog Mobile V1.17.2";
+  const headerSub=document.querySelector("header .sub");if(headerSub)headerSub.textContent="V1.17.2 Stateful BBQ Control Panel";
+  document.querySelectorAll(".sub").forEach(el=>{if(el.textContent.includes("V1.16.0 consolidates")){el.textContent="V1.17.2 adds saved-location selection from Supabase and consolidates the tested location-recovery fix into the main app.";}});
+  const footer=document.querySelector(".footer-note");if(footer)footer.innerHTML=`V1.17.2 Saved Locations: the tested recovery fix is now consolidated into index.html; no temporary runtime patch is required.<br><strong>Build ${BUILD}</strong>`;
 
   ensureLocationUI();
   renderLocationOptions();
