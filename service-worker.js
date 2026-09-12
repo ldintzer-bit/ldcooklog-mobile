@@ -1,9 +1,7 @@
-const CACHE_NAME = "ldcooklog-v1-18-1";
+const CACHE_NAME = "ldcooklog-v1-18-2";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./v1-18.js",
-  "./v1-18-1.js",
   "./manifest.webmanifest",
   "./icon-180.png",
   "./icon-512.png"
@@ -25,36 +23,8 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
-async function injectV118(response) {
-  const text = await response.text();
-  let injected = text;
-  if (!injected.includes('v1-18.js')) injected = injected.replace('</body>', '<script src="./v1-18.js"></script>\n</body>');
-  if (!injected.includes('v1-18-1.js')) injected = injected.replace('</body>', '<script src="./v1-18-1.js"></script>\n</body>');
-  return new Response(injected, {status: response.status, statusText: response.statusText, headers: response.headers});
-}
-
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
-  const url = new URL(event.request.url);
-  const isAppHtml = event.request.mode === "navigate" || url.pathname.endsWith("/index.html") || url.pathname.endsWith("/ldcooklog-mobile/");
-
-  if (isAppHtml) {
-    event.respondWith(
-      fetch(event.request)
-        .then(async response => {
-          const modified = await injectV118(response.clone());
-          const copy = modified.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-          return modified;
-        })
-        .catch(async () => {
-          const cached = await caches.match(event.request) || await caches.match("./index.html");
-          return cached ? injectV118(cached.clone()) : cached;
-        })
-    );
-    return;
-  }
-
   event.respondWith(
     fetch(event.request)
       .then(response => {
