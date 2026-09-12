@@ -150,5 +150,187 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
   save();render();setTimeout(bootstrapCloudVersionBaseline,250);
 })();
 </script>
+<script>
+// LDCookLog Mobile V1.17.0 saved-location integration
+(() => {
+  const BUILD = "2026-09-12B";
+  let savedLocations = [];
+  let locationLoadMessage = "Sign in to load saved locations.";
+  let lastRecoveryLocation = null;
+
+  const originalDefaultStateV117 = defaultState;
+  defaultState = function(){return Object.assign(originalDefaultStateV117(),{locationId:null,locationName:""});};
+  if (!("locationId" in state)) state.locationId=null;
+  if (!("locationName" in state)) state.locationName="";
+
+  function ensureLocationUI(){
+    let select=$("savedLocation");
+    if(select)return select;
+    const setupCard=[...document.querySelectorAll("section.card")].find(card=>card.querySelector("h2")&&card.querySelector("h2").textContent.trim()==="Cook Setup");
+    if(!setupCard)return null;
+    const wrap=document.createElement("div");
+    wrap.id="savedLocationWrap";
+    wrap.style.marginTop="10px";
+    wrap.innerHTML='<label for="savedLocation">Saved Location</label><select id="savedLocation"><option value="">No saved location</option></select><div id="savedLocationStatus" class="sub" style="margin-top:5px">Sign in to load saved locations.</div>';
+    const traeger=$("traegerFields");
+    if(traeger&&traeger.parentNode===setupCard)setupCard.insertBefore(wrap,traeger);else setupCard.appendChild(wrap);
+    select=$("savedLocation");
+    select.addEventListener("change",()=>{
+      state.locationId=select.value||null;
+      const option=select.options[select.selectedIndex];
+      state.locationName=state.locationId?(option&&option.dataset.name?option.dataset.name:option.textContent):"";
+      markCloudCookDirty();
+      save();
+      renderLocationOptions();
+      if(state.start&&loadCloudSession())syncCurrentCookAndEvents();
+    });
+    return select;
+  }
+
+  function locationNameForId(id){
+    if(!id)return "";
+    const row=savedLocations.find(loc=>loc.id===id);
+    return row?row.name:(state.locationId===id?state.locationName:"");
+  }
+
+  function renderLocationOptions(){
+    const select=ensureLocationUI();
+    if(!select)return;
+    const selected=state.locationId||"";
+    select.innerHTML="";
+    const none=document.createElement("option");none.value="";none.textContent="No saved location";select.appendChild(none);
+    if(selected&&!savedLocations.some(loc=>loc.id===selected)){
+      const cached=document.createElement("option");cached.value=selected;cached.textContent=state.locationName||"Saved location";cached.dataset.name=state.locationName||"Saved location";select.appendChild(cached);
+    }
+    savedLocations.forEach(loc=>{const option=document.createElement("option");option.value=loc.id;option.textContent=loc.name;option.dataset.name=loc.name;select.appendChild(option);});
+    if([...select.options].some(option=>option.value===selected))select.value=selected;else select.value="";
+    const status=$("savedLocationStatus");
+    if(status)status.textContent=locationLoadMessage;
+  }
+
+  const originalSaveV117=save;
+  save=function(){
+    const select=$("savedLocation");
+    if(select){
+      state.locationId=select.value||null;
+      const option=select.options[select.selectedIndex];
+      state.locationName=state.locationId?(option&&option.dataset.name?option.dataset.name:(option?option.textContent:state.locationName)):"";
+    }
+    return originalSaveV117();
+  };
+
+  const originalRenderV117=render;
+  render=function(){
+    if(lastRecoveryLocation&&state.cloudSyncMessage==="Conflict resolved using the cloud version."&&state.cloudCookUuid===lastRecoveryLocation.cookUuid){
+      state.locationId=lastRecoveryLocation.locationId;
+      state.locationName=lastRecoveryLocation.locationName;
+      lastRecoveryLocation=null;
+    }
+    originalRenderV117();
+    renderLocationOptions();
+  };
+
+  async function fetchSavedLocations(accessToken){
+    const response=await fetch(`${SUPABASE_URL}/rest/v1/locations?select=id,name,city,state_region,country,is_saved,is_active&is_saved=eq.true&is_active=eq.true&order=name.asc`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${accessToken}`,Accept:"application/json"}});
+    if(response.status===401)throw Object.assign(new Error("Session expired."),{code:401});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.message||data.hint||data.details||"Saved locations could not be read.");
+    return data;
+  }
+
+  async function loadSavedLocations(){
+    let session=loadCloudSession();
+    if(!session||!session.access_token){savedLocations=[];locationLoadMessage=state.locationId?"Cloud is signed out. The selected location remains saved on this device.":"Sign in to load saved locations.";renderLocationOptions();return false;}
+    locationLoadMessage="Loading saved locations…";renderLocationOptions();
+    try{
+      let rows;
+      try{rows=await fetchSavedLocations(session.access_token);}catch(err){if(err.code!==401)throw err;session=await refreshCloudSession(session);rows=await fetchSavedLocations(session.access_token);}
+      savedLocations=rows;
+      if(state.locationId&&!state.locationName)state.locationName=locationNameForId(state.locationId);
+      locationLoadMessage=rows.length?`${rows.length} saved location${rows.length===1?"":"s"} loaded from Supabase.`:"No active saved locations were returned by Supabase.";
+      renderLocationOptions();
+      originalSaveV117();
+      return true;
+    }catch(err){
+      locationLoadMessage=`Saved locations could not be refreshed: ${err.message} Current local cooking is unaffected.`;
+      renderLocationOptions();
+      return false;
+    }
+  }
+
+  async function fetchLocationName(accessToken,locationId){
+    if(!locationId)return "";
+    const cached=savedLocations.find(loc=>loc.id===locationId);if(cached)return cached.name;
+    try{
+      const response=await fetch(`${SUPABASE_URL}/rest/v1/locations?select=id,name&id=eq.${encodeURIComponent(locationId)}&limit=1`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${accessToken}`,Accept:"application/json"}});
+      if(!response.ok)return "";
+      const rows=await response.json();
+      return rows[0]&&rows[0].name?rows[0].name:"";
+    }catch(_){return "";}
+  }
+
+  const originalCloudCookPayloadV117=cloudCookPayload;
+  cloudCookPayload=function(){
+    const payload=originalCloudCookPayloadV117();
+    payload.location_id=state.locationId||null;
+    if(typeof payload.notes==="string")payload.notes=payload.notes.replace("V1.16.0","V1.17.0");
+    return payload;
+  };
+
+  fetchCloudCookRecovery=async function(accessToken,cookUuid){
+    const cookResponse=await fetch(`${SUPABASE_URL}/rest/v1/cooks?select=id,cook_id,food,weight_value,weight_unit,target_temp,start_time,finish_time,phase,notes,updated_at,location_id&id=eq.${encodeURIComponent(cookUuid)}&limit=1`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${accessToken}`,Accept:"application/json"}});
+    if(cookResponse.status===401)throw Object.assign(new Error("Session expired."),{code:401});
+    const cookData=await cookResponse.json();
+    if(!cookResponse.ok)throw new Error(cookData.message||cookData.hint||cookData.details||"Cloud cook recovery failed.");
+    const cook=cookData[0];if(!cook)throw new Error("Cloud cook was not found.");
+    cook.location_name=await fetchLocationName(accessToken,cook.location_id);
+    const eventResponse=await fetch(`${SUPABASE_URL}/rest/v1/events?select=id,event_type,event_time,note,target_temp,phase,smoker,setup_context&cook_id=eq.${encodeURIComponent(cookUuid)}&order=event_time.asc`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${accessToken}`,Accept:"application/json"}});
+    if(eventResponse.status===401)throw Object.assign(new Error("Session expired."),{code:401});
+    const events=await eventResponse.json();
+    if(!eventResponse.ok)throw new Error(events.message||events.hint||events.details||"Cloud event recovery failed.");
+    lastRecoveryLocation={cookUuid:cook.id,locationId:cook.location_id||null,locationName:cook.location_name||""};
+    return {cook,events};
+  };
+
+  const originalRenderCloudRecoveryV117=renderCloudRecovery;
+  renderCloudRecovery=function(cook,events){
+    originalRenderCloudRecoveryV117(cook,events);
+    const box=$("cloudRecovery");
+    if(!box||!cook)return;
+    const lines=box.textContent.split("\n");
+    const locationText=cook.location_id?(cook.location_name||"Saved location"):"None";
+    const insertAt=Math.min(3,lines.length);
+    lines.splice(insertAt,0,`Location: ${locationText}`);
+    box.textContent=lines.join("\n");
+  };
+
+  const originalRestoreViewedCloudCookV117=restoreViewedCloudCook;
+  restoreViewedCloudCook=function(){
+    const recovery=viewedCloudRecovery;
+    const beforeState=state;
+    originalRestoreViewedCloudCookV117();
+    if(state!==beforeState&&recovery&&recovery.cook&&state.cookId===recovery.cook.cook_id&&state.cloudCookUuid===recovery.cook.id){
+      state.locationId=recovery.cook.location_id||null;
+      state.locationName=recovery.cook.location_name||locationNameForId(state.locationId);
+      save();render();
+    }
+  };
+
+  const originalCloudSignInV117=cloudSignIn;
+  cloudSignIn=async function(){await originalCloudSignInV117();if(loadCloudSession())await loadSavedLocations();};
+  $("cloudRead").addEventListener("click",()=>setTimeout(loadSavedLocations,0));
+  $("cloudSignOut").addEventListener("click",()=>{savedLocations=[];locationLoadMessage=state.locationId?"Cloud is signed out. The selected location remains saved on this device.":"Sign in to load saved locations.";renderLocationOptions();});
+
+  document.title="LDCookLog Mobile V1.17.0";
+  const headerSub=document.querySelector("header .sub");if(headerSub)headerSub.textContent="V1.17.0 Stateful BBQ Control Panel";
+  document.querySelectorAll(".sub").forEach(el=>{if(el.textContent.includes("V1.16.0 consolidates")){el.textContent="V1.17.0 adds saved-location selection from Supabase while preserving local-first cooking, recovery, and conflict protection.";}});
+  const footer=document.querySelector(".footer-note");if(footer)footer.innerHTML=`V1.17.0 begins database-driven Cook Setup with saved locations. Location loading never blocks local/offline cooking.<br><strong>Build ${BUILD}</strong>`;
+
+  ensureLocationUI();
+  renderLocationOptions();
+  save();render();
+  if(loadCloudSession())setTimeout(loadSavedLocations,300);
+})();
+</script>
 </body>
 </html>
