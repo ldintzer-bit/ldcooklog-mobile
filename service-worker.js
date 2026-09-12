@@ -1,8 +1,9 @@
-const CACHE_NAME = "ldcooklog-v1-18-0";
+const CACHE_NAME = "ldcooklog-v1-18-1";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./v1-18.js",
+  "./v1-18-1.js",
   "./manifest.webmanifest",
   "./icon-180.png",
   "./icon-512.png"
@@ -26,8 +27,9 @@ self.addEventListener("activate", event => {
 
 async function injectV118(response) {
   const text = await response.text();
-  if (text.includes('v1-18.js')) return new Response(text, {status: response.status, statusText: response.statusText, headers: response.headers});
-  const injected = text.replace('</body>', '<script src="./v1-18.js"></script>\n</body>');
+  let injected = text;
+  if (!injected.includes('v1-18.js')) injected = injected.replace('</body>', '<script src="./v1-18.js"></script>\n</body>');
+  if (!injected.includes('v1-18-1.js')) injected = injected.replace('</body>', '<script src="./v1-18-1.js"></script>\n</body>');
   return new Response(injected, {status: response.status, statusText: response.statusText, headers: response.headers});
 }
 
