@@ -1,24 +1,11 @@
-const CACHE_NAME = "ldcooklog-v1-19-0";
+const CACHE_NAME = "ldcooklog-v1-19-1";
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./v1-19.js",
   "./manifest.webmanifest",
   "./icon-180.png",
   "./icon-512.png"
 ];
-
-function injectV119(html) {
-  if (html.includes('src="./v1-19.js"') || html.includes("src='./v1-19.js'")) return html;
-  return html.replace("</body>", '<script src="./v1-19.js"></script>\n</body>');
-}
-
-async function htmlResponse(response) {
-  const text = await response.text();
-  const headers = new Headers(response.headers);
-  headers.set("Content-Type", "text/html; charset=utf-8");
-  return new Response(injectV119(text), {status: response.status, statusText: response.statusText, headers});
-}
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -39,31 +26,30 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
-  const isAppHtml = url.origin === self.location.origin && (url.pathname.endsWith("/ldcooklog-mobile/") || url.pathname.endsWith("/ldcooklog-mobile/index.html"));
 
-  if (isAppHtml) {
-    event.respondWith((async () => {
-      try {
-        const response = await fetch(event.request);
+  // Only handle this app's own files. Cloud/API requests should go directly
+  // to the network so an offline failure is reported normally to the app.
+  if (url.origin !== self.location.origin) return;
+
+  event.respondWith((async () => {
+    try {
+      const response = await fetch(event.request);
+      if (response && response.ok) {
         const cache = await caches.open(CACHE_NAME);
         cache.put(event.request, response.clone());
-        return htmlResponse(response);
-      } catch (_) {
-        const cached = await caches.match(event.request) || await caches.match("./index.html");
-        if (cached) return htmlResponse(cached);
-        throw _;
       }
-    })());
-    return;
-  }
+      return response;
+    } catch (_) {
+      const cached = await caches.match(event.request);
+      if (cached) return cached;
 
-  event.respondWith(
-    fetch(event.request)
-      .then(response => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then(cache => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
-  );
+      const isAppHtml = url.pathname.endsWith("/ldcooklog-mobile/") || url.pathname.endsWith("/ldcooklog-mobile/index.html");
+      if (isAppHtml) {
+        const fallback = await caches.match("./index.html");
+        if (fallback) return fallback;
+      }
+
+      return Response.error();
+    }
+  })());
 });
