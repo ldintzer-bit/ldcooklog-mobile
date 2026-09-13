@@ -1374,5 +1374,124 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
   renderEvaluation(); if(state.finishTime&&hasEvaluation(getEvaluation())) scheduleEvaluationSync();
 })();
 </script>
+
+<script>
+(() => {
+  const fireboardCard = document.createElement('section');
+  fireboardCard.className = 'card';
+  fireboardCard.id = 'fireboardSessionsCard';
+  fireboardCard.innerHTML = `
+    <h2>FireBoard Sessions</h2>
+    <div id="fireboardStatus" class="cloud-status">Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.</div>
+    <div class="toolbar" style="margin-top:10px">
+      <button class="secondary" id="fireboardLoad">Load Recent FireBoard Sessions</button>
+    </div>
+    <div id="fireboardSessions" class="cloud-list"></div>
+    <div class="sub" style="margin-top:10px">V1.22.0 is read-only: it retrieves up to 10 recent completed sessions through the secure Supabase Edge Function. It does not yet link a FireBoard session to a cook or import temperature samples.</div>`;
+
+  const cookSetup = [...document.querySelectorAll('section.card')].find(section => section.querySelector('h2')?.textContent === 'Cook Setup');
+  if (cookSetup) cookSetup.before(fireboardCard); else document.querySelector('.app')?.appendChild(fireboardCard);
+
+  const fireboardStatus = document.getElementById('fireboardStatus');
+  const fireboardList = document.getElementById('fireboardSessions');
+  const fireboardLoad = document.getElementById('fireboardLoad');
+
+  function setFireboardStatus(message, type='') {
+    fireboardStatus.textContent = message;
+    fireboardStatus.className = 'cloud-status' + (type ? ' ' + type : '');
+  }
+
+  function formatFireboardTime(value) {
+    if (!value) return 'Unknown time';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return String(value);
+    return d.toLocaleString([], { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
+  }
+
+  function renderFireboardSessions(sessions) {
+    fireboardList.innerHTML = '';
+    if (!sessions.length) {
+      fireboardList.textContent = 'No completed FireBoard sessions were returned.';
+      return;
+    }
+    sessions.forEach(session => {
+      const div = document.createElement('div');
+      div.className = 'cloud-cook';
+      const strong = document.createElement('strong');
+      strong.textContent = session.title || `FireBoard Session ${session.id}`;
+      const times = document.createElement('span');
+      times.textContent = `${formatFireboardTime(session.start_time)} — ${formatFireboardTime(session.end_time)}`;
+      div.appendChild(strong);
+      div.appendChild(times);
+      const devices = Array.isArray(session.devices) ? session.devices.filter(Boolean) : [];
+      if (devices.length) {
+        const deviceLine = document.createElement('div');
+        deviceLine.className = 'sub';
+        deviceLine.style.marginTop = '4px';
+        deviceLine.textContent = 'Devices: ' + devices.map(d => d.title || d.hardware_id || d.uuid || d.id || 'Unknown').join(', ');
+        div.appendChild(deviceLine);
+      }
+      fireboardList.appendChild(div);
+    });
+  }
+
+  async function requestFireboardSessions(accessToken) {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/fireboard-sessions`, {
+      method: 'GET',
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json'
+      }
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.status === 401) throw Object.assign(new Error('Session expired.'), { code: 401 });
+    if (!response.ok) throw new Error(data.error || `FireBoard request failed (${response.status}).`);
+    return data;
+  }
+
+  async function loadFireboardSessions() {
+    let session = loadCloudSession();
+    if (!session?.access_token) {
+      setFireboardStatus('Sign in to LDCookLog Cloud first. FireBoard access remains disabled while signed out.', 'warn');
+      fireboardList.innerHTML = '';
+      return;
+    }
+    fireboardLoad.disabled = true;
+    setFireboardStatus('Loading recent completed FireBoard sessions…');
+    try {
+      let data;
+      try {
+        data = await requestFireboardSessions(session.access_token);
+      } catch (err) {
+        if (err.code !== 401) throw err;
+        session = await refreshCloudSession(session);
+        data = await requestFireboardSessions(session.access_token);
+      }
+      const sessions = Array.isArray(data.sessions) ? data.sessions : [];
+      renderFireboardSessions(sessions);
+      setFireboardStatus(`FireBoard connected. ${sessions.length} recent completed session${sessions.length === 1 ? '' : 's'} loaded.`, 'good');
+    } catch (err) {
+      setFireboardStatus(`FireBoard read failed: ${err.message}\nYour cook data is unaffected.`, 'bad');
+      fireboardList.innerHTML = '';
+    } finally {
+      fireboardLoad.disabled = false;
+    }
+  }
+
+  fireboardLoad.addEventListener('click', loadFireboardSessions);
+  document.getElementById('cloudSignOut')?.addEventListener('click', () => {
+    fireboardList.innerHTML = '';
+    setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
+  });
+
+  document.title = 'LDCookLog Mobile V1.22.0';
+  const headerSub = document.querySelector('header .sub');
+  if (headerSub) headerSub.textContent = 'V1.22.0 Stateful BBQ Control Panel';
+  const footer = document.querySelector('.footer-note');
+  if (footer) footer.innerHTML = 'V1.22.0 adds secure, read-only FireBoard recent-session viewing through a Supabase Edge Function. No FireBoard credentials are stored in the app or GitHub.<br><strong>Build 2026-09-13G</strong>';
+})();
+</script>
+
 </body>
 </html>
