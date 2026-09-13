@@ -1,7 +1,7 @@
 import { withSupabase } from 'npm:@supabase/server@^1'
 
 const FIREBOARD_BASE = 'https://fireboard.io/api/v1'
-const USER_AGENT = 'LDCookLog/1.22 fireboard integration'
+const USER_AGENT = 'LDCookLog/1.23 active fireboard integration'
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status })
@@ -77,6 +77,25 @@ function summarizeChart(raw: any, includeSamples = false) {
   return { channels, count: channels.length }
 }
 
+function normalizeSession(session: any) {
+  return {
+    id: session.id,
+    title: session.title || `FireBoard Session ${session.id}`,
+    start_time: session.start_time ?? null,
+    end_time: session.end_time ?? null,
+    duration: session.duration ?? null,
+    description: session.description ?? null,
+    devices: Array.isArray(session.devices)
+      ? session.devices.map((device: any) => ({
+          id: device?.id ?? null,
+          uuid: device?.UUID ?? device?.uuid ?? null,
+          title: device?.title ?? null,
+          hardware_id: device?.hardware_id ?? null,
+        }))
+      : [],
+  }
+}
+
 export default {
   fetch: withSupabase({ auth: 'user' }, async (req) => {
     if (req.method !== 'GET') {
@@ -99,33 +118,30 @@ export default {
 
       const raw = await fireboardFetch('/sessions.json')
       const sessions = Array.isArray(raw) ? raw : (raw?.results ?? [])
+      const sorted = sessions.slice().sort((a: any, b: any) => {
+        const at = Date.parse(a?.start_time ?? a?.created ?? 0)
+        const bt = Date.parse(b?.start_time ?? b?.created ?? 0)
+        return bt - at
+      })
 
-      const completed = sessions
+      // FireBoard sessions without an end_time are in progress. Expose them separately
+      // so LDCookLog can bind an active cook directly instead of matching after the fact.
+      const active = sorted
+        .filter((session: any) => session?.start_time && !session?.end_time)
+        .slice(0, 5)
+        .map(normalizeSession)
+
+      const completed = sorted
         .filter((session: any) => session?.end_time)
-        .sort((a: any, b: any) => {
-          const at = Date.parse(a?.start_time ?? a?.created ?? 0)
-          const bt = Date.parse(b?.start_time ?? b?.created ?? 0)
-          return bt - at
-        })
         .slice(0, 10)
-        .map((session: any) => ({
-          id: session.id,
-          title: session.title || `FireBoard Session ${session.id}`,
-          start_time: session.start_time ?? null,
-          end_time: session.end_time ?? null,
-          duration: session.duration ?? null,
-          description: session.description ?? null,
-          devices: Array.isArray(session.devices)
-            ? session.devices.map((device: any) => ({
-                id: device?.id ?? null,
-                uuid: device?.UUID ?? device?.uuid ?? null,
-                title: device?.title ?? null,
-                hardware_id: device?.hardware_id ?? null,
-              }))
-            : [],
-        }))
+        .map(normalizeSession)
 
-      return json({ sessions: completed, count: completed.length })
+      return json({
+        active_sessions: active,
+        active_count: active.length,
+        sessions: completed,
+        count: completed.length,
+      })
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       return json({ error: message }, 502)
