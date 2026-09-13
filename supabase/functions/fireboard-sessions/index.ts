@@ -29,30 +29,49 @@ async function fireboardFetch(path: string) {
   return data
 }
 
-function summarizeChart(raw: any) {
-  const source = Array.isArray(raw)
+function chartSource(raw: any) {
+  return Array.isArray(raw)
     ? raw
     : Array.isArray(raw?.channels)
       ? raw.channels
       : Array.isArray(raw?.data)
         ? raw.data
         : []
+}
 
-  const channels = source.map((channel: any, index: number) => {
+function summarizeChart(raw: any, includeSamples = false) {
+  const channels = chartSource(raw).map((channel: any, index: number) => {
     const x = Array.isArray(channel?.x) ? channel.x : []
     const y = Array.isArray(channel?.y) ? channel.y : []
+    const pairedCount = Math.min(x.length, y.length)
     const numeric = y.map((value: any) => Number(value)).filter((value: number) => Number.isFinite(value))
-    return {
+    const degreeType = channel?.degreetype ?? channel?.degree_type ?? channel?.unit ?? null
+    const result: any = {
       index,
       label: channel?.label ?? channel?.title ?? channel?.name ?? `Channel ${index + 1}`,
       device_uuid: channel?.device ?? channel?.device_uuid ?? channel?.UUID ?? channel?.uuid ?? null,
-      degree_type: channel?.degreetype ?? channel?.degree_type ?? channel?.unit ?? null,
-      sample_count: Math.min(x.length || y.length, y.length || x.length),
-      first_timestamp: x.length ? x[0] : null,
-      last_timestamp: x.length ? x[x.length - 1] : null,
+      degree_type: degreeType,
+      degree_unit: Number(degreeType) === 1 ? 'C' : Number(degreeType) === 2 ? 'F' : null,
+      sample_count: pairedCount,
+      first_timestamp: pairedCount ? x[0] : null,
+      last_timestamp: pairedCount ? x[pairedCount - 1] : null,
       min_temperature: numeric.length ? Math.min(...numeric) : null,
       max_temperature: numeric.length ? Math.max(...numeric) : null,
     }
+
+    if (includeSamples) {
+      result.samples = []
+      for (let i = 0; i < pairedCount; i += 1) {
+        const temperature = Number(y[i])
+        if (!Number.isFinite(temperature)) continue
+        result.samples.push({
+          observed_at: x[i],
+          temperature_value: temperature,
+        })
+      }
+    }
+
+    return result
   })
 
   return { channels, count: channels.length }
@@ -73,7 +92,8 @@ export default {
           return json({ error: 'Invalid FireBoard session ID.' }, 400)
         }
         const rawChart = await fireboardFetch(`/sessions/${sessionId}/chart.json`)
-        const summary = summarizeChart(rawChart)
+        const includeSamples = url.searchParams.get('samples') === '1'
+        const summary = summarizeChart(rawChart, includeSamples)
         return json({ session_id: sessionId, ...summary })
       }
 
