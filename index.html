@@ -2267,16 +2267,19 @@ Your cook data is unaffected.`, 'bad');
         data = await requestFireboardSessions(authSession.access_token);
       }
       const active = Array.isArray(data.active_sessions) ? data.active_sessions : [];
-      if (!active.length) {
-        setFireboardStatus('LDCookLog is active. Waiting for an active FireBoard session…');
-        return;
-      }
       if (active.length > 1) {
         setFireboardStatus(`More than one active FireBoard session was found (${active.length}). Automatic linking is paused rather than guessing.`, 'warn');
         return;
       }
 
-      const fbSession = active[0];
+      let fbSession = active.length === 1 ? active[0] : null;
+      // Finish Cook should still capture the last samples even if FireBoard stops
+      // reporting the session as active between the button press and this final sync.
+      if (!fbSession && forceFinal && liveFireboardSession) fbSession = liveFireboardSession;
+      if (!fbSession) {
+        setFireboardStatus('LDCookLog is active. Waiting for an active FireBoard session…');
+        return;
+      }
       liveFireboardSession = fbSession;
       const parentOk = await syncCurrentCookToCloud();
       if (!parentOk || !state.cloudCookUuid) throw new Error('The active cook could not be prepared in cloud storage.');
@@ -2292,7 +2295,9 @@ Your cook data is unaffected.`, 'bad');
       const graphHost = renderLiveFireboardHeading(fbSession, rows.length, newCount);
       renderFireboardTemperatureGraph(graphHost, fbSession, rows);
       graphHost.querySelector('.fireboard-analysis')?.remove();
-      setFireboardStatus(`Active FireBoard session ${fbSession.title || fbSession.id} is linked to cook ${state.cookId}. Live temperatures are being stored automatically.`, 'good');
+      setFireboardStatus(forceFinal
+        ? `Final FireBoard sync complete for cook ${state.cookId}. The latest available temperatures were stored.`
+        : `Active FireBoard session ${fbSession.title || fbSession.id} is linked to cook ${state.cookId}. Live temperatures are being stored automatically.`, 'good');
     } catch (err) {
       setFireboardStatus(`Live FireBoard sync warning: ${err.message}\nThe LDCookLog cook remains safe.`, 'bad');
     } finally {
@@ -2374,11 +2379,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.23.2';
+  document.title = 'LDCookLog Mobile V1.23.3';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.23.2 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.23.3 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.23.2 improves active FireBoard detection using real-time device temperatures and refreshes once per minute to stay within FireBoard API limits. Historical analysis remains paused while we collect clean cook data.<br><strong>Build 2026-09-13R</strong>';
+  if (footer) footer.innerHTML = 'V1.23.3 makes Finish Cook more reliable by completing a final FireBoard sample import even if the session stops appearing active at that moment. Historical analysis remains paused while we collect clean cook data.<br><strong>Build 2026-09-13S</strong>';
 })();
 </script>
 
