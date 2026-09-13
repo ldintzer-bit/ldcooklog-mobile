@@ -32,7 +32,7 @@ jobs:
           marker = '<!-- v1-19.js consolidated into index.html in V1.19.1 -->'
 
           if marker not in html:
-              block = f'''\n{marker}\n<script>\n{js.rstrip()}\n</script>\n<script>\n// V1.19.1 architecture cleanup metadata\n(() => {{\n  const BUILD = "2026-09-13A";\n  document.title = "LDCookLog Mobile V1.19.1";\n  const headerSub = document.querySelector("header .sub");\n  if (headerSub) headerSub.textContent = "V1.19.1 Stateful BBQ Control Panel";\n  const footer = document.querySelector(".footer-note");\n  if (footer) footer.innerHTML = `V1.19.1 architecture cleanup: Saved Cook Methods is consolidated into index.html; the temporary runtime feature file is retired.<br><strong>Build ${{BUILD}}</strong>`;\n}})();\n</script>\n'''
+              block = f'''\n{marker}\n<script>\n{js.rstrip()}\n</script>\n<script>\n// V1.19.1 architecture cleanup metadata\n(() => {{\n  const BUILD = "2026-09-13A";\n  document.title = "LDCookLog Mobile V1.19.1";\n  const headerSub = document.querySelector("header .sub");\n  if (headerSub) headerSub.textContent = "V1.19.1 Stateful BBQ Control Panel";\n  const footer = document.querySelector(".footer-note");\n  if (footer) footer.innerHTML = "V1.19.1 architecture cleanup: Saved Cook Methods is consolidated into index.html; the temporary runtime feature file is retired.<br><strong>Build " + BUILD + "</strong>";\n}})();\n</script>\n'''
               if '</body>' not in html:
                   raise SystemExit('index.html has no </body> marker')
               html = html.replace('</body>', block + '</body>', 1)
