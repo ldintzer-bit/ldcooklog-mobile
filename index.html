@@ -1906,7 +1906,7 @@ Your cook data is unaffected.`, 'bad');
     button.disabled = true;
     button.textContent = 'Loading Graph…';
     try {
-      let authSession = getCloudSession();
+      let authSession = loadCloudSession();
       if (!authSession?.access_token) throw new Error('Sign in to LDCookLog Cloud first.');
       const association = await getFireboardAssociation(authSession.access_token, fbSession.id);
       if (!association?.id) throw new Error('Attach this FireBoard session to the current cook first.');
@@ -2075,7 +2075,7 @@ Your cook data is unaffected.`, 'bad');
   const headerSub = document.querySelector('header .sub');
   if (headerSub) headerSub.textContent = 'V1.22.6 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.22.6 adds an in-app FireBoard temperature graph using imported Supabase telemetry, with all attached channels plotted together.<br><strong>Build 2026-09-13M</strong>';
+  if (footer) footer.innerHTML = 'V1.22.6 adds an in-app FireBoard temperature graph using imported Supabase telemetry, with all attached channels plotted together.<br><strong>Build 2026-09-13M1</strong>';
 })();
 </script>
 
