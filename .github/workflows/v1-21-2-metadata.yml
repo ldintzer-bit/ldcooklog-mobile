@@ -1,0 +1,35 @@
+name: Finalize V1.21.2 metadata
+
+on:
+  push:
+    paths:
+      - '.github/workflows/v1-21-2-metadata.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  finalize:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update V1.21.2 visible metadata
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('index.html')
+          s=p.read_text()
+          s=s.replace("document.title='LDCookLog Mobile V1.21.1'", "document.title='LDCookLog Mobile V1.21.2'")
+          s=s.replace("headerSub.textContent='V1.21.1 Stateful BBQ Control Panel'", "headerSub.textContent='V1.21.2 Stateful BBQ Control Panel'")
+          s=s.replace("V1.21.1 adds retry-safe Cook Evaluation cloud save and recovery while keeping evaluation optional and local-first.<br><strong>Build 2026-09-13E</strong>", "V1.21.2 architecture cleanup: Cook Evaluation is consolidated into index.html; temporary feature and workflow files are retired.<br><strong>Build 2026-09-13F</strong>")
+          p.write_text(s)
+          Path('.github/workflows/v1-21-2-metadata.yml').unlink(missing_ok=True)
+      - name: Commit metadata cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Finalize V1.21.2 metadata" || exit 0
+          git push
