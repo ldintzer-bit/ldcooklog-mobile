@@ -1387,7 +1387,7 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
       <button class="secondary" id="fireboardLoad">Load Recent FireBoard Sessions</button>
     </div>
     <div id="fireboardSessions" class="cloud-list"></div>
-    <div class="sub" style="margin-top:10px">V1.22.6 adds a responsive temperature graph built from imported FireBoard samples stored in Supabase. The graph reads cloud data only and does not call FireBoard again.</div>`;
+    <div class="sub" style="margin-top:10px">V1.23 automatically compares recent completed FireBoard sessions with the current cook time window, recommends the best match, and offers a single Connect &amp; Import action. Nothing is attached without your confirmation.</div>`;
 
   const cookSetup = [...document.querySelectorAll('section.card')].find(section => section.querySelector('h2')?.textContent === 'Cook Setup');
   if (cookSetup) cookSetup.before(fireboardCard); else document.querySelector('.app')?.appendChild(fireboardCard);
@@ -1406,6 +1406,61 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
     const d = new Date(value);
     if (Number.isNaN(d.getTime())) return String(value);
     return d.toLocaleString([], { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
+  }
+
+  function fireboardSessionMatchScore(session) {
+    if (!state.start) return null;
+    const cookStart = Number(state.start);
+    const cookEnd = Number(state.finishTime) || Date.now();
+    const sessionStart = Date.parse(session.start_time);
+    const sessionEnd = Date.parse(session.end_time);
+    if (![cookStart, cookEnd, sessionStart, sessionEnd].every(Number.isFinite)) return null;
+
+    const overlap = Math.max(0, Math.min(cookEnd, sessionEnd) - Math.max(cookStart, sessionStart));
+    const cookDuration = Math.max(1, cookEnd - cookStart);
+    const sessionDuration = Math.max(1, sessionEnd - sessionStart);
+    const overlapRatio = overlap / Math.min(cookDuration, sessionDuration);
+    const startGap = Math.abs(sessionStart - cookStart);
+    const endGap = Math.abs(sessionEnd - cookEnd);
+
+    // Prefer meaningful time overlap, then similar start/end times.
+    const score = (overlapRatio * 100) - (startGap / 3600000) - (endGap / 7200000);
+    return { score, overlap, overlapRatio, startGap, endGap };
+  }
+
+  function findRecommendedFireboardSession(sessions) {
+    if (!state.start || !Array.isArray(sessions) || !sessions.length) return null;
+    const ranked = sessions
+      .map(session => ({ session, match: fireboardSessionMatchScore(session) }))
+      .filter(row => row.match && row.match.overlap > 0)
+      .sort((a, b) => b.match.score - a.match.score);
+    if (!ranked.length) return null;
+    const best = ranked[0];
+    // Require at least 25% overlap with the shorter of the cook/session windows.
+    return best.match.overlapRatio >= 0.25 ? best : null;
+  }
+
+  async function connectAndImportFireboardSession(fbSession, connectButton) {
+    const card = connectButton.parentElement;
+    const attachButton = card?.querySelector(`button[data-fireboard-session-id="${String(fbSession.id)}"]`);
+    const importButton = card?.querySelector(`button[data-fireboard-import-id="${String(fbSession.id)}"]`);
+    if (!attachButton || !importButton) return;
+
+    const originalText = connectButton.textContent;
+    connectButton.disabled = true;
+    connectButton.textContent = 'Connecting…';
+    await attachFireboardSession(fbSession, attachButton);
+    if (attachButton.textContent !== 'Attached to Current Cook') {
+      connectButton.textContent = originalText;
+      connectButton.disabled = false;
+      return;
+    }
+
+    connectButton.textContent = 'Importing…';
+    await importFireboardTemperatureData(fbSession, importButton);
+    const imported = importButton.textContent.startsWith('Temperature Data Imported');
+    connectButton.textContent = imported ? 'Connected & Imported' : originalText;
+    connectButton.disabled = imported;
   }
 
   function renderFireboardSessions(sessions) {
@@ -1467,6 +1522,30 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
       div.appendChild(graphButton);
       fireboardList.appendChild(div);
     });
+
+    const recommended = findRecommendedFireboardSession(sessions);
+    if (recommended) {
+      const recommendedId = String(recommended.session.id);
+      const attachButton = fireboardList.querySelector(`button[data-fireboard-session-id="${recommendedId}"]`);
+      const card = attachButton?.parentElement;
+      if (card) {
+        card.style.borderColor = '#f2a13a';
+        const badge = document.createElement('div');
+        badge.className = 'sub';
+        badge.style.cssText = 'margin-top:6px;color:#f2a13a;font-weight:700';
+        const pct = Math.round(recommended.match.overlapRatio * 100);
+        badge.textContent = `Recommended match — ${pct}% time-window overlap with cook ${state.cookId || ''}`.trim();
+        card.insertBefore(badge, attachButton);
+
+        const connectButton = document.createElement('button');
+        connectButton.className = 'good';
+        connectButton.textContent = 'Connect & Import';
+        connectButton.style.marginTop = '8px';
+        connectButton.dataset.fireboardConnectId = recommendedId;
+        connectButton.addEventListener('click', () => connectAndImportFireboardSession(recommended.session, connectButton));
+        card.insertBefore(connectButton, attachButton);
+      }
+    }
   }
 
 
@@ -2164,8 +2243,10 @@ Your cook data is unaffected.`, 'bad');
         await markFireboardImportStatuses(session.access_token, attachedIds);
       }
       const attachedCount = sessions.filter(row => attachedIds.includes(String(row.id))).length;
+      const recommended = findRecommendedFireboardSession(sessions);
       const suffix = state.cloudCookUuid ? ` ${attachedCount} already attached to cook ${state.cookId}.` : '';
-      setFireboardStatus(`FireBoard connected. ${sessions.length} recent completed session${sessions.length === 1 ? '' : 's'} loaded.${suffix}`, 'good');
+      const recommendation = recommended ? ` Recommended match: ${recommended.session.title || `FireBoard Session ${recommended.session.id}`}.` : '';
+      setFireboardStatus(`FireBoard connected. ${sessions.length} recent completed session${sessions.length === 1 ? '' : 's'} loaded.${suffix}${recommendation}`, 'good');
     } catch (err) {
       setFireboardStatus(`FireBoard read failed: ${err.message}\nYour cook data is unaffected.`, 'bad');
       fireboardList.innerHTML = '';
@@ -2180,11 +2261,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.22.7';
+  document.title = 'LDCookLog Mobile V1.23.0';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.22.7 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.23.0 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.22.7 adds first-pass FireBoard analysis beneath the imported temperature graph: per-channel summary statistics, likely pit/chamber identification, target-range time, and first sustained stable period.<br><strong>Build 2026-09-13N</strong>';
+  if (footer) footer.innerHTML = 'V1.23.0 begins FireBoard cook integration: recent sessions are matched to the current cook by time window, with a recommended Connect & Import workflow. V1.22.7 analysis remains available but is not expanded in this release.<br><strong>Build 2026-09-13P</strong>';
 })();
 </script>
 
