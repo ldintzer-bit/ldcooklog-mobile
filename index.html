@@ -1672,6 +1672,14 @@ Your cook data is unaffected.`, 'bad');
     }
   }
 
+  function fireboardCloudHeaders(accessToken) {
+    return {
+      apikey: SUPABASE_PUBLISHABLE_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      Accept: 'application/json'
+    };
+  }
+
   function fireboardTimestampToIso(value) {
     if (value === null || value === undefined || value === '') throw new Error('FireBoard sample is missing its timestamp.');
     const numeric = Number(value);
@@ -1691,7 +1699,7 @@ Your cook data is unaffected.`, 'bad');
       limit: '1'
     });
     const response = await fetch(`${SUPABASE_URL}/rest/v1/cook_fireboard_sessions?${query}`, {
-      headers: cloudHeaders(accessToken)
+      headers: fireboardCloudHeaders(accessToken)
     });
     const rows = await response.json().catch(() => []);
     if (!response.ok) throw new Error(rows?.message || `Could not read FireBoard association (${response.status}).`);
@@ -1702,7 +1710,7 @@ Your cook data is unaffected.`, 'bad');
     const response = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_temperature_samples?on_conflict=cook_fireboard_session_id,channel_index,observed_at`, {
       method: 'POST',
       headers: {
-        ...cloudHeaders(accessToken),
+        ...fireboardCloudHeaders(accessToken),
         'Content-Type': 'application/json',
         Prefer: 'resolution=merge-duplicates,return=minimal'
       },
@@ -1717,7 +1725,7 @@ Your cook data is unaffected.`, 'bad');
   async function verifyFireboardSampleCount(accessToken, associationId) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_temperature_samples?select=id&cook_fireboard_session_id=eq.${encodeURIComponent(associationId)}&limit=1`, {
       headers: {
-        ...cloudHeaders(accessToken),
+        ...fireboardCloudHeaders(accessToken),
         Prefer: 'count=exact'
       }
     });
@@ -1857,7 +1865,7 @@ Your cook data is unaffected.`, 'bad');
   const headerSub = document.querySelector('header .sub');
   if (headerSub) headerSub.textContent = 'V1.22.4 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.22.4 adds retry-safe FireBoard temperature-sample import into Supabase for attached sessions, with cloud verification and correct °F/°C display.<br><strong>Build 2026-09-13K</strong>';
+  if (footer) footer.innerHTML = 'V1.22.4 adds retry-safe FireBoard temperature-sample import into Supabase for attached sessions, with cloud verification and correct °F/°C display.<br><strong>Build 2026-09-13K1</strong>';
 })();
 </script>
 
