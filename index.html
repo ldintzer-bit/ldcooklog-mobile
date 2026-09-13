@@ -1387,7 +1387,7 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
       <button class="secondary" id="fireboardLoad">Load Recent FireBoard Sessions</button>
     </div>
     <div id="fireboardSessions" class="cloud-list"></div>
-    <div class="sub" style="margin-top:10px">V1.22.4 can securely import FireBoard temperature samples for sessions attached to the current cook. Imports are retry-safe and verified in cloud storage.</div>`;
+    <div class="sub" style="margin-top:10px">V1.22.5 remembers FireBoard temperature-import status after refresh and shows the verified cloud sample count for attached sessions.</div>`;
 
   const cookSetup = [...document.querySelectorAll('section.card')].find(section => section.querySelector('h2')?.textContent === 'Cook Setup');
   if (cookSetup) cookSetup.before(fireboardCard); else document.querySelector('.app')?.appendChild(fireboardCard);
@@ -1489,6 +1489,24 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
         if (importButton) importButton.disabled = false;
       }
     });
+  }
+
+  async function markFireboardImportStatuses(accessToken, sessionIds) {
+    for (const sessionId of sessionIds || []) {
+      try {
+        const association = await getFireboardAssociation(accessToken, sessionId);
+        if (!association?.id) continue;
+        const count = await verifyFireboardSampleCount(accessToken, association.id);
+        if (!Number.isFinite(count) || count <= 0) continue;
+        const importButton = fireboardList.querySelector(`button[data-fireboard-import-id="${String(sessionId)}"]`);
+        if (importButton) {
+          importButton.textContent = `Temperature Data Imported — ${count} samples`;
+          importButton.disabled = false;
+        }
+      } catch (_) {
+        // Import-status lookup is optional. Leave the normal import button available if it fails.
+      }
+    }
   }
 
   async function writeFireboardAssociation(accessToken, fbSession) {
@@ -1787,7 +1805,7 @@ Your cook data is unaffected.`, 'bad');
         await upsertFireboardSampleBatch(authSession.access_token, rows.slice(start, start + batchSize));
       }
       const verifiedCount = await verifyFireboardSampleCount(authSession.access_token, association.id);
-      button.textContent = 'Temperature Data Imported';
+      button.textContent = verifiedCount == null ? 'Temperature Data Imported' : `Temperature Data Imported — ${verifiedCount} samples`;
       button.disabled = false;
       const verifiedText = verifiedCount == null ? `${rows.length} samples sent` : `${verifiedCount} samples verified in cloud`;
       setFireboardStatus(`FireBoard temperature import complete for ${fbSession.title || `FireBoard Session ${fbSession.id}`}: ${verifiedText}. Re-importing is safe and will not create duplicates.`, 'good');
@@ -1843,6 +1861,7 @@ Your cook data is unaffected.`, 'bad');
           attachedIds = await readFireboardAssociationIds(session.access_token);
         }
         markExistingFireboardAssociations(attachedIds);
+        await markFireboardImportStatuses(session.access_token, attachedIds);
       }
       const attachedCount = sessions.filter(row => attachedIds.includes(String(row.id))).length;
       const suffix = state.cloudCookUuid ? ` ${attachedCount} already attached to cook ${state.cookId}.` : '';
@@ -1861,11 +1880,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.22.4';
+  document.title = 'LDCookLog Mobile V1.22.5';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.22.4 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.22.5 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.22.4 adds retry-safe FireBoard temperature-sample import into Supabase for attached sessions, with cloud verification and correct °F/°C display.<br><strong>Build 2026-09-13K1</strong>';
+  if (footer) footer.innerHTML = 'V1.22.5 adds persistent FireBoard import recognition after refresh, including verified cloud sample counts for attached sessions.<br><strong>Build 2026-09-13L</strong>';
 })();
 </script>
 
