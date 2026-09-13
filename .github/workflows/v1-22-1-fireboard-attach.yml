@@ -1,0 +1,169 @@
+name: V1.22.1 FireBoard Attach
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/v1-22-1-fireboard-attach.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Add FireBoard session attach and verification
+        run: |
+          python3 <<'PY'
+          from pathlib import Path
+
+          path = Path('index.html')
+          text = path.read_text()
+
+          old_append = """      fireboardList.appendChild(div);\n"""
+          new_append = """      const attach = document.createElement('button');
+      attach.className = 'secondary';
+      attach.textContent = 'Attach to Current Cook';
+      attach.style.marginTop = '8px';
+      attach.addEventListener('click', () => attachFireboardSession(session, attach));
+      div.appendChild(attach);
+      fireboardList.appendChild(div);
+"""
+          if old_append not in text:
+              raise SystemExit('Could not find FireBoard session render insertion point.')
+          text = text.replace(old_append, new_append, 1)
+
+          marker = """  async function requestFireboardSessions(accessToken) {\n"""
+          helpers = r"""
+  async function writeFireboardAssociation(accessToken, fbSession) {
+    const payload = {
+      cook_id: state.cloudCookUuid,
+      fireboard_session_id: String(fbSession.id),
+      session_title: fbSession.title || null,
+      start_time: fbSession.start_time || null,
+      end_time: fbSession.end_time || null,
+      devices: Array.isArray(fbSession.devices) ? fbSession.devices : []
+    };
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/cook_fireboard_sessions?on_conflict=cook_id,fireboard_session_id`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=merge-duplicates,return=representation'
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await response.json().catch(() => null);
+    if (response.status === 401) throw Object.assign(new Error('Session expired.'), { code: 401 });
+    if (!response.ok) throw new Error((data && (data.message || data.hint || data.details)) || `Association write failed (${response.status}).`);
+    return data;
+  }
+
+  async function readFireboardAssociation(accessToken, fbSession) {
+    const cook = encodeURIComponent(state.cloudCookUuid);
+    const sessionId = encodeURIComponent(String(fbSession.id));
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/cook_fireboard_sessions?select=id,fireboard_session_id,session_title,start_time,end_time&cook_id=eq.${cook}&fireboard_session_id=eq.${sessionId}&limit=1`, {
+      headers: {
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${accessToken}`,
+        Accept: 'application/json'
+      }
+    });
+    const data = await response.json().catch(() => []);
+    if (response.status === 401) throw Object.assign(new Error('Session expired.'), { code: 401 });
+    if (!response.ok) throw new Error((data && (data.message || data.hint || data.details)) || `Association read-back failed (${response.status}).`);
+    return Array.isArray(data) ? data[0] : null;
+  }
+
+  async function attachFireboardSession(fbSession, button) {
+    if (!state.start || !state.cookId) {
+      setFireboardStatus('Start or restore an LDCookLog cook before attaching a FireBoard session.', 'warn');
+      return;
+    }
+    let authSession = loadCloudSession();
+    if (!authSession?.access_token) {
+      setFireboardStatus('Sign in to LDCookLog Cloud before attaching a FireBoard session.', 'warn');
+      return;
+    }
+
+    button.disabled = true;
+    const originalText = button.textContent;
+    button.textContent = 'Attaching…';
+    setFireboardStatus(`Attaching ${fbSession.title || `FireBoard Session ${fbSession.id}`} to cook ${state.cookId}…`);
+
+    try {
+      const parentOk = await syncCurrentCookToCloud();
+      if (!parentOk || !state.cloudCookUuid) throw new Error('The current cook could not be prepared in the cloud. Your local cook remains safe.');
+
+      authSession = loadCloudSession();
+      let accessToken = authSession?.access_token;
+      if (!accessToken) throw new Error('Cloud session is unavailable. Please sign in again.');
+
+      try {
+        await writeFireboardAssociation(accessToken, fbSession);
+        const found = await readFireboardAssociation(accessToken, fbSession);
+        if (!found) throw new Error('The association was written but could not be verified by read-back.');
+      } catch (err) {
+        if (err.code !== 401) throw err;
+        authSession = await refreshCloudSession(authSession);
+        accessToken = authSession.access_token;
+        await writeFireboardAssociation(accessToken, fbSession);
+        const found = await readFireboardAssociation(accessToken, fbSession);
+        if (!found) throw new Error('The association was written but could not be verified by read-back.');
+      }
+
+      button.textContent = 'Attached to Current Cook';
+      button.disabled = true;
+      setFireboardStatus(`FireBoard session attached to cook ${state.cookId} and verified in cloud.`, 'good');
+    } catch (err) {
+      button.textContent = originalText;
+      button.disabled = false;
+      setFireboardStatus(`FireBoard attach failed: ${err.message}\nYour cook data is unaffected.`, 'bad');
+    }
+  }
+
+"""
+          if marker not in text:
+              raise SystemExit('Could not find FireBoard request function insertion point.')
+          text = text.replace(marker, helpers + marker, 1)
+
+          text = text.replace(
+              'V1.22.0 is read-only: it retrieves up to 10 recent completed sessions through the secure Supabase Edge Function. It does not yet link a FireBoard session to a cook or import temperature samples.',
+              'V1.22.1 retrieves up to 10 recent completed sessions through the secure Supabase Edge Function and can attach a session to the current LDCookLog cook. Temperature samples are not imported yet.',
+              1
+          )
+          text = text.replace("document.title = 'LDCookLog Mobile V1.22.0';", "document.title = 'LDCookLog Mobile V1.22.1';", 1)
+          text = text.replace("headerSub.textContent = 'V1.22.0 Stateful BBQ Control Panel';", "headerSub.textContent = 'V1.22.1 Stateful BBQ Control Panel';", 1)
+          text = text.replace(
+              "V1.22.0 adds secure, read-only FireBoard recent-session viewing through a Supabase Edge Function. No FireBoard credentials are stored in the app or GitHub.<br><strong>Build 2026-09-13G</strong>",
+              "V1.22.1 adds retry-safe FireBoard session attachment to the current cook with cloud read-back verification. Temperature samples are not imported yet.<br><strong>Build 2026-09-13H</strong>",
+              1
+          )
+          path.write_text(text)
+
+          sw = Path('service-worker.js')
+          sw_text = sw.read_text().replace("const CACHE_NAME = 'ldcooklog-v1-22-0';", "const CACHE_NAME = 'ldcooklog-v1-22-1';")
+          sw.write_text(sw_text)
+          PY
+
+      - name: Commit V1.22.1
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html service-worker.js
+          git commit -m "V1.22.1 attach FireBoard sessions to cooks"
+          git push
+
+      - name: Remove one-time workflow
+        run: |
+          git pull --rebase
+          git rm .github/workflows/v1-22-1-fireboard-attach.yml
+          git commit -m "Remove V1.22.1 deployment workflow"
+          git push
