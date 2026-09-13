@@ -1,0 +1,6 @@
+# Local Supabase / FireBoard secrets
+supabase/functions/.env
+supabase/.env
+.env
+.env.*
+!.env.example
