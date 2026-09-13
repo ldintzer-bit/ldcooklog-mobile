@@ -1387,7 +1387,7 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
       <button class="secondary" id="fireboardLoad">Load Recent FireBoard Sessions</button>
     </div>
     <div id="fireboardSessions" class="cloud-list"></div>
-    <div class="sub" style="margin-top:10px">V1.22.5 remembers FireBoard temperature-import status after refresh and shows the verified cloud sample count for attached sessions.</div>`;
+    <div class="sub" style="margin-top:10px">V1.22.6 adds a responsive temperature graph built from imported FireBoard samples stored in Supabase. The graph reads cloud data only and does not call FireBoard again.</div>`;
 
   const cookSetup = [...document.querySelectorAll('section.card')].find(section => section.querySelector('h2')?.textContent === 'Cook Setup');
   if (cookSetup) cookSetup.before(fireboardCard); else document.querySelector('.app')?.appendChild(fireboardCard);
@@ -1456,6 +1456,15 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
       importButton.disabled = true;
       importButton.addEventListener('click', () => importFireboardTemperatureData(session, importButton));
       div.appendChild(importButton);
+
+      const graphButton = document.createElement('button');
+      graphButton.className = 'blue';
+      graphButton.textContent = 'View Temperature Graph';
+      graphButton.style.marginTop = '8px';
+      graphButton.dataset.fireboardGraphId = String(session.id);
+      graphButton.disabled = true;
+      graphButton.addEventListener('click', () => showFireboardTemperatureGraph(session, div, graphButton));
+      div.appendChild(graphButton);
       fireboardList.appendChild(div);
     });
   }
@@ -1503,6 +1512,8 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
           importButton.textContent = `Temperature Data Imported — ${count} samples`;
           importButton.disabled = false;
         }
+        const graphButton = fireboardList.querySelector(`button[data-fireboard-graph-id="${String(sessionId)}"]`);
+        if (graphButton) graphButton.disabled = false;
       } catch (_) {
         // Import-status lookup is optional. Leave the normal import button available if it fails.
       }
@@ -1740,6 +1751,184 @@ Your cook data is unaffected.`, 'bad');
     }
   }
 
+  async function readFireboardTemperatureSamples(accessToken, associationId) {
+    const rows = [];
+    const pageSize = 1000;
+    for (let offset = 0; ; offset += pageSize) {
+      const query = new URLSearchParams({
+        select: 'channel_index,channel_label,observed_at,temperature_value,degree_type',
+        cook_fireboard_session_id: `eq.${associationId}`,
+        order: 'observed_at.asc',
+        offset: String(offset),
+        limit: String(pageSize)
+      });
+      const response = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_temperature_samples?${query}`, {
+        headers: fireboardCloudHeaders(accessToken)
+      });
+      const page = await response.json().catch(() => []);
+      if (response.status === 401) throw Object.assign(new Error('Session expired.'), { code: 401 });
+      if (!response.ok) throw new Error(page?.message || `Temperature data read failed (${response.status}).`);
+      if (!Array.isArray(page)) break;
+      rows.push(...page);
+      if (page.length < pageSize) break;
+    }
+    return rows;
+  }
+
+  function renderFireboardTemperatureGraph(container, fbSession, rows) {
+    container.querySelector('.fireboard-temp-graph')?.remove();
+    const wrap = document.createElement('div');
+    wrap.className = 'fireboard-temp-graph';
+    wrap.style.marginTop = '10px';
+    wrap.style.padding = '10px';
+    wrap.style.background = '#101010';
+    wrap.style.border = '1px solid #333';
+    wrap.style.borderRadius = '12px';
+
+    if (!rows.length) {
+      wrap.textContent = 'No imported FireBoard temperature samples were found.';
+      container.appendChild(wrap);
+      return;
+    }
+
+    const parsed = rows.map(row => ({
+      channel: Number(row.channel_index) || 0,
+      label: row.channel_label || `Channel ${(Number(row.channel_index) || 0) + 1}`,
+      time: Date.parse(row.observed_at),
+      temp: Number(row.temperature_value),
+      degree: row.degree_type
+    })).filter(row => Number.isFinite(row.time) && Number.isFinite(row.temp));
+
+    if (!parsed.length) {
+      wrap.textContent = 'Imported temperature samples could not be graphed.';
+      container.appendChild(wrap);
+      return;
+    }
+
+    const groups = new Map();
+    parsed.forEach(row => {
+      if (!groups.has(row.channel)) groups.set(row.channel, { label: row.label, degree: row.degree, points: [] });
+      groups.get(row.channel).points.push(row);
+    });
+
+    const allTimes = parsed.map(row => row.time);
+    const allTemps = parsed.map(row => row.temp);
+    const minTime = Math.min(...allTimes);
+    const maxTime = Math.max(...allTimes);
+    let minTemp = Math.floor(Math.min(...allTemps) / 10) * 10;
+    let maxTemp = Math.ceil(Math.max(...allTemps) / 10) * 10;
+    if (minTemp === maxTemp) maxTemp = minTemp + 10;
+    const spanTime = Math.max(1, maxTime - minTime);
+    const spanTemp = Math.max(1, maxTemp - minTemp);
+
+    const width = 820, height = 360;
+    const margin = { left: 52, right: 18, top: 18, bottom: 42 };
+    const plotW = width - margin.left - margin.right;
+    const plotH = height - margin.top - margin.bottom;
+    const x = value => margin.left + ((value - minTime) / spanTime) * plotW;
+    const y = value => margin.top + (1 - (value - minTemp) / spanTemp) * plotH;
+    const colors = ['#f2a13a', '#6aa7e8', '#7ec56e', '#a487df', '#e66a5e', '#f1c453'];
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', `Temperature graph for ${fbSession.title || 'FireBoard session'}`);
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.style.display = 'block';
+
+    const addLine = (x1, y1, x2, y2, stroke, dash = '') => {
+      const line = document.createElementNS(ns, 'line');
+      line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+      line.setAttribute('stroke', stroke); line.setAttribute('stroke-width', '1');
+      if (dash) line.setAttribute('stroke-dasharray', dash);
+      svg.appendChild(line);
+    };
+    const addText = (value, tx, ty, anchor = 'start') => {
+      const node = document.createElementNS(ns, 'text');
+      node.textContent = value;
+      node.setAttribute('x', tx); node.setAttribute('y', ty); node.setAttribute('text-anchor', anchor);
+      node.setAttribute('fill', '#aaa'); node.setAttribute('font-size', '12');
+      svg.appendChild(node);
+    };
+
+    for (let i = 0; i <= 5; i++) {
+      const temp = minTemp + (spanTemp * i / 5);
+      const py = y(temp);
+      addLine(margin.left, py, width - margin.right, py, '#303030');
+      addText(`${Math.round(temp)}°`, margin.left - 8, py + 4, 'end');
+    }
+    addLine(margin.left, margin.top, margin.left, height - margin.bottom, '#777');
+    addLine(margin.left, height - margin.bottom, width - margin.right, height - margin.bottom, '#777');
+
+    const formatTime = ms => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    addText(formatTime(minTime), margin.left, height - 16, 'start');
+    addText(formatTime(minTime + spanTime / 2), margin.left + plotW / 2, height - 16, 'middle');
+    addText(formatTime(maxTime), width - margin.right, height - 16, 'end');
+
+    [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([channel, group], index) => {
+      const points = group.points.sort((a, b) => a.time - b.time);
+      const path = document.createElementNS(ns, 'path');
+      const d = points.map((point, pointIndex) => `${pointIndex ? 'L' : 'M'}${x(point.time).toFixed(1)},${y(point.temp).toFixed(1)}`).join(' ');
+      path.setAttribute('d', d);
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke', colors[index % colors.length]);
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('vector-effect', 'non-scaling-stroke');
+      svg.appendChild(path);
+    });
+
+    const title = document.createElement('strong');
+    title.textContent = `${fbSession.title || 'FireBoard Session'} — Temperature Graph`;
+    wrap.appendChild(title);
+    wrap.appendChild(svg);
+
+    const legend = document.createElement('div');
+    legend.style.display = 'flex';
+    legend.style.flexWrap = 'wrap';
+    legend.style.gap = '8px 14px';
+    legend.style.marginTop = '8px';
+    legend.style.fontSize = '12px';
+    [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([channel, group], index) => {
+      const item = document.createElement('span');
+      const temps = group.points.map(point => point.temp);
+      const unit = Number(group.degree) === 1 ? 'C' : Number(group.degree) === 2 ? 'F' : String(group.degree || 'F');
+      item.textContent = `● ${group.label}: ${Math.min(...temps).toFixed(1)}–${Math.max(...temps).toFixed(1)} °${unit}`;
+      item.style.color = colors[index % colors.length];
+      legend.appendChild(item);
+    });
+    wrap.appendChild(legend);
+    container.appendChild(wrap);
+  }
+
+  async function showFireboardTemperatureGraph(fbSession, container, button) {
+    const originalText = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Loading Graph…';
+    try {
+      let authSession = getCloudSession();
+      if (!authSession?.access_token) throw new Error('Sign in to LDCookLog Cloud first.');
+      const association = await getFireboardAssociation(authSession.access_token, fbSession.id);
+      if (!association?.id) throw new Error('Attach this FireBoard session to the current cook first.');
+      let rows;
+      try {
+        rows = await readFireboardTemperatureSamples(authSession.access_token, association.id);
+      } catch (err) {
+        if (err.code !== 401) throw err;
+        authSession = await refreshCloudSession(authSession);
+        rows = await readFireboardTemperatureSamples(authSession.access_token, association.id);
+      }
+      renderFireboardTemperatureGraph(container, fbSession, rows);
+      button.textContent = 'Refresh Temperature Graph';
+      setFireboardStatus(`Temperature graph loaded for ${fbSession.title || `FireBoard Session ${fbSession.id}`}: ${rows.length} imported samples.`, 'good');
+    } catch (err) {
+      button.textContent = originalText;
+      setFireboardStatus(`Temperature graph failed: ${err.message} Your cook data is unaffected.`, 'bad');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   async function verifyFireboardSampleCount(accessToken, associationId) {
     const response = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_temperature_samples?select=id&cook_fireboard_session_id=eq.${encodeURIComponent(associationId)}&limit=1`, {
       headers: {
@@ -1807,6 +1996,8 @@ Your cook data is unaffected.`, 'bad');
       const verifiedCount = await verifyFireboardSampleCount(authSession.access_token, association.id);
       button.textContent = verifiedCount == null ? 'Temperature Data Imported' : `Temperature Data Imported — ${verifiedCount} samples`;
       button.disabled = false;
+      const graphButton = button.parentElement?.querySelector(`button[data-fireboard-graph-id="${String(fbSession.id)}"]`);
+      if (graphButton) graphButton.disabled = false;
       const verifiedText = verifiedCount == null ? `${rows.length} samples sent` : `${verifiedCount} samples verified in cloud`;
       setFireboardStatus(`FireBoard temperature import complete for ${fbSession.title || `FireBoard Session ${fbSession.id}`}: ${verifiedText}. Re-importing is safe and will not create duplicates.`, 'good');
     } catch (err) {
@@ -1880,11 +2071,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.22.5';
+  document.title = 'LDCookLog Mobile V1.22.6';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.22.5 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.22.6 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.22.5 adds persistent FireBoard import recognition after refresh, including verified cloud sample counts for attached sessions.<br><strong>Build 2026-09-13L</strong>';
+  if (footer) footer.innerHTML = 'V1.22.6 adds an in-app FireBoard temperature graph using imported Supabase telemetry, with all attached channels plotted together.<br><strong>Build 2026-09-13M</strong>';
 })();
 </script>
 
