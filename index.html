@@ -2240,7 +2240,7 @@ Your cook data is unaffected.`, 'bad');
     const detail = document.createElement('div');
     detail.className = 'sub';
     detail.style.marginTop = '4px';
-    detail.textContent = `${sampleCount} stored samples${newCount ? ` • ${newCount} new this refresh` : ' • up to date'} • automatic refresh every 30 seconds`;
+    detail.textContent = `${sampleCount} stored samples${newCount ? ` • ${newCount} new this refresh` : ' • up to date'} • automatic refresh every 60 seconds`;
     liveFireboardWrap.appendChild(detail);
     const graphHost = document.createElement('div');
     graphHost.className = 'live-fireboard-graph-host';
@@ -2302,7 +2302,7 @@ Your cook data is unaffected.`, 'bad');
 
   function startLiveFireboardPolling() {
     if (liveFireboardPollTimer) clearInterval(liveFireboardPollTimer);
-    liveFireboardPollTimer = setInterval(() => syncActiveFireboard(false), 30000);
+    liveFireboardPollTimer = setInterval(() => syncActiveFireboard(false), 60000);
     setTimeout(() => syncActiveFireboard(false), 2500);
   }
 
@@ -2374,11 +2374,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.23.1';
+  document.title = 'LDCookLog Mobile V1.23.2';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.23.1 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.23.2 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.23.1 begins active FireBoard integration: one active FireBoard session is linked directly to one active LDCookLog cook, new samples are stored automatically, and the live graph refreshes during the cook. Historical analysis remains paused while we collect clean cook data.<br><strong>Build 2026-09-13Q</strong>';
+  if (footer) footer.innerHTML = 'V1.23.2 improves active FireBoard detection using real-time device temperatures and refreshes once per minute to stay within FireBoard API limits. Historical analysis remains paused while we collect clean cook data.<br><strong>Build 2026-09-13R</strong>';
 })();
 </script>
 
