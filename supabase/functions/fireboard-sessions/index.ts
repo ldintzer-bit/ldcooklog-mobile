@@ -1,7 +1,7 @@
 import { withSupabase } from 'npm:@supabase/server@^1'
 
 const FIREBOARD_BASE = 'https://fireboard.io/api/v1'
-const USER_AGENT = 'LDCookLog/1.23 active fireboard integration'
+const USER_AGENT = 'LDCookLog/1.23.2 active fireboard integration'
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status })
@@ -96,6 +96,24 @@ function normalizeSession(session: any) {
   }
 }
 
+function sessionDeviceUuids(session: any) {
+  return new Set((Array.isArray(session?.devices) ? session.devices : [])
+    .map((device: any) => device?.UUID ?? device?.uuid ?? null)
+    .filter(Boolean)
+    .map(String))
+}
+
+function liveDeviceUuids(devices: any[]) {
+  const now = Date.now()
+  const recentCutoff = 90 * 1000
+  return new Set(devices.filter((device: any) => {
+    const latestTemps = Array.isArray(device?.latest_temps) ? device.latest_temps : []
+    if (latestTemps.length) return true
+    const last = Date.parse(device?.last_templog ?? '')
+    return Number.isFinite(last) && (now - last) >= 0 && (now - last) <= recentCutoff
+  }).map((device: any) => device?.UUID ?? device?.uuid ?? null).filter(Boolean).map(String))
+}
+
 export default {
   fetch: withSupabase({ auth: 'user' }, async (req) => {
     if (req.method !== 'GET') {
@@ -116,29 +134,44 @@ export default {
         return json({ session_id: sessionId, ...summary })
       }
 
-      const raw = await fireboardFetch('/sessions.json')
-      const sessions = Array.isArray(raw) ? raw : (raw?.results ?? [])
+      const [rawSessions, rawDevices] = await Promise.all([
+        fireboardFetch('/sessions.json'),
+        fireboardFetch('/devices.json'),
+      ])
+      const sessions = Array.isArray(rawSessions) ? rawSessions : (rawSessions?.results ?? [])
+      const devices = Array.isArray(rawDevices) ? rawDevices : (rawDevices?.results ?? [])
       const sorted = sessions.slice().sort((a: any, b: any) => {
         const at = Date.parse(a?.start_time ?? a?.created ?? 0)
         const bt = Date.parse(b?.start_time ?? b?.created ?? 0)
         return bt - at
       })
 
-      // FireBoard sessions without an end_time are in progress. Expose them separately
-      // so LDCookLog can bind an active cook directly instead of matching after the fact.
-      const active = sorted
-        .filter((session: any) => session?.start_time && !session?.end_time)
-        .slice(0, 5)
-        .map(normalizeSession)
+      const liveUuids = liveDeviceUuids(devices)
+      const explicitlyOpen = sorted.filter((session: any) => session?.start_time && !session?.end_time)
+
+      // FireBoard's end_time is configurable and can be present while a session is still
+      // receiving data. Confirm an active session by requiring a device in that session to
+      // also be reporting a real-time temperature (latest_temps / recent last_templog).
+      const realtimeCandidates = sorted.filter((session: any) => {
+        if (!session?.start_time || !liveUuids.size) return false
+        const uuids = sessionDeviceUuids(session)
+        return [...uuids].some(uuid => liveUuids.has(uuid))
+      })
+
+      const activeRaw = explicitlyOpen.length ? explicitlyOpen : realtimeCandidates.slice(0, 1)
+      const activeIds = new Set(activeRaw.map((session: any) => String(session.id)))
+      const active = activeRaw.slice(0, 5).map(normalizeSession)
 
       const completed = sorted
-        .filter((session: any) => session?.end_time)
+        .filter((session: any) => session?.end_time && !activeIds.has(String(session.id)))
         .slice(0, 10)
         .map(normalizeSession)
 
       return json({
         active_sessions: active,
         active_count: active.length,
+        active_detection: explicitlyOpen.length ? 'open-session' : (active.length ? 'live-device' : 'none'),
+        live_device_count: liveUuids.size,
         sessions: completed,
         count: completed.length,
       })
