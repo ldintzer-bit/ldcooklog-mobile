@@ -12,14 +12,13 @@ jobs:
   consolidate:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Consolidate V1.19 into index.html
-        shell: python
+      - name: Consolidate files
         run: |
+          python3 - <<'PY'
           from pathlib import Path
 
           index_path = Path('index.html')
@@ -32,13 +31,24 @@ jobs:
           marker = '<!-- v1-19.js consolidated into index.html in V1.19.1 -->'
 
           if marker not in html:
-              block = f'''\n{marker}\n<script>\n{js.rstrip()}\n</script>\n<script>\n// V1.19.1 architecture cleanup metadata\n(() => {{\n  const BUILD = "2026-09-13A";\n  document.title = "LDCookLog Mobile V1.19.1";\n  const headerSub = document.querySelector("header .sub");\n  if (headerSub) headerSub.textContent = "V1.19.1 Stateful BBQ Control Panel";\n  const footer = document.querySelector(".footer-note");\n  if (footer) footer.innerHTML = "V1.19.1 architecture cleanup: Saved Cook Methods is consolidated into index.html; the temporary runtime feature file is retired.<br><strong>Build " + BUILD + "</strong>";\n}})();\n</script>\n'''
+              block = '\n' + marker + '\n<script>\n' + js.rstrip() + '''\n</script>
+<script>
+// V1.19.1 architecture cleanup metadata
+(() => {
+  const BUILD = "2026-09-13A";
+  document.title = "LDCookLog Mobile V1.19.1";
+  const headerSub = document.querySelector("header .sub");
+  if (headerSub) headerSub.textContent = "V1.19.1 Stateful BBQ Control Panel";
+  const footer = document.querySelector(".footer-note");
+  if (footer) footer.innerHTML = "V1.19.1 architecture cleanup: Saved Cook Methods is consolidated into index.html; the temporary runtime feature file is retired.<br><strong>Build " + BUILD + "</strong>";
+})();
+</script>
+'''
               if '</body>' not in html:
-                  raise SystemExit('index.html has no </body> marker')
-              html = html.replace('</body>', block + '</body>', 1)
-              index_path.write_text(html)
+                  raise SystemExit('index.html has no closing body tag')
+              index_path.write_text(html.replace('</body>', block + '</body>', 1))
 
-          sw = '''const CACHE_NAME = "ldcooklog-v1-19-1";
+          sw_path.write_text('''const CACHE_NAME = "ldcooklog-v1-19-1";
 const APP_SHELL = [
   "./",
   "./index.html",
@@ -54,9 +64,7 @@ self.addEventListener("install", event => {
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)))
-    )
+    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))
   );
   self.clients.claim();
 });
@@ -65,7 +73,6 @@ self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
-
   event.respondWith((async () => {
     try {
       const response = await fetch(event.request);
@@ -74,7 +81,7 @@ self.addEventListener("fetch", event => {
         cache.put(event.request, response.clone());
       }
       return response;
-    } catch (err) {
+    } catch (_) {
       const cached = await caches.match(event.request);
       if (cached) return cached;
       if (url.pathname.endsWith('/ldcooklog-mobile/') || url.pathname.endsWith('/ldcooklog-mobile/index.html')) {
@@ -85,18 +92,18 @@ self.addEventListener("fetch", event => {
     }
   })());
 });
-'''
-          sw_path.write_text(sw)
+''')
 
           if feature_path.exists():
               feature_path.unlink()
           if workflow_path.exists():
               workflow_path.unlink()
+          PY
 
-      - name: Commit consolidated V1.19.1
+      - name: Commit cleanup
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add index.html service-worker.js v1-19.js .github/workflows/v1191-consolidate.yml
+          git add -A
           git commit -m "Consolidate V1.19 Saved Cook Methods into index.html"
           git push
