@@ -48,7 +48,6 @@ jobs:
           ]:
               Path(name).unlink(missing_ok=True)
 
-          # Remove this one-time cleanup workflow too.
           Path('.github/workflows/v1-21-cleanup.yml').unlink(missing_ok=True)
 
       - name: Commit cleaned V1.21.2 architecture
@@ -58,3 +57,5 @@ jobs:
           git add -A
           git commit -m "Consolidate V1.21.2 Cook Evaluation" || exit 0
           git push
+
+# cleanup trigger 2026-09-13E
