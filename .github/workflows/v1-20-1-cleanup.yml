@@ -1,0 +1,56 @@
+name: V1.20.1 architecture cleanup
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - '.github/workflows/v1-20-1-cleanup.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Consolidate V1.20 and clean service worker
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          index_path = Path('index.html')
+          feature_path = Path('v1-20.js')
+          sw_path = Path('service-worker.js')
+          workflow_path = Path('.github/workflows/v1-20-1-cleanup.yml')
+
+          index = index_path.read_text()
+          feature = feature_path.read_text()
+
+          if 'LDCookLog Mobile V1.20.0 Saved Rubs' not in index:
+              block = '''\n<!-- v1-20.js consolidated into index.html in V1.20.1 -->\n<script>\n''' + feature + '''\n</script>\n<script>\n// V1.20.1 architecture cleanup metadata\n(() => {\n  const BUILD = "2026-09-13C";\n  document.title = "LDCookLog Mobile V1.20.1";\n  const headerSub = document.querySelector("header .sub");\n  if (headerSub) headerSub.textContent = "V1.20.1 Stateful BBQ Control Panel";\n  const footer = document.querySelector(".footer-note");\n  if (footer) footer.innerHTML = `V1.20.1 architecture cleanup: Saved Rubs is consolidated into index.html; the temporary runtime feature file and service-worker injection are retired.<br><strong>Build ${BUILD}</strong>`;\n})();\n</script>\n'''
+              index = index.replace('</body>', block + '</body>')
+          else:
+              # If already consolidated, only ensure cleanup metadata exists.
+              if 'V1.20.1 architecture cleanup metadata' not in index:
+                  block = '''\n<script>\n// V1.20.1 architecture cleanup metadata\n(() => {\n  const BUILD = "2026-09-13C";\n  document.title = "LDCookLog Mobile V1.20.1";\n  const headerSub = document.querySelector("header .sub");\n  if (headerSub) headerSub.textContent = "V1.20.1 Stateful BBQ Control Panel";\n  const footer = document.querySelector(".footer-note");\n  if (footer) footer.innerHTML = `V1.20.1 architecture cleanup: Saved Rubs is consolidated into index.html; the temporary runtime feature file and service-worker injection are retired.<br><strong>Build ${BUILD}</strong>`;\n})();\n</script>\n'''
+                  index = index.replace('</body>', block + '</body>')
+
+          index_path.write_text(index)
+
+          sw_path.write_text('''const CACHE_NAME = "ldcooklog-v1-20-1";\nconst APP_SHELL = [\n  "./",\n  "./index.html",\n  "./manifest.webmanifest",\n  "./icon-180.png",\n  "./icon-512.png"\n];\n\nself.addEventListener("install", event => {\n  event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_SHELL)));\n  self.skipWaiting();\n});\n\nself.addEventListener("activate", event => {\n  event.waitUntil(\n    caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))))\n  );\n  self.clients.claim();\n});\n\nself.addEventListener("fetch", event => {\n  if (event.request.method !== "GET") return;\n  const url = new URL(event.request.url);\n  if (url.origin !== self.location.origin) return;\n\n  event.respondWith((async () => {\n    try {\n      const response = await fetch(event.request);\n      if (response && response.ok) {\n        const cache = await caches.open(CACHE_NAME);\n        cache.put(event.request, response.clone());\n      }\n      return response;\n    } catch (_) {\n      const cached = await caches.match(event.request);\n      if (cached) return cached;\n      const isAppHtml = url.pathname.endsWith("/ldcooklog-mobile/") || url.pathname.endsWith("/ldcooklog-mobile/index.html");\n      if (isAppHtml) {\n        const fallback = await caches.match("./index.html");\n        if (fallback) return fallback;\n      }\n      return Response.error();\n    }\n  })());\n});\n''')
+
+          if feature_path.exists():
+              feature_path.unlink()
+          if workflow_path.exists():
+              workflow_path.unlink()
+          PY
+      - name: Commit cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html service-worker.js v1-20.js .github/workflows/v1-20-1-cleanup.yml
+          git commit -m "Consolidate V1.20.1 Saved Rubs"
+          git push
