@@ -20,6 +20,7 @@ jobs:
         shell: python
         run: |
           from pathlib import Path
+          import re
 
           p = Path('index.html')
           s = p.read_text()
@@ -30,7 +31,6 @@ jobs:
 
           sw = Path('service-worker.js')
           t = sw.read_text()
-          import re
           t = re.sub(r"const CACHE_NAME = ['\"][^'\"]+['\"]", "const CACHE_NAME = 'ldcooklog-v1-21-0'", t)
           if "'./v1-21.js'" not in t and '"./v1-21.js"' not in t:
               t = re.sub(r"(const APP_SHELL = \[)", r"\1\n  './v1-21.js',", t, count=1)
@@ -42,3 +42,5 @@ jobs:
           git add index.html service-worker.js
           git commit -m "Load V1.21 local evaluation prototype" || exit 0
           git push
+
+# deployment trigger 2026-09-13D
