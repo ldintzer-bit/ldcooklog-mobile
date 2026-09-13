@@ -1898,6 +1898,115 @@ Your cook data is unaffected.`, 'bad');
       legend.appendChild(item);
     });
     wrap.appendChild(legend);
+
+    // V1.22.7: first-pass FireBoard analysis using the already-imported samples.
+    const target = Number(state.target);
+    const sortedGroups = [...groups.entries()].sort((a, b) => a[0] - b[0]);
+    const channelStats = sortedGroups.map(([channel, group]) => {
+      const points = [...group.points].sort((a, b) => a.time - b.time);
+      const temps = points.map(point => point.temp);
+      const avg = temps.reduce((sum, value) => sum + value, 0) / Math.max(1, temps.length);
+      const avgAbsTargetError = Number.isFinite(target)
+        ? temps.reduce((sum, value) => sum + Math.abs(value - target), 0) / Math.max(1, temps.length)
+        : Number.POSITIVE_INFINITY;
+      return { channel, group, points, temps, avg, avgAbsTargetError };
+    });
+
+    let likelyPit = null;
+    if (Number.isFinite(target) && channelStats.length) {
+      const namedPit = channelStats.find(stat => /chamber|pit|ambient|grill|smoker/i.test(stat.group.label || ''));
+      likelyPit = namedPit || [...channelStats].sort((a, b) => a.avgAbsTargetError - b.avgAbsTargetError)[0];
+    }
+
+    const formatDuration = ms => {
+      const totalMinutes = Math.max(0, Math.round(ms / 60000));
+      const hours = Math.floor(totalMinutes / 60);
+      const minutes = totalMinutes % 60;
+      return hours ? `${hours}h ${String(minutes).padStart(2, '0')}m` : `${minutes}m`;
+    };
+
+    const weightedRangeDuration = (points, tolerance) => {
+      if (!Number.isFinite(target) || points.length < 2) return { inRange: 0, total: 0 };
+      let inRange = 0, total = 0;
+      for (let i = 0; i < points.length - 1; i++) {
+        const rawDelta = Math.max(0, points[i + 1].time - points[i].time);
+        const delta = Math.min(rawDelta, 5 * 60 * 1000);
+        if (!delta) continue;
+        total += delta;
+        if (Math.abs(points[i].temp - target) <= tolerance) inRange += delta;
+      }
+      return { inRange, total };
+    };
+
+    const firstStablePeriod = (points, tolerance = 10, requiredMs = 10 * 60 * 1000) => {
+      if (!Number.isFinite(target) || points.length < 2) return null;
+      for (let start = 0; start < points.length; start++) {
+        if (Math.abs(points[start].temp - target) > tolerance) continue;
+        const windowEnd = points[start].time + requiredMs;
+        let reached = false;
+        let valid = true;
+        for (let j = start; j < points.length; j++) {
+          if (Math.abs(points[j].temp - target) > tolerance) { valid = false; break; }
+          if (points[j].time >= windowEnd) { reached = true; break; }
+        }
+        if (valid && reached) return points[start].time;
+      }
+      return null;
+    };
+
+    const analysis = document.createElement('div');
+    analysis.className = 'fireboard-analysis';
+    analysis.style.cssText = 'margin-top:12px;padding:10px;background:#171717;border:1px solid #333;border-radius:10px';
+
+    const analysisTitle = document.createElement('strong');
+    analysisTitle.textContent = 'FireBoard Analysis';
+    analysis.appendChild(analysisTitle);
+
+    const summary = document.createElement('div');
+    summary.className = 'sub';
+    summary.style.marginTop = '4px';
+    summary.textContent = Number.isFinite(target)
+      ? `Cook target: ${target.toFixed(0)}°F. Range timing below is based on the likely pit/chamber channel.`
+      : 'No numeric cook target is available, so target-range timing is not shown.';
+    analysis.appendChild(summary);
+
+    channelStats.forEach(stat => {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-top:9px;padding-top:9px;border-top:1px solid #2b2b2b;font-size:12px';
+      const min = Math.min(...stat.temps);
+      const max = Math.max(...stat.temps);
+      const unit = Number(stat.group.degree) === 1 ? 'C' : Number(stat.group.degree) === 2 ? 'F' : String(stat.group.degree || 'F');
+      const likelyText = likelyPit && stat.channel === likelyPit.channel ? ' — likely pit/chamber' : '';
+      row.textContent = `${stat.group.label}${likelyText}: avg ${stat.avg.toFixed(1)}°${unit}; min ${min.toFixed(1)}°; max ${max.toFixed(1)}°; ${stat.points.length} samples`;
+      analysis.appendChild(row);
+    });
+
+    if (likelyPit && Number.isFinite(target)) {
+      const within10 = weightedRangeDuration(likelyPit.points, 10);
+      const within25 = weightedRangeDuration(likelyPit.points, 25);
+      const stableAt = firstStablePeriod(likelyPit.points, 10);
+      const metrics = document.createElement('div');
+      metrics.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px';
+      const metricData = [
+        ['Within ±10°F', within10.total ? `${formatDuration(within10.inRange)} (${Math.round(within10.inRange / within10.total * 100)}%)` : '—'],
+        ['Within ±25°F', within25.total ? `${formatDuration(within25.inRange)} (${Math.round(within25.inRange / within25.total * 100)}%)` : '—'],
+        ['10-min stable', stableAt ? formatTime(stableAt) : 'Not reached']
+      ];
+      metricData.forEach(([label, value]) => {
+        const box = document.createElement('div');
+        box.style.cssText = 'background:#202020;border:1px solid #303030;border-radius:9px;padding:8px';
+        const k = document.createElement('div');
+        k.style.cssText = 'font-size:10px;color:#999;text-transform:uppercase';
+        k.textContent = label;
+        const v = document.createElement('div');
+        v.style.cssText = 'font-size:14px;font-weight:700;margin-top:3px';
+        v.textContent = value;
+        box.appendChild(k); box.appendChild(v); metrics.appendChild(box);
+      });
+      analysis.appendChild(metrics);
+    }
+
+    wrap.appendChild(analysis);
     container.appendChild(wrap);
   }
 
@@ -2073,9 +2182,9 @@ Your cook data is unaffected.`, 'bad');
 
   document.title = 'LDCookLog Mobile V1.22.6';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.22.6 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.22.7 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.22.6 adds an in-app FireBoard temperature graph using imported Supabase telemetry, with all attached channels plotted together.<br><strong>Build 2026-09-13M1</strong>';
+  if (footer) footer.innerHTML = 'V1.22.7 adds first-pass FireBoard analysis beneath the imported temperature graph: per-channel summary statistics, likely pit/chamber identification, target-range time, and first sustained stable period.<br><strong>Build 2026-09-13N</strong>';
 })();
 </script>
 
