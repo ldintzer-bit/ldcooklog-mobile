@@ -14,19 +14,19 @@ ALTER TABLE public.fireboard_probe_roles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can read own FireBoard probe roles"
 ON public.fireboard_probe_roles FOR SELECT
-USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_id AND c.user_id = auth.uid()::text));
+USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.fireboard_probe_roles.cook_id AND c.user_id = auth.uid()::text));
 
 CREATE POLICY "Users can insert own FireBoard probe roles"
 ON public.fireboard_probe_roles FOR INSERT
-WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_id AND c.user_id = auth.uid()::text));
+WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.fireboard_probe_roles.cook_id AND c.user_id = auth.uid()::text));
 
 CREATE POLICY "Users can update own FireBoard probe roles"
 ON public.fireboard_probe_roles FOR UPDATE
-USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_id AND c.user_id = auth.uid()::text))
-WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_id AND c.user_id = auth.uid()::text));
+USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.fireboard_probe_roles.cook_id AND c.user_id = auth.uid()::text))
+WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.fireboard_probe_roles.cook_id AND c.user_id = auth.uid()::text));
 
 CREATE POLICY "Users can delete own FireBoard probe roles"
 ON public.fireboard_probe_roles FOR DELETE
-USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_id AND c.user_id = auth.uid()::text));
+USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.fireboard_probe_roles.cook_id AND c.user_id = auth.uid()::text));
 
 COMMENT ON TABLE public.fireboard_probe_roles IS 'V1.24.0 cook-specific semantic roles layered over permanent FireBoard device UUID + channel ID sensor identity.';
