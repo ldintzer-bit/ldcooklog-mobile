@@ -1837,13 +1837,16 @@ Your cook data is unaffected.`, 'bad');
     return rows;
   }
 
+  let fireboardProbeRoleCache = new Map();
+
   async function readFireboardProbeRoles(accessToken) {
     if (!state.cloudCookUuid) return new Map();
     const q = new URLSearchParams({select:'device_uuid,channel_id,source_label,cook_role',cook_id:`eq.${state.cloudCookUuid}`});
     const r = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_probe_roles?${q}`, {headers:fireboardCloudHeaders(accessToken)});
     const data=await r.json().catch(()=>[]);
     if (!r.ok) throw new Error(data?.message || `Could not read probe roles (${r.status}).`);
-    return new Map((Array.isArray(data)?data:[]).map(x=>[`${x.device_uuid}::${Number(x.channel_id)}`,x]));
+    fireboardProbeRoleCache = new Map((Array.isArray(data)?data:[]).map(x=>[`${x.device_uuid}::${Number(x.channel_id)}`,x]));
+    return fireboardProbeRoleCache;
   }
 
   async function saveFireboardProbeRole(accessToken, deviceUuid, channelId, sourceLabel, cookRole) {
@@ -1852,11 +1855,12 @@ Your cook data is unaffected.`, 'bad');
     if (!r.ok) { const data=await r.json().catch(()=>null); throw new Error(data?.message || `Could not save probe role (${r.status}).`); }
   }
 
-  async function renderFireboardProbeAssignments(host, rows) {
+  async function renderFireboardProbeAssignments(host, rows, fbSession = null) {
     if (!host || !state.cloudCookUuid || !Array.isArray(rows) || !rows.length) return;
     host.querySelector('.fireboard-probe-assignments')?.remove();
     let auth=loadCloudSession(); if(!auth?.access_token) return;
     let roles; try { roles=await readFireboardProbeRoles(auth.access_token); } catch(e) { return; }
+    if (fbSession) renderFireboardTemperatureGraph(host, fbSession, rows, roles);
     const sensors=new Map();
     rows.forEach(row=>{const d=row.device_uuid||'unknown-device', c=Number(row.channel_index); if(!Number.isFinite(c))return; const k=`${d}::${c}`; if(!sensors.has(k)) sensors.set(k,{device_uuid:d,channel_id:c,label:row.channel_label||`Channel ${c}`});});
     const wrap=document.createElement('div'); wrap.className='fireboard-probe-assignments'; wrap.style.cssText='margin-top:12px;padding:10px;border:1px solid #343434;border-radius:12px';
@@ -1868,13 +1872,13 @@ Your cook data is unaffected.`, 'bad');
       const line=document.createElement('div'); line.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px';
       const input=document.createElement('input'); input.placeholder='e.g. Pork Butt #1 or Smoker Chamber'; input.value=roles.get(key)?.cook_role||''; line.appendChild(input);
       const btn=document.createElement('button'); btn.className='secondary'; btn.style.cssText='min-height:44px;padding:8px 12px'; btn.textContent='Save';
-      btn.addEventListener('click',async()=>{const role=input.value.trim(); if(!role){alert('Enter a probe role first.');return;} btn.disabled=true; btn.textContent='Saving…'; try{auth=loadCloudSession(); await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role); roles.set(key,{cook_role:role}); btn.textContent='Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);}catch(e){btn.textContent='Save';btn.disabled=false;alert(`Could not save probe role: ${e.message}`);}});
+      btn.addEventListener('click',async()=>{const role=input.value.trim(); if(!role){alert('Enter a probe role first.');return;} btn.disabled=true; btn.textContent='Saving…'; try{auth=loadCloudSession(); await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role); roles.set(key,{cook_role:role,source_label:sensor.label}); fireboardProbeRoleCache=roles; if(fbSession){renderFireboardTemperatureGraph(host,fbSession,rows,roles);host.appendChild(wrap);} btn.textContent='Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);}catch(e){btn.textContent='Save';btn.disabled=false;alert(`Could not save probe role: ${e.message}`);}});
       line.appendChild(btn); row.appendChild(line); wrap.appendChild(row);
     });
     host.appendChild(wrap);
   }
 
-  function renderFireboardTemperatureGraph(container, fbSession, rows) {
+  function renderFireboardTemperatureGraph(container, fbSession, rows, probeRoles = fireboardProbeRoleCache) {
     container.querySelector('.fireboard-temp-graph')?.remove();
     const wrap = document.createElement('div');
     wrap.className = 'fireboard-temp-graph';
@@ -1994,7 +1998,9 @@ Your cook data is unaffected.`, 'bad');
       const item = document.createElement('span');
       const temps = group.points.map(point => point.temp);
       const unit = Number(group.degree) === 1 ? 'C' : Number(group.degree) === 2 ? 'F' : String(group.degree || 'F');
-      item.textContent = `● ${group.label}: ${Math.min(...temps).toFixed(1)}–${Math.max(...temps).toFixed(1)} °${unit}`;
+      const assignedRole = probeRoles?.get(sensorKey)?.cook_role?.trim();
+      const displayLabel = assignedRole ? `${assignedRole} (${group.label})` : group.label;
+      item.textContent = `● ${displayLabel}: ${Math.min(...temps).toFixed(1)}–${Math.max(...temps).toFixed(1)} °${unit}`;
       item.style.color = colors[index % colors.length];
       legend.appendChild(item);
     });
@@ -2009,12 +2015,13 @@ Your cook data is unaffected.`, 'bad');
     const diagnosticsNote = document.createElement('div');
     diagnosticsNote.className = 'sub';
     diagnosticsNote.style.marginTop = '4px';
-    diagnosticsNote.textContent = 'Permanent sensor identity uses FireBoard device UUID + actual FireBoard channel ID. LDCookLog cook roles have not been assigned yet.';
+    diagnosticsNote.textContent = 'Permanent sensor identity uses FireBoard device UUID + actual FireBoard channel ID. Cook-specific LDCookLog roles are shown when assigned.';
     diagnostics.appendChild(diagnosticsNote);
-    [...groups.values()].sort((a, b) => (a.channel - b.channel) || String(a.deviceUuid || '').localeCompare(String(b.deviceUuid || ''))).forEach(group => {
+    [...groups.entries()].sort((a, b) => (a[1].channel - b[1].channel) || String(a[1].deviceUuid || '').localeCompare(String(b[1].deviceUuid || ''))).forEach(([sensorKey, group]) => {
       const row = document.createElement('div');
       row.style.cssText = 'margin-top:7px;padding-top:7px;border-top:1px solid #2b2b2b;overflow-wrap:anywhere';
-      row.textContent = `Device UUID: ${group.deviceUuid || 'not reported'} • FireBoard channel ID: ${group.channel} • FireBoard label: ${group.label}`;
+      const assignedRole = probeRoles?.get(sensorKey)?.cook_role?.trim();
+      row.textContent = `Device UUID: ${group.deviceUuid || 'not reported'} • FireBoard channel ID: ${group.channel} • FireBoard label: ${group.label}${assignedRole ? ` • LDCookLog role: ${assignedRole}` : ''}`;
       diagnostics.appendChild(row);
     });
     wrap.appendChild(diagnostics);
@@ -2149,7 +2156,7 @@ Your cook data is unaffected.`, 'bad');
         rows = await readFireboardTemperatureSamples(authSession.access_token, association.id);
       }
       renderFireboardTemperatureGraph(container, fbSession, rows);
-      await renderFireboardProbeAssignments(container, rows);
+      await renderFireboardProbeAssignments(container, rows, fbSession);
       button.textContent = 'Refresh Temperature Graph';
       setFireboardStatus(`Temperature graph loaded for ${fbSession.title || `FireBoard Session ${fbSession.id}`}: ${rows.length} imported samples.`, 'good');
     } catch (err) {
@@ -2394,7 +2401,7 @@ Your cook data is unaffected.`, 'bad');
       const rows = await readFireboardTemperatureSamples(accessToken, association.id);
       const graphHost = renderLiveFireboardHeading(fbSession, rows.length, newCount);
       renderFireboardTemperatureGraph(graphHost, fbSession, rows);
-      await renderFireboardProbeAssignments(graphHost, rows);
+      await renderFireboardProbeAssignments(graphHost, rows, fbSession);
       graphHost.querySelector('.fireboard-analysis')?.remove();
       setFireboardStatus(forceFinal
         ? `Final FireBoard sync complete for cook ${state.cookId}. The latest available temperatures were stored.`
@@ -2480,11 +2487,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.24.0';
+  document.title = 'LDCookLog Mobile V1.24.1';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.24.0 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.24.1 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.24.0 adds cook-specific FireBoard probe assignments while preserving permanent device UUID + channel ID identity and the V1.23.7 cook-start guard. Automatic role guessing is intentionally not included.<br><strong>Build 2026-09-14E</strong>';
+  if (footer) footer.innerHTML = 'V1.24.1 displays saved cook-specific FireBoard probe roles in the temperature graph and sensor identity diagnostics while preserving permanent device UUID + channel ID identity.<br><strong>Build 2026-09-14F</strong>';
 })();
 </script>
 
