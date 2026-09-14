@@ -2419,7 +2419,6 @@ Your cook data is unaffected.`, 'bad');
       const graphHost = renderLiveFireboardHeading(fbSession, rows.length, newCount);
       renderFireboardTemperatureGraph(graphHost, fbSession, rows);
       await renderFireboardProbeAssignments(graphHost, rows, fbSession);
-      graphHost.querySelector('.fireboard-analysis')?.remove();
       setFireboardStatus(forceFinal
         ? `Final FireBoard sync complete for cook ${state.cookId}. The latest available temperatures were stored.`
         : `Active FireBoard session ${fbSession.title || fbSession.id} is linked to cook ${state.cookId}. Live temperatures are being stored automatically.`, 'good');
@@ -2504,11 +2503,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.26.0';
+  document.title = 'LDCookLog Mobile V1.26.1';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.26.0 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.26.1 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.26.0 makes FireBoard analysis purpose-aware: Food and Smoker / chamber streams are analyzed separately using the user-selected purpose, with no label or temperature guessing. Other / reference streams remain stored but are excluded from cook metrics.<br><strong>Build 2026-09-14H</strong>';
+  if (footer) footer.innerHTML = 'V1.26.1 displays the purpose-aware FireBoard analysis during live cooks instead of removing it after each live refresh. Food and Smoker / chamber streams remain separated using the saved user-selected purpose.<br><strong>Build 2026-09-14I</strong>';
 })();
 </script>
 
