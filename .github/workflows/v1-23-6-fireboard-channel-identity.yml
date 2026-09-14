@@ -1,10 +1,10 @@
-name: V1.25.0 FireBoard Probe Purpose
+name: V1.26.0 Purpose-Aware FireBoard Analysis
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-25-0-probe-purpose.py'
+      - 'tools/patch-v1-26-0-purpose-aware-analysis.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.25.0 probe purpose
-        run: python3 tools/patch-v1-25-0-probe-purpose.py
+      - name: Apply V1.26.0 purpose-aware analysis
+        run: python3 tools/patch-v1-26-0-purpose-aware-analysis.py
 
-      - name: Commit V1.25.0
+      - name: Commit V1.26.0
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.25.0 add FireBoard probe purpose"
+          git commit -m "V1.26.0 add purpose-aware FireBoard analysis"
           git push
