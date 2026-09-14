@@ -2,7 +2,7 @@ from pathlib import Path
 
 p=Path('index.html'); text=p.read_text()
 
-anchor="  function renderFireboardTemperatureGraph(host, fbSession, rows) {"
+anchor="  function renderFireboardTemperatureGraph(container, fbSession, rows) {"
 insert=r'''  async function readFireboardProbeRoles(accessToken) {
     if (!state.cloudCookUuid) return new Map();
     const q = new URLSearchParams({select:'device_uuid,channel_id,source_label,cook_role',cook_id:`eq.${state.cloudCookUuid}`});
@@ -20,11 +20,12 @@ insert=r'''  async function readFireboardProbeRoles(accessToken) {
 
   async function renderFireboardProbeAssignments(host, rows) {
     if (!host || !state.cloudCookUuid || !Array.isArray(rows) || !rows.length) return;
+    host.querySelector('.fireboard-probe-assignments')?.remove();
     let auth=loadCloudSession(); if(!auth?.access_token) return;
     let roles; try { roles=await readFireboardProbeRoles(auth.access_token); } catch(e) { return; }
     const sensors=new Map();
     rows.forEach(row=>{const d=row.device_uuid||'unknown-device', c=Number(row.channel_index); if(!Number.isFinite(c))return; const k=`${d}::${c}`; if(!sensors.has(k)) sensors.set(k,{device_uuid:d,channel_id:c,label:row.channel_label||`Channel ${c}`});});
-    const wrap=document.createElement('div'); wrap.style.cssText='margin-top:12px;padding:10px;border:1px solid #343434;border-radius:12px';
+    const wrap=document.createElement('div'); wrap.className='fireboard-probe-assignments'; wrap.style.cssText='margin-top:12px;padding:10px;border:1px solid #343434;border-radius:12px';
     const title=document.createElement('strong'); title.textContent='Probe assignments'; wrap.appendChild(title);
     const help=document.createElement('div'); help.className='sub'; help.textContent='Assign a cook-specific role. FireBoard device and channel identity remain unchanged.'; wrap.appendChild(help);
     sensors.forEach(sensor=>{
@@ -43,12 +44,15 @@ insert=r'''  async function readFireboardProbeRoles(accessToken) {
 if text.count(anchor)!=1: raise SystemExit('graph anchor not found')
 text=text.replace(anchor,insert+anchor,1)
 
-# Add assignment panel after each graph render in live sync.
 needle="      renderFireboardTemperatureGraph(graphHost, fbSession, rows);"
 replacement="      renderFireboardTemperatureGraph(graphHost, fbSession, rows);\n      await renderFireboardProbeAssignments(graphHost, rows);"
-# There can be more than one graph render path; replace all exact live-style occurrences safely.
-if text.count(needle)<1: raise SystemExit('graph render call not found')
-text=text.replace(needle,replacement)
+if text.count(needle)!=1: raise SystemExit(f'Expected one live graph render call, found {text.count(needle)}')
+text=text.replace(needle,replacement,1)
+
+needle="      renderFireboardTemperatureGraph(container, fbSession, rows);"
+replacement="      renderFireboardTemperatureGraph(container, fbSession, rows);\n      await renderFireboardProbeAssignments(container, rows);"
+if text.count(needle)!=1: raise SystemExit(f'Expected one manual graph render call, found {text.count(needle)}')
+text=text.replace(needle,replacement,1)
 
 for old,new in [
 ("  document.title = 'LDCookLog Mobile V1.23.7';","  document.title = 'LDCookLog Mobile V1.24.0';"),
