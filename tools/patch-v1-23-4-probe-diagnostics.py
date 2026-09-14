@@ -66,10 +66,11 @@ replacements = [
     ),
 ]
 
-for old, new in replacements:
+for i, (old, new) in enumerate(replacements):
     count = text.count(old)
-    if count != 1:
-        raise SystemExit(f'Expected exactly one match, found {count}: {old[:100]}')
+    expected = 2 if i == 3 else 1
+    if count != expected:
+        raise SystemExit(f'Expected {expected} match(es), found {count}: {old[:100]}')
     text = text.replace(old, new, 1)
 
 index_path.write_text(text)
