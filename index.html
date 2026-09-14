@@ -1841,7 +1841,7 @@ Your cook data is unaffected.`, 'bad');
 
   async function readFireboardProbeRoles(accessToken) {
     if (!state.cloudCookUuid) return new Map();
-    const q = new URLSearchParams({select:'device_uuid,channel_id,source_label,cook_role',cook_id:`eq.${state.cloudCookUuid}`});
+    const q = new URLSearchParams({select:'device_uuid,channel_id,source_label,cook_role,role_type',cook_id:`eq.${state.cloudCookUuid}`});
     const r = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_probe_roles?${q}`, {headers:fireboardCloudHeaders(accessToken)});
     const data=await r.json().catch(()=>[]);
     if (!r.ok) throw new Error(data?.message || `Could not read probe roles (${r.status}).`);
@@ -1849,8 +1849,8 @@ Your cook data is unaffected.`, 'bad');
     return fireboardProbeRoleCache;
   }
 
-  async function saveFireboardProbeRole(accessToken, deviceUuid, channelId, sourceLabel, cookRole) {
-    const payload={cook_id:state.cloudCookUuid,device_uuid:deviceUuid,channel_id:Number(channelId),source_label:sourceLabel||null,cook_role:cookRole.trim()};
+  async function saveFireboardProbeRole(accessToken, deviceUuid, channelId, sourceLabel, cookRole, roleType) {
+    const payload={cook_id:state.cloudCookUuid,device_uuid:deviceUuid,channel_id:Number(channelId),source_label:sourceLabel||null,cook_role:cookRole.trim(),role_type:roleType};
     const r=await fetch(`${SUPABASE_URL}/rest/v1/fireboard_probe_roles?on_conflict=cook_id,device_uuid,channel_id`,{method:'POST',headers:{...fireboardCloudHeaders(accessToken),'Content-Type':'application/json',Prefer:'resolution=merge-duplicates,return=minimal'},body:JSON.stringify(payload)});
     if (!r.ok) { const data=await r.json().catch(()=>null); throw new Error(data?.message || `Could not save probe role (${r.status}).`); }
   }
@@ -1869,10 +1869,13 @@ Your cook data is unaffected.`, 'bad');
     sensors.forEach(sensor=>{
       const key=`${sensor.device_uuid}::${sensor.channel_id}`; const row=document.createElement('div'); row.style.cssText='margin-top:10px';
       const lab=document.createElement('label'); lab.textContent=`${sensor.label} • channel ${sensor.channel_id}`; row.appendChild(lab);
+      const purpose=document.createElement('select'); purpose.style.marginBottom='8px';
+      [['','Choose sensor purpose…'],['food','Food'],['chamber','Smoker / chamber'],['other','Other / reference']].forEach(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;purpose.appendChild(option);});
+      purpose.value=roles.get(key)?.role_type||''; row.appendChild(purpose);
       const line=document.createElement('div'); line.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px';
       const input=document.createElement('input'); input.placeholder='e.g. Pork Butt #1 or Smoker Chamber'; input.value=roles.get(key)?.cook_role||''; line.appendChild(input);
       const btn=document.createElement('button'); btn.className='secondary'; btn.style.cssText='min-height:44px;padding:8px 12px'; btn.textContent='Save';
-      btn.addEventListener('click',async()=>{const role=input.value.trim(); if(!role){alert('Enter a probe role first.');return;} btn.disabled=true; btn.textContent='Saving…'; try{auth=loadCloudSession(); await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role); roles.set(key,{cook_role:role,source_label:sensor.label}); fireboardProbeRoleCache=roles; if(fbSession){renderFireboardTemperatureGraph(host,fbSession,rows,roles);host.appendChild(wrap);} btn.textContent='Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);}catch(e){btn.textContent='Save';btn.disabled=false;alert(`Could not save probe role: ${e.message}`);}});
+      btn.addEventListener('click',async()=>{const role=input.value.trim(), roleType=purpose.value; if(!role){alert('Enter a probe role first.');return;} if(!roleType){alert('Choose whether this sensor is Food, Smoker / chamber, or Other / reference.');return;} btn.disabled=true; btn.textContent='Saving…'; try{auth=loadCloudSession(); await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role,roleType); roles.set(key,{cook_role:role,source_label:sensor.label,role_type:roleType}); fireboardProbeRoleCache=roles; if(fbSession){renderFireboardTemperatureGraph(host,fbSession,rows,roles);host.appendChild(wrap);} btn.textContent='Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);}catch(e){btn.textContent='Save';btn.disabled=false;alert(`Could not save probe role: ${e.message}`);}});
       line.appendChild(btn); row.appendChild(line); wrap.appendChild(row);
     });
     host.appendChild(wrap);
@@ -2020,8 +2023,10 @@ Your cook data is unaffected.`, 'bad');
     [...groups.entries()].sort((a, b) => (a[1].channel - b[1].channel) || String(a[1].deviceUuid || '').localeCompare(String(b[1].deviceUuid || ''))).forEach(([sensorKey, group]) => {
       const row = document.createElement('div');
       row.style.cssText = 'margin-top:7px;padding-top:7px;border-top:1px solid #2b2b2b;overflow-wrap:anywhere';
-      const assignedRole = probeRoles?.get(sensorKey)?.cook_role?.trim();
-      row.textContent = `Device UUID: ${group.deviceUuid || 'not reported'} • FireBoard channel ID: ${group.channel} • FireBoard label: ${group.label}${assignedRole ? ` • LDCookLog role: ${assignedRole}` : ''}`;
+      const assigned = probeRoles?.get(sensorKey);
+      const assignedRole = assigned?.cook_role?.trim();
+      const purposeLabel = assigned?.role_type === 'food' ? 'Food' : assigned?.role_type === 'chamber' ? 'Smoker / chamber' : assigned?.role_type === 'other' ? 'Other / reference' : '';
+      row.textContent = `Device UUID: ${group.deviceUuid || 'not reported'} • FireBoard channel ID: ${group.channel} • FireBoard label: ${group.label}${assignedRole ? ` • LDCookLog role: ${assignedRole}` : ''}${purposeLabel ? ` • Purpose: ${purposeLabel}` : ''}`;
       diagnostics.appendChild(row);
     });
     wrap.appendChild(diagnostics);
@@ -2487,11 +2492,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.24.1';
+  document.title = 'LDCookLog Mobile V1.25.0';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.24.1 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.25.0 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.24.1 displays saved cook-specific FireBoard probe roles in the temperature graph and sensor identity diagnostics while preserving permanent device UUID + channel ID identity.<br><strong>Build 2026-09-14F</strong>';
+  if (footer) footer.innerHTML = 'V1.25.0 adds a user-selected sensor purpose (Food, Smoker / chamber, or Other / reference) to each cook-specific FireBoard probe assignment so later analysis can distinguish food temperatures from pit temperatures without guessing.<br><strong>Build 2026-09-14G</strong>';
 })();
 </script>
 
