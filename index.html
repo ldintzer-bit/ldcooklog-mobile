@@ -2031,7 +2031,7 @@ Your cook data is unaffected.`, 'bad');
     });
     wrap.appendChild(diagnostics);
 
-    // V1.22.7: first-pass FireBoard analysis using the already-imported samples.
+    // V1.26.0: analysis uses the user's explicit probe purpose. No label/temperature guessing.
     const target = Number(state.target);
     const sortedGroups = [...groups.entries()].sort((a, b) => (a[1].channel - b[1].channel) || String(a[1].deviceUuid || '').localeCompare(String(b[1].deviceUuid || '')));
     const channelStats = sortedGroups.map(([sensorKey, group]) => {
@@ -2039,17 +2039,15 @@ Your cook data is unaffected.`, 'bad');
       const points = [...group.points].sort((a, b) => a.time - b.time);
       const temps = points.map(point => point.temp);
       const avg = temps.reduce((sum, value) => sum + value, 0) / Math.max(1, temps.length);
-      const avgAbsTargetError = Number.isFinite(target)
-        ? temps.reduce((sum, value) => sum + Math.abs(value - target), 0) / Math.max(1, temps.length)
-        : Number.POSITIVE_INFINITY;
-      return { sensorKey, channel, group, points, temps, avg, avgAbsTargetError };
+      const assignment = probeRoles?.get(sensorKey) || {};
+      const roleType = assignment.role_type || '';
+      const cookRole = assignment.cook_role?.trim() || group.label;
+      return { sensorKey, channel, group, points, temps, avg, roleType, cookRole };
     });
 
-    let likelyPit = null;
-    if (Number.isFinite(target) && channelStats.length) {
-      const namedPit = channelStats.find(stat => /chamber|pit|ambient|grill|smoker/i.test(stat.group.label || ''));
-      likelyPit = namedPit || [...channelStats].sort((a, b) => a.avgAbsTargetError - b.avgAbsTargetError)[0];
-    }
+    const chamberStats = channelStats.filter(stat => stat.roleType === 'chamber');
+    const foodStats = channelStats.filter(stat => stat.roleType === 'food');
+    const referenceStats = channelStats.filter(stat => stat.roleType === 'other');
 
     const formatDuration = ms => {
       const totalMinutes = Math.max(0, Math.round(ms / 60000));
@@ -2092,51 +2090,65 @@ Your cook data is unaffected.`, 'bad');
     analysis.style.cssText = 'margin-top:12px;padding:10px;background:#171717;border:1px solid #333;border-radius:10px';
 
     const analysisTitle = document.createElement('strong');
-    analysisTitle.textContent = 'FireBoard Analysis';
+    analysisTitle.textContent = 'Purpose-aware FireBoard Analysis';
     analysis.appendChild(analysisTitle);
 
     const summary = document.createElement('div');
     summary.className = 'sub';
     summary.style.marginTop = '4px';
-    summary.textContent = Number.isFinite(target)
-      ? `Cook target: ${target.toFixed(0)}°F. Range timing below is based on the likely pit/chamber channel.`
-      : 'No numeric cook target is available, so target-range timing is not shown.';
+    summary.textContent = `Using saved probe purposes: ${foodStats.length} food, ${chamberStats.length} smoker/chamber, ${referenceStats.length} reference. No sensor type is inferred from its label or temperature.`;
     analysis.appendChild(summary);
 
-    channelStats.forEach(stat => {
+    foodStats.forEach(stat => {
       const row = document.createElement('div');
       row.style.cssText = 'margin-top:9px;padding-top:9px;border-top:1px solid #2b2b2b;font-size:12px';
-      const min = Math.min(...stat.temps);
-      const max = Math.max(...stat.temps);
       const unit = Number(stat.group.degree) === 1 ? 'C' : Number(stat.group.degree) === 2 ? 'F' : String(stat.group.degree || 'F');
-      const likelyText = likelyPit && stat.sensorKey === likelyPit.sensorKey ? ' — likely pit/chamber' : '';
-      row.textContent = `${stat.group.label}${likelyText}: avg ${stat.avg.toFixed(1)}°${unit}; min ${min.toFixed(1)}°; max ${max.toFixed(1)}°; ${stat.points.length} samples`;
+      const first = stat.points[0]?.temp, latest = stat.points[stat.points.length-1]?.temp, peak = Math.max(...stat.temps);
+      const rise = Number.isFinite(first) && Number.isFinite(latest) ? latest-first : NaN;
+      row.textContent = `Food — ${stat.cookRole}: current ${latest.toFixed(1)}°${unit}; peak ${peak.toFixed(1)}°; change ${rise>=0?'+':''}${rise.toFixed(1)}°; ${stat.points.length} samples`;
       analysis.appendChild(row);
     });
 
-    if (likelyPit && Number.isFinite(target)) {
-      const within10 = weightedRangeDuration(likelyPit.points, 10);
-      const within25 = weightedRangeDuration(likelyPit.points, 25);
-      const stableAt = firstStablePeriod(likelyPit.points, 10);
-      const metrics = document.createElement('div');
-      metrics.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px';
-      const metricData = [
-        ['Within ±10°F', within10.total ? `${formatDuration(within10.inRange)} (${Math.round(within10.inRange / within10.total * 100)}%)` : '—'],
-        ['Within ±25°F', within25.total ? `${formatDuration(within25.inRange)} (${Math.round(within25.inRange / within25.total * 100)}%)` : '—'],
-        ['10-min stable', stableAt ? formatTime(stableAt) : 'Not reached']
-      ];
-      metricData.forEach(([label, value]) => {
-        const box = document.createElement('div');
-        box.style.cssText = 'background:#202020;border:1px solid #303030;border-radius:9px;padding:8px';
-        const k = document.createElement('div');
-        k.style.cssText = 'font-size:10px;color:#999;text-transform:uppercase';
-        k.textContent = label;
-        const v = document.createElement('div');
-        v.style.cssText = 'font-size:14px;font-weight:700;margin-top:3px';
-        v.textContent = value;
-        box.appendChild(k); box.appendChild(v); metrics.appendChild(box);
-      });
-      analysis.appendChild(metrics);
+    chamberStats.forEach(stat => {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-top:9px;padding-top:9px;border-top:1px solid #2b2b2b;font-size:12px';
+      const min = Math.min(...stat.temps), max = Math.max(...stat.temps);
+      const latest = stat.points[stat.points.length-1]?.temp;
+      const unit = Number(stat.group.degree) === 1 ? 'C' : Number(stat.group.degree) === 2 ? 'F' : String(stat.group.degree || 'F');
+      row.textContent = `Smoker / chamber — ${stat.cookRole}: current ${latest.toFixed(1)}°${unit}; avg ${stat.avg.toFixed(1)}°; range ${min.toFixed(1)}–${max.toFixed(1)}°; ${stat.points.length} samples`;
+      analysis.appendChild(row);
+
+      if (Number.isFinite(target)) {
+        const within10 = weightedRangeDuration(stat.points, 10);
+        const within25 = weightedRangeDuration(stat.points, 25);
+        const stableAt = firstStablePeriod(stat.points, 10);
+        const metrics = document.createElement('div');
+        metrics.style.cssText = 'display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:8px';
+        const metricData = [
+          ['Within ±10°F', within10.total ? `${formatDuration(within10.inRange)} (${Math.round(within10.inRange / within10.total * 100)}%)` : '—'],
+          ['Within ±25°F', within25.total ? `${formatDuration(within25.inRange)} (${Math.round(within25.inRange / within25.total * 100)}%)` : '—'],
+          ['10-min stable', stableAt ? formatTime(stableAt) : 'Not reached']
+        ];
+        metricData.forEach(([label, value]) => {
+          const box = document.createElement('div');
+          box.style.cssText = 'background:#202020;border:1px solid #303030;border-radius:9px;padding:8px';
+          const k = document.createElement('div');
+          k.style.cssText = 'font-size:10px;color:#999;text-transform:uppercase';
+          k.textContent = label;
+          const v = document.createElement('div');
+          v.style.cssText = 'font-size:14px;font-weight:700;margin-top:3px';
+          v.textContent = value;
+          box.appendChild(k); box.appendChild(v); metrics.appendChild(box);
+        });
+        analysis.appendChild(metrics);
+      }
+    });
+
+    if (!foodStats.length && !chamberStats.length) {
+      const note=document.createElement('div');
+      note.className='sub'; note.style.marginTop='8px';
+      note.textContent='Assign Food or Smoker / chamber purposes to enable temperature analysis.';
+      analysis.appendChild(note);
     }
 
     wrap.appendChild(analysis);
@@ -2492,11 +2504,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.25.0';
+  document.title = 'LDCookLog Mobile V1.26.0';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.25.0 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.26.0 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.25.0 adds a user-selected sensor purpose (Food, Smoker / chamber, or Other / reference) to each cook-specific FireBoard probe assignment so later analysis can distinguish food temperatures from pit temperatures without guessing.<br><strong>Build 2026-09-14G</strong>';
+  if (footer) footer.innerHTML = 'V1.26.0 makes FireBoard analysis purpose-aware: Food and Smoker / chamber streams are analyzed separately using the user-selected purpose, with no label or temperature guessing. Other / reference streams remain stored but are excluded from cook metrics.<br><strong>Build 2026-09-14H</strong>';
 })();
 </script>
 
