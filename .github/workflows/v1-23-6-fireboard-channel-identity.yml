@@ -1,10 +1,10 @@
-name: V1.27.0 Stored FireBoard Analysis
+name: V1.27.1 Stored Analysis Cleanup
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-27-0-stored-fireboard-analysis.py'
+      - 'tools/patch-v1-27-1-stored-analysis-cleanup.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.27.0 stored FireBoard analysis
-        run: python3 tools/patch-v1-27-0-stored-fireboard-analysis.py
+      - name: Apply V1.27.1 stored analysis cleanup
+        run: python3 tools/patch-v1-27-1-stored-analysis-cleanup.py
 
-      - name: Commit V1.27.0
+      - name: Commit V1.27.1
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.27.0 add stored FireBoard analysis"
+          git commit -m "V1.27.1 clean up stored FireBoard review"
           git push
