@@ -1,0 +1,32 @@
+name: V1.23.5 Raw FireBoard Metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/patch-v1-23-5-raw-fireboard-metadata.py'
+      - '.github/workflows/v1-23-5-raw-fireboard-metadata.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply V1.23.5 raw FireBoard metadata patch
+        run: python3 tools/patch-v1-23-5-raw-fireboard-metadata.py
+
+      - name: Commit V1.23.5
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html service-worker.js
+          git commit -m "V1.23.5 expose raw FireBoard chart metadata"
+          git push
