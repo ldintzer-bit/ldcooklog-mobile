@@ -1,0 +1,32 @@
+name: V1.23.6 FireBoard Channel Identity
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/patch-v1-23-6-fireboard-channel-identity.py'
+      - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply V1.23.6 FireBoard channel identity patch
+        run: python3 tools/patch-v1-23-6-fireboard-channel-identity.py
+
+      - name: Commit V1.23.6
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html service-worker.js
+          git diff --cached --quiet && exit 0
+          git commit -m "V1.23.6 use permanent FireBoard sensor identity"
+          git push
