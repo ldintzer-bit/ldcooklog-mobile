@@ -1798,7 +1798,7 @@ Your cook data is unaffected.`, 'bad');
   }
 
   async function upsertFireboardSampleBatch(accessToken, rows) {
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_temperature_samples?on_conflict=cook_fireboard_session_id,channel_index,observed_at`, {
+    const response = await fetch(`${SUPABASE_URL}/rest/v1/fireboard_temperature_samples?on_conflict=cook_fireboard_session_id,device_uuid,channel_index,observed_at`, {
       method: 'POST',
       headers: {
         ...fireboardCloudHeaders(accessToken),
@@ -1972,12 +1972,12 @@ Your cook data is unaffected.`, 'bad');
     const diagnosticsNote = document.createElement('div');
     diagnosticsNote.className = 'sub';
     diagnosticsNote.style.marginTop = '4px';
-    diagnosticsNote.textContent = 'Stored identity only — device UUID, LDCookLog series index, and FireBoard source label. The series index is not a physical FireBoard port number.';
+    diagnosticsNote.textContent = 'Permanent sensor identity uses FireBoard device UUID + actual FireBoard channel ID. LDCookLog cook roles have not been assigned yet.';
     diagnostics.appendChild(diagnosticsNote);
     [...groups.values()].sort((a, b) => (a.channel - b.channel) || String(a.deviceUuid || '').localeCompare(String(b.deviceUuid || ''))).forEach(group => {
       const row = document.createElement('div');
       row.style.cssText = 'margin-top:7px;padding-top:7px;border-top:1px solid #2b2b2b;overflow-wrap:anywhere';
-      row.textContent = `Device UUID: ${group.deviceUuid || 'not reported'} • Stored series index: ${group.channel} • FireBoard label: ${group.label}`;
+      row.textContent = `Device UUID: ${group.deviceUuid || 'not reported'} • FireBoard channel ID: ${group.channel} • FireBoard label: ${group.label}`;
       diagnostics.appendChild(row);
     });
     wrap.appendChild(diagnostics);
@@ -2165,13 +2165,15 @@ Your cook data is unaffected.`, 'bad');
       const rows = [];
       const channels = Array.isArray(data.channels) ? data.channels : [];
       channels.forEach(channel => {
+        const channelId = Number(channel.channel_id);
+        if (!Number.isFinite(channelId)) return;
         const samples = Array.isArray(channel.samples) ? channel.samples : [];
         samples.forEach(sample => {
           const temperature = Number(sample.temperature_value);
           if (!Number.isFinite(temperature)) return;
           rows.push({
             cook_fireboard_session_id: association.id,
-            channel_index: Number(channel.index) || 0,
+            channel_index: channelId,
             device_uuid: channel.device_uuid || null,
             channel_label: channel.label || null,
             observed_at: fireboardTimestampToIso(sample.observed_at),
@@ -2229,7 +2231,8 @@ Your cook data is unaffected.`, 'bad');
     const rows = [];
     const channels = Array.isArray(data.channels) ? data.channels : [];
     channels.forEach(channel => {
-      const channelIndex = Number(channel.index) || 0;
+      const channelIndex = Number(channel.channel_id);
+      if (!Number.isFinite(channelIndex)) return;
       const sensorKey = `${channel.device_uuid || 'unknown-device'}::${channelIndex}`;
       const latest = latestByChannel.get(sensorKey) ?? -Infinity;
       (Array.isArray(channel.samples) ? channel.samples : []).forEach(sample => {
@@ -2252,7 +2255,7 @@ Your cook data is unaffected.`, 'bad');
     for (let start = 0; start < rows.length; start += batchSize) {
       await upsertFireboardSampleBatch(accessToken, rows.slice(start, start + batchSize));
     }
-    return { newCount: rows.length, channels };
+    return rows.length;
   }
 
   function renderLiveFireboardHeading(fbSession, sampleCount, newCount) {
@@ -2270,30 +2273,6 @@ Your cook data is unaffected.`, 'bad');
     graphHost.className = 'live-fireboard-graph-host';
     liveFireboardWrap.appendChild(graphHost);
     return graphHost;
-  }
-
-  function renderFireboardRawMetadata(container, channels) {
-    container.querySelector('.fireboard-raw-metadata')?.remove();
-    const box = document.createElement('div');
-    box.className = 'fireboard-raw-metadata';
-    box.style.cssText = 'margin-top:10px;padding:9px 10px;background:#171717;border:1px solid #555;border-radius:10px;font-size:12px';
-    const title = document.createElement('strong');
-    title.textContent = 'FireBoard raw chart metadata (diagnostic)';
-    box.appendChild(title);
-    const note = document.createElement('div');
-    note.className = 'sub';
-    note.style.marginTop = '4px';
-    note.textContent = 'These are the non-temperature fields FireBoard actually returned for each chart series. This is the section we need for the current probe-identity test.';
-    box.appendChild(note);
-    (Array.isArray(channels) ? channels : []).forEach(channel => {
-      const row = document.createElement('div');
-      row.style.cssText = 'margin-top:8px;padding-top:8px;border-top:1px solid #333;overflow-wrap:anywhere';
-      const meta = channel.raw_metadata && typeof channel.raw_metadata === 'object' ? channel.raw_metadata : {};
-      const keys = Array.isArray(channel.raw_keys) ? channel.raw_keys.join(', ') : '';
-      row.textContent = `Series ${Number(channel.series_index ?? channel.index ?? 0) + 1} • Device UUID: ${channel.device_uuid || 'not reported'} • Label: ${channel.label || 'not reported'} • Raw fields: ${JSON.stringify(meta)}${keys ? ` • Keys: ${keys}` : ''}`;
-      box.appendChild(row);
-    });
-    container.appendChild(box);
   }
 
   async function syncActiveFireboard(forceFinal = false) {
@@ -2338,13 +2317,11 @@ Your cook data is unaffected.`, 'bad');
       await writeFireboardAssociation(accessToken, fbSession);
       const association = await getFireboardAssociation(accessToken, fbSession.id);
       if (!association?.id) throw new Error('Active FireBoard session could not be linked to this cook.');
-      const liveImport = await importLiveFireboardSamples(accessToken, fbSession, association.id);
-      const newCount = liveImport.newCount;
+      const newCount = await importLiveFireboardSamples(accessToken, fbSession, association.id);
       const rows = await readFireboardTemperatureSamples(accessToken, association.id);
       const graphHost = renderLiveFireboardHeading(fbSession, rows.length, newCount);
       renderFireboardTemperatureGraph(graphHost, fbSession, rows);
       graphHost.querySelector('.fireboard-analysis')?.remove();
-      renderFireboardRawMetadata(graphHost, liveImport.channels);
       setFireboardStatus(forceFinal
         ? `Final FireBoard sync complete for cook ${state.cookId}. The latest available temperatures were stored.`
         : `Active FireBoard session ${fbSession.title || fbSession.id} is linked to cook ${state.cookId}. Live temperatures are being stored automatically.`, 'good');
@@ -2429,11 +2406,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.23.5';
+  document.title = 'LDCookLog Mobile V1.23.6';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.23.5 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.23.6 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.23.5 exposes the raw non-temperature metadata FireBoard returns for each chart series so physical wired ports and Pulse sensor streams can be identified without guessing. Live and final FireBoard syncing remain unchanged.<br><strong>Build 2026-09-14B</strong>';
+  if (footer) footer.innerHTML = 'V1.23.6 uses FireBoard device UUID + actual FireBoard channel ID as the permanent sensor identity, preventing Pulse and wired probe streams from being confused when chart order changes.<br><strong>Build 2026-09-14C</strong>';
 })();
 </script>
 
