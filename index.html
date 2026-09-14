@@ -2493,7 +2493,6 @@ Your cook data is unaffected.`, 'bad');
         storedFireboardContent.appendChild(host);
         const fbSession = {id:sessionId,title:sessionTitle};
         renderFireboardTemperatureGraph(host, fbSession, rows);
-        await renderFireboardProbeAssignments(host, rows, fbSession);
       }
       if (!totalSamples) throw new Error('The attached FireBoard session has no stored temperature samples.');
       storedFireboardButton.textContent = `Refresh Stored FireBoard Analysis — ${totalSamples} samples`;
@@ -2576,11 +2575,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.27.0';
+  document.title = 'LDCookLog Mobile V1.27.1';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.27.0 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.27.1 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.27.0 adds stored FireBoard analysis for the current or restored cook using cloud temperature samples, so the graph and purpose-aware analysis remain available after the FireBoard is turned off. Live analysis remains unchanged.<br><strong>Build 2026-09-14J</strong>';
+  if (footer) footer.innerHTML = 'V1.27.1 keeps stored FireBoard review read-only: saved probe identities, purposes, graph, and analysis are shown without reopening editable probe-assignment controls. Live probe assignment remains unchanged.<br><strong>Build 2026-09-14K</strong>';
 })();
 </script>
 
