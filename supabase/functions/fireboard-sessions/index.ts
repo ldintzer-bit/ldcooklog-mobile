@@ -1,7 +1,7 @@
 import { withSupabase } from 'npm:@supabase/server@^1'
 
 const FIREBOARD_BASE = 'https://fireboard.io/api/v1'
-const USER_AGENT = 'LDCookLog/1.23.2 active fireboard integration'
+const USER_AGENT = 'LDCookLog/1.23.5 fireboard metadata diagnostics'
 
 function json(data: unknown, status = 200) {
   return Response.json(data, { status })
@@ -39,6 +39,18 @@ function chartSource(raw: any) {
         : []
 }
 
+function safeChartMetadata(channel: any) {
+  const metadata: Record<string, unknown> = {}
+  if (!channel || typeof channel !== 'object') return metadata
+  for (const [key, value] of Object.entries(channel)) {
+    if (key === 'x' || key === 'y') continue
+    if (value === null || ['string', 'number', 'boolean'].includes(typeof value)) {
+      metadata[key] = value
+    }
+  }
+  return metadata
+}
+
 function summarizeChart(raw: any, includeSamples = false) {
   const channels = chartSource(raw).map((channel: any, index: number) => {
     const x = Array.isArray(channel?.x) ? channel.x : []
@@ -47,11 +59,14 @@ function summarizeChart(raw: any, includeSamples = false) {
     const numeric = y.map((value: any) => Number(value)).filter((value: number) => Number.isFinite(value))
     const degreeType = channel?.degreetype ?? channel?.degree_type ?? channel?.unit ?? null
     const result: any = {
+      series_index: index,
       index,
-      label: channel?.label ?? channel?.title ?? channel?.name ?? `Channel ${index + 1}`,
+      label: channel?.label ?? channel?.title ?? channel?.name ?? `Series ${index + 1}`,
       device_uuid: channel?.device ?? channel?.device_uuid ?? channel?.UUID ?? channel?.uuid ?? null,
       degree_type: degreeType,
       degree_unit: Number(degreeType) === 1 ? 'C' : Number(degreeType) === 2 ? 'F' : null,
+      raw_keys: channel && typeof channel === 'object' ? Object.keys(channel).filter(key => key !== 'x' && key !== 'y') : [],
+      raw_metadata: safeChartMetadata(channel),
       sample_count: pairedCount,
       first_timestamp: pairedCount ? x[0] : null,
       last_timestamp: pairedCount ? x[pairedCount - 1] : null,
@@ -149,9 +164,6 @@ export default {
       const liveUuids = liveDeviceUuids(devices)
       const explicitlyOpen = sorted.filter((session: any) => session?.start_time && !session?.end_time)
 
-      // FireBoard's end_time is configurable and can be present while a session is still
-      // receiving data. Confirm an active session by requiring a device in that session to
-      // also be reporting a real-time temperature (latest_temps / recent last_templog).
       const realtimeCandidates = sorted.filter((session: any) => {
         if (!session?.start_time || !liveUuids.size) return false
         const uuids = sessionDeviceUuids(session)
