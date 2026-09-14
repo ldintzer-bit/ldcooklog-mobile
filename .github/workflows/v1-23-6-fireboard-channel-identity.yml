@@ -1,10 +1,10 @@
-name: V1.23.7 FireBoard Cook Start Guard
+name: V1.24.0 FireBoard Probe Assignment
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-23-7-cook-start-fireboard-guard.py'
+      - 'tools/patch-v1-24-0-probe-roles.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.23.7 FireBoard cook-start guard
-        run: python3 tools/patch-v1-23-7-cook-start-fireboard-guard.py
+      - name: Apply V1.24.0 probe assignments
+        run: python3 tools/patch-v1-24-0-probe-roles.py
 
-      - name: Commit V1.23.7
+      - name: Commit V1.24.0
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.23.7 add FireBoard cook-start guard"
+          git commit -m "V1.24.0 add FireBoard probe assignments"
           git push
