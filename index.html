@@ -1818,7 +1818,7 @@ Your cook data is unaffected.`, 'bad');
     const pageSize = 1000;
     for (let offset = 0; ; offset += pageSize) {
       const query = new URLSearchParams({
-        select: 'channel_index,channel_label,observed_at,temperature_value,degree_type',
+        select: 'channel_index,device_uuid,channel_label,observed_at,temperature_value,degree_type',
         cook_fireboard_session_id: `eq.${associationId}`,
         order: 'observed_at.asc',
         offset: String(offset),
@@ -1855,6 +1855,7 @@ Your cook data is unaffected.`, 'bad');
 
     const parsed = rows.map(row => ({
       channel: Number(row.channel_index) || 0,
+      deviceUuid: row.device_uuid || null,
       label: row.channel_label || `Channel ${(Number(row.channel_index) || 0) + 1}`,
       time: Date.parse(row.observed_at),
       temp: Number(row.temperature_value),
@@ -1869,8 +1870,9 @@ Your cook data is unaffected.`, 'bad');
 
     const groups = new Map();
     parsed.forEach(row => {
-      if (!groups.has(row.channel)) groups.set(row.channel, { label: row.label, degree: row.degree, points: [] });
-      groups.get(row.channel).points.push(row);
+      const sensorKey = `${row.deviceUuid || 'unknown-device'}::${row.channel}`;
+      if (!groups.has(sensorKey)) groups.set(sensorKey, { channel: row.channel, deviceUuid: row.deviceUuid, label: row.label, degree: row.degree, points: [] });
+      groups.get(sensorKey).points.push(row);
     });
 
     const allTimes = parsed.map(row => row.time);
@@ -1928,7 +1930,7 @@ Your cook data is unaffected.`, 'bad');
     addText(formatTime(minTime + spanTime / 2), margin.left + plotW / 2, height - 16, 'middle');
     addText(formatTime(maxTime), width - margin.right, height - 16, 'end');
 
-    [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([channel, group], index) => {
+    [...groups.entries()].sort((a, b) => (a[1].channel - b[1].channel) || String(a[1].deviceUuid || '').localeCompare(String(b[1].deviceUuid || ''))).forEach(([sensorKey, group], index) => {
       const points = group.points.sort((a, b) => a.time - b.time);
       const path = document.createElementNS(ns, 'path');
       const d = points.map((point, pointIndex) => `${pointIndex ? 'L' : 'M'}${x(point.time).toFixed(1)},${y(point.temp).toFixed(1)}`).join(' ');
@@ -1951,7 +1953,7 @@ Your cook data is unaffected.`, 'bad');
     legend.style.gap = '8px 14px';
     legend.style.marginTop = '8px';
     legend.style.fontSize = '12px';
-    [...groups.entries()].sort((a, b) => a[0] - b[0]).forEach(([channel, group], index) => {
+    [...groups.entries()].sort((a, b) => (a[1].channel - b[1].channel) || String(a[1].deviceUuid || '').localeCompare(String(b[1].deviceUuid || ''))).forEach(([sensorKey, group], index) => {
       const item = document.createElement('span');
       const temps = group.points.map(point => point.temp);
       const unit = Number(group.degree) === 1 ? 'C' : Number(group.degree) === 2 ? 'F' : String(group.degree || 'F');
@@ -1961,17 +1963,37 @@ Your cook data is unaffected.`, 'bad');
     });
     wrap.appendChild(legend);
 
+    const diagnostics = document.createElement('div');
+    diagnostics.className = 'fireboard-sensor-diagnostics';
+    diagnostics.style.cssText = 'margin-top:10px;padding:9px 10px;background:#171717;border:1px solid #333;border-radius:10px;font-size:12px';
+    const diagnosticsTitle = document.createElement('strong');
+    diagnosticsTitle.textContent = 'FireBoard sensor identity (diagnostic)';
+    diagnostics.appendChild(diagnosticsTitle);
+    const diagnosticsNote = document.createElement('div');
+    diagnosticsNote.className = 'sub';
+    diagnosticsNote.style.marginTop = '4px';
+    diagnosticsNote.textContent = 'Raw identity only — device UUID, FireBoard channel, and FireBoard source label. LDCookLog cook roles have not been assigned yet.';
+    diagnostics.appendChild(diagnosticsNote);
+    [...groups.values()].sort((a, b) => (a.channel - b.channel) || String(a.deviceUuid || '').localeCompare(String(b.deviceUuid || ''))).forEach(group => {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-top:7px;padding-top:7px;border-top:1px solid #2b2b2b;overflow-wrap:anywhere';
+      row.textContent = `Device UUID: ${group.deviceUuid || 'not reported'} • Channel index: ${group.channel} (display channel ${group.channel + 1}) • FireBoard label: ${group.label}`;
+      diagnostics.appendChild(row);
+    });
+    wrap.appendChild(diagnostics);
+
     // V1.22.7: first-pass FireBoard analysis using the already-imported samples.
     const target = Number(state.target);
-    const sortedGroups = [...groups.entries()].sort((a, b) => a[0] - b[0]);
-    const channelStats = sortedGroups.map(([channel, group]) => {
+    const sortedGroups = [...groups.entries()].sort((a, b) => (a[1].channel - b[1].channel) || String(a[1].deviceUuid || '').localeCompare(String(b[1].deviceUuid || '')));
+    const channelStats = sortedGroups.map(([sensorKey, group]) => {
+      const channel = group.channel;
       const points = [...group.points].sort((a, b) => a.time - b.time);
       const temps = points.map(point => point.temp);
       const avg = temps.reduce((sum, value) => sum + value, 0) / Math.max(1, temps.length);
       const avgAbsTargetError = Number.isFinite(target)
         ? temps.reduce((sum, value) => sum + Math.abs(value - target), 0) / Math.max(1, temps.length)
         : Number.POSITIVE_INFINITY;
-      return { channel, group, points, temps, avg, avgAbsTargetError };
+      return { sensorKey, channel, group, points, temps, avg, avgAbsTargetError };
     });
 
     let likelyPit = null;
@@ -2038,7 +2060,7 @@ Your cook data is unaffected.`, 'bad');
       const min = Math.min(...stat.temps);
       const max = Math.max(...stat.temps);
       const unit = Number(stat.group.degree) === 1 ? 'C' : Number(stat.group.degree) === 2 ? 'F' : String(stat.group.degree || 'F');
-      const likelyText = likelyPit && stat.channel === likelyPit.channel ? ' — likely pit/chamber' : '';
+      const likelyText = likelyPit && stat.sensorKey === likelyPit.sensorKey ? ' — likely pit/chamber' : '';
       row.textContent = `${stat.group.label}${likelyText}: avg ${stat.avg.toFixed(1)}°${unit}; min ${min.toFixed(1)}°; max ${max.toFixed(1)}°; ${stat.points.length} samples`;
       analysis.appendChild(row);
     });
@@ -2180,7 +2202,7 @@ Your cook data is unaffected.`, 'bad');
 
   async function readLatestFireboardSampleTimes(accessToken, associationId) {
     const query = new URLSearchParams({
-      select: 'channel_index,observed_at',
+      select: 'channel_index,device_uuid,observed_at',
       cook_fireboard_session_id: `eq.${associationId}`,
       order: 'observed_at.desc',
       limit: '100'
@@ -2193,7 +2215,8 @@ Your cook data is unaffected.`, 'bad');
     if (!response.ok) throw new Error(rows?.message || `Could not read latest FireBoard samples (${response.status}).`);
     const latest = new Map();
     (Array.isArray(rows) ? rows : []).forEach(row => {
-      const key = Number(row.channel_index) || 0;
+      const channelIndex = Number(row.channel_index) || 0;
+      const key = `${row.device_uuid || 'unknown-device'}::${channelIndex}`;
       const ms = Date.parse(row.observed_at);
       if (Number.isFinite(ms) && (!latest.has(key) || ms > latest.get(key))) latest.set(key, ms);
     });
@@ -2207,7 +2230,8 @@ Your cook data is unaffected.`, 'bad');
     const channels = Array.isArray(data.channels) ? data.channels : [];
     channels.forEach(channel => {
       const channelIndex = Number(channel.index) || 0;
-      const latest = latestByChannel.get(channelIndex) ?? -Infinity;
+      const sensorKey = `${channel.device_uuid || 'unknown-device'}::${channelIndex}`;
+      const latest = latestByChannel.get(sensorKey) ?? -Infinity;
       (Array.isArray(channel.samples) ? channel.samples : []).forEach(sample => {
         const temperature = Number(sample.temperature_value);
         if (!Number.isFinite(temperature)) return;
@@ -2379,11 +2403,11 @@ Your cook data is unaffected.`, 'bad');
     setFireboardStatus('Sign in to LDCookLog Cloud, then load your recent completed FireBoard sessions.');
   });
 
-  document.title = 'LDCookLog Mobile V1.23.3';
+  document.title = 'LDCookLog Mobile V1.23.4';
   const headerSub = document.querySelector('header .sub');
-  if (headerSub) headerSub.textContent = 'V1.23.3 Stateful BBQ Control Panel';
+  if (headerSub) headerSub.textContent = 'V1.23.4 Stateful BBQ Control Panel';
   const footer = document.querySelector('.footer-note');
-  if (footer) footer.innerHTML = 'V1.23.3 makes Finish Cook more reliable by completing a final FireBoard sample import even if the session stops appearing active at that moment. Historical analysis remains paused while we collect clean cook data.<br><strong>Build 2026-09-13S</strong>';
+  if (footer) footer.innerHTML = 'V1.23.4 adds temporary FireBoard sensor-identity diagnostics so we can verify device UUID, channel mapping, and source labels before assigning permanent cook roles. Live and final FireBoard syncing remain unchanged.<br><strong>Build 2026-09-14A</strong>';
 })();
 </script>
 
