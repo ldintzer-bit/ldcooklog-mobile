@@ -2731,6 +2731,12 @@ Your cook data is unaffected.`, 'bad');
   ['prepTrim','prepBrine','prepInjection'].forEach(id=>document.getElementById(id).addEventListener('change',()=>{readPrepUI();save();if(state.cloudCookUuid)syncPendingEventsToCloud();}));
   document.getElementById('prepNotes').addEventListener('input',()=>{readPrepUI();save();});
   document.getElementById('prepNotes').addEventListener('change',()=>{readPrepUI();save();if(state.cloudCookUuid)syncPendingEventsToCloud();});
+  // Reset preparation only after the base Reset Cook handler has replaced the cook state.
+  document.getElementById('resetCook').addEventListener('click',()=>{
+    state.preparation=prepDefaults();
+    writePrepUI();
+    save();
+  });
   const priorSave=save;
   save=function(){readPrepUI();return priorSave();};
   const priorRender=render;
@@ -2765,9 +2771,9 @@ Your cook data is unaffected.`, 'bad');
     return recovery;
   };
   writePrepUI();
-  document.title='LDCookLog Mobile V1.29.1';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.29.1 Stateful BBQ Control Panel';
-  const f=document.querySelector('.footer-note');if(f)f.innerHTML='V1.29.1 saves Prep Notes locally while typing and retains cook-level preparation cloud persistence.<br><strong>Build 2026-09-15D</strong>';
+  document.title='LDCookLog Mobile V1.29.2';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.29.2 Stateful BBQ Control Panel';
+  const f=document.querySelector('.footer-note');if(f)f.innerHTML='V1.29.2 resets Pre-Cook Preparation with Reset Cook while retaining local and Supabase persistence.<br><strong>Build 2026-09-15E</strong>';
 })();
 </script>
 
