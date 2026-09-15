@@ -10,19 +10,15 @@ CREATE TABLE IF NOT EXISTS public.cook_preparation (
 
 ALTER TABLE public.cook_preparation ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can read own cook preparation" ON public.cook_preparation;
 CREATE POLICY "Users can read own cook preparation" ON public.cook_preparation
-FOR SELECT USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_preparation.cook_id AND c.user_id = auth.uid()));
+FOR SELECT USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.cook_preparation.cook_id));
 
-DROP POLICY IF EXISTS "Users can insert own cook preparation" ON public.cook_preparation;
 CREATE POLICY "Users can insert own cook preparation" ON public.cook_preparation
-FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_preparation.cook_id AND c.user_id = auth.uid()));
+FOR INSERT WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.cook_preparation.cook_id));
 
-DROP POLICY IF EXISTS "Users can update own cook preparation" ON public.cook_preparation;
 CREATE POLICY "Users can update own cook preparation" ON public.cook_preparation
-FOR UPDATE USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_preparation.cook_id AND c.user_id = auth.uid()))
-WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_preparation.cook_id AND c.user_id = auth.uid()));
+FOR UPDATE USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.cook_preparation.cook_id))
+WITH CHECK (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.cook_preparation.cook_id));
 
-DROP POLICY IF EXISTS "Users can delete own cook preparation" ON public.cook_preparation;
 CREATE POLICY "Users can delete own cook preparation" ON public.cook_preparation
-FOR DELETE USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = cook_preparation.cook_id AND c.user_id = auth.uid()));
+FOR DELETE USING (EXISTS (SELECT 1 FROM public.cooks c WHERE c.id = public.cook_preparation.cook_id));
