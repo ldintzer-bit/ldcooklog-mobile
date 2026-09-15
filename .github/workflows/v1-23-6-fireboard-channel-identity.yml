@@ -1,10 +1,10 @@
-name: V1.29.0 Pre-Cook Preparation
+name: V1.29.1 Prep Notes Persistence
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-29-0-preparation.py'
+      - 'tools/patch-v1-29-1-prep-notes.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.29.0 pre-cook preparation
-        run: python3 tools/patch-v1-29-0-preparation.py
+      - name: Apply V1.29.1 prep notes persistence fix
+        run: python3 tools/patch-v1-29-1-prep-notes.py
 
-      - name: Commit V1.29.0
+      - name: Commit V1.29.1
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.29.0 add pre-cook preparation"
+          git commit -m "V1.29.1 save prep notes while typing"
           git push
