@@ -1,10 +1,10 @@
-name: V1.29.2 Prep Reset
+name: V1.30.0 Wrap Method
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-29-2-prep-reset.py'
+      - 'tools/patch-v1-30-0-wrap-method.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.29.2 prep reset fix
-        run: python3 tools/patch-v1-29-2-prep-reset.py
+      - name: Apply V1.30.0 wrap method
+        run: python3 tools/patch-v1-30-0-wrap-method.py
 
-      - name: Commit V1.29.2
+      - name: Commit V1.30.0
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.29.2 reset pre-cook preparation"
+          git commit -m "V1.30.0 add wrap method"
           git push
