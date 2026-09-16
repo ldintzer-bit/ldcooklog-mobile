@@ -1,10 +1,10 @@
-name: V1.30.2 Clean Cloud Adoption
+name: V1.30.3 Two-Way Event Sync
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-30-2-clean-cloud-adoption.py'
+      - 'tools/patch-v1-30-3-two-way-event-sync.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.30.2 clean cloud adoption
-        run: python3 tools/patch-v1-30-2-clean-cloud-adoption.py
+      - name: Apply V1.30.3 two-way event sync
+        run: python3 tools/patch-v1-30-3-two-way-event-sync.py
 
-      - name: Commit V1.30.2
+      - name: Commit V1.30.3
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.30.2 fix clean multi-device cloud adoption"
+          git commit -m "V1.30.3 add two-way cloud event sync"
           git push
