@@ -3378,7 +3378,7 @@ Your cook data is unaffected.`, 'bad');
 (() => {
  const BUILD='2026-09-16U'; let busy=false;
  document.title='LDCookLog Mobile V1.30.12';
- const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.12 Stateful BBQ Control Panel';
+ const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.13 Stateful BBQ Control Panel';
  const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.12 removes legacy startup sync races so active-cook discovery runs before any stale-cook conflict check.<br><strong>Build ${BUILD}</strong>`;
  async function req(s,path){let r=await fetch(`${SUPABASE_URL}${path}`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}});if(r.status===401){s=await refreshCloudSession(s);r=await fetch(`${SUPABASE_URL}${path}`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}})}const x=await r.json();if(!r.ok)throw new Error(x.message||x.hint||x.details||'Cloud read failed.');return {rows:Array.isArray(x)?x:[],session:s}}
  function seq(id){const m=String(id||'').match(/^(\d{8})-(\d+)$/);return m?[Number(m[1]),Number(m[2])]:[0,0]}
@@ -3399,6 +3399,30 @@ Your cook data is unaffected.`, 'bad');
     state.cloudSyncMessage=`Startup reconciliation saw: ${seen}. Selected ${state.cookId}; ${parents.length} parent row(s); ${rows.length} unique cloud event(s).`;save();render();renderCloudSyncState();return true;
    }catch(e){state.cloudConflict=false;state.cloudSyncMessage=`Startup reconciliation ERROR: ${e.message}`;save();render();renderCloudSyncState();return false}finally{busy=false}}
  window.reconcileCloudStartupV13012=run;setTimeout(run,500);
+})();
+</script>
+
+
+<script>
+// LDCookLog Mobile V1.30.13 runtime proof
+(() => {
+ const BUILD='2026-09-16V';
+ function proof(text){
+   let el=document.getElementById('runtimeProofV13013');
+   if(!el){el=document.createElement('div');el.id='runtimeProofV13013';el.style.cssText='margin:8px 0;padding:8px;border:2px solid currentColor;border-radius:8px;font-weight:700;white-space:pre-wrap';const footer=document.querySelector('.footer-note');if(footer&&footer.parentNode)footer.parentNode.insertBefore(el,footer);else document.body.appendChild(el)}
+   el.textContent=text;
+ }
+ window.__LDC_RUNTIME_BUILD__=BUILD;
+ proof(`RUNTIME CHECK: Build ${BUILD} JavaScript executed.`);
+ setTimeout(async()=>{
+   try{
+     proof(`RUNTIME CHECK: Build ${BUILD} JavaScript executed.\nStartup reconciliation is running…`);
+     if(typeof window.reconcileCloudStartupV13012!=='function') throw new Error('V1.30.12 reconciliation function is missing');
+     const ok=await window.reconcileCloudStartupV13012();
+     const msg=(state&&state.cloudSyncMessage)?state.cloudSyncMessage:'No Cloud Sync diagnostic was produced.';
+     proof(`RUNTIME CHECK: Build ${BUILD} JavaScript executed.\nStartup reconciliation returned ${String(ok)}.\n${msg}`);
+   }catch(e){proof(`RUNTIME CHECK: Build ${BUILD} JavaScript executed.\nSTARTUP ERROR: ${e&&e.message?e.message:String(e)}`)}
+ },2500);
 })();
 </script>
 
