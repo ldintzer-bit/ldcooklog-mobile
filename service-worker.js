@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ldcooklog-v1-30-6';
+const CACHE_NAME = 'ldcooklog-v1-30-7';
 const APP_SHELL = [
   "./",
   "./index.html",
