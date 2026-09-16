@@ -3246,7 +3246,7 @@ Your cook data is unaffected.`, 'bad');
     // belong to the old cook and must not cross this boundary.
     const setup={
       smoker:state.smoker,
-      target:state.target,
+      target:225,
       pelletFlavor:state.pelletFlavor,
       smokeTube:state.smokeTube,
       superSmoke:state.superSmoke,
@@ -3310,6 +3310,19 @@ Your cook data is unaffected.`, 'bad');
   const footer=document.querySelector('.footer-note');
   if(footer) footer.innerHTML=`V1.30.9.1 corrects the New Cook boundary and isolates it from the destructive Reset Cook control.<br><strong>Build ${BUILD}</strong>`;
   save();render();
+})();
+</script>
+
+
+<script>
+// LDCookLog Mobile V1.30.9.2 New Cook target reset
+(() => {
+  const BUILD="2026-09-16K";
+  document.title='LDCookLog Mobile V1.30.9.2';
+  const headerSub=document.querySelector('header .sub');
+  if(headerSub) headerSub.textContent='V1.30.9.2 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');
+  if(footer) footer.innerHTML=`V1.30.9.2 resets a fresh cook's Initial Target to 225&deg;F instead of carrying forward a temporary Keep Warm target.<br><strong>Build ${BUILD}</strong>`;
 })();
 </script>
 
