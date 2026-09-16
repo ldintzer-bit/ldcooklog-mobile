@@ -25,7 +25,7 @@
 <section class="card"><h2>Current State</h2><div class="statebar"><div class="statepill"><div class="k">Meat</div><div class="v" id="meatState">Off</div></div><div class="statepill"><div class="k">Lid</div><div class="v" id="lidState">Closed</div></div><div class="statepill"><div class="k">Wrap</div><div class="v" id="wrapState">Unwrapped</div></div><div class="statepill"><div class="k">Phase</div><div class="v" id="phaseState">Setup</div></div></div><div class="statepill" style="margin-bottom:10px"><div class="k">Cook ID</div><div class="v" id="cookIdState">Not assigned</div></div><div class="grid3"><div class="metric"><div class="label">Elapsed</div><div class="value" id="elapsed">00:00:00</div><div class="small" id="startText">Not started</div></div><div class="metric"><div class="label">Target</div><div class="value"><span id="targetDisplay">225</span>°</div><div class="small">current pit target</div></div><div class="metric"><div class="label">Events</div><div class="value" id="eventCount">0</div><div class="small">logged</div></div></div><div id="phaseTimerWrap" class="metric hidden" style="margin-top:10px"><div class="label" id="phaseTimerLabel">Hold</div><div class="value" id="phaseTimer">00:00:00</div><div class="small" id="phaseTimerSmall"></div></div></section>
 <section class="card"><h2>Stateful Controls</h2><div class="controls"><button class="good" id="meatToggle">Meat On</button><button class="secondary" id="lidToggle">Lid Open</button><button class="warn" id="wrapToggle">Wrap</button><button class="blue" id="targetChange">Change Target</button><button class="purple" id="holdToggle">Start Keep Warm</button><button class="secondary" id="restToggle">Start Rest</button><button class="secondary" id="serveButton">Serve / Slice / Pull</button><button class="secondary" id="spritzButton">Spritz</button><button class="danger" id="finishButton">Finish Cook</button></div></section>
 <section class="card"><h2>Quick Note</h2><textarea id="noteText" placeholder="Bark looks good, moved meat, pellets topped off, rotated brisket…"></textarea><button class="secondary" id="addNote" style="width:100%;margin-top:8px">Add Note</button></section>
-<section class="card"><h2>Event Log</h2><div class="event-list" id="eventList"></div><div class="toolbar" style="margin-top:12px"><button class="secondary" id="exportCsv">Export CSV</button><button class="secondary" id="copyLog">Copy Log</button><button class="danger" id="resetCook">Reset Cook</button></div></section>
+<section class="card"><h2>Event Log</h2><div class="event-list" id="eventList"></div><div class="toolbar" style="margin-top:12px"><button class="secondary" id="exportCsv">Export CSV</button><button class="secondary" id="copyLog">Copy Log</button><button class="secondary" id="newCookV1309">New Cook</button><button class="danger" id="resetCook">Reset Cook</button></div></section>
 <div class="footer-note">V1.14.0 adds complete cloud event snapshots for lossless recovery while preserving V1.13 active-cook resume, finished-cook restore, local-first operation, and retry-safe sync.<br><strong>Build 2026-09-11H</strong></div>
 </div>
 <script>
@@ -3169,6 +3169,67 @@ Your cook data is unaffected.`, 'bad');
   if(headerSub) headerSub.textContent='V1.30.8 Stateful BBQ Control Panel';
   const footer=document.querySelector('.footer-note');
   if(footer) footer.innerHTML=`V1.30.8 consolidates Rest and Keep Warm into one authoritative handler each, with a 2-second stop guard.<br><strong>Build ${BUILD}</strong>`;
+  save();render();
+})();
+</script>
+
+
+<script>
+// LDCookLog Mobile V1.30.9 New Cook boundary protection
+(() => {
+  const BUILD="2026-09-16I";
+
+  function beginFreshCookV1309(){
+    // A new cook must never inherit the previous cook's identity, events,
+    // Supabase UUID, sync baseline, phase timer, or FireBoard cook boundary.
+    const setup={
+      smoker:state.smoker,
+      cookName:state.cookName,
+      weight:state.weight,
+      target:state.target,
+      pelletFlavor:state.pelletFlavor,
+      smokeTube:state.smokeTube,
+      superSmoke:state.superSmoke,
+      weberFuel:state.weberFuel,
+      woodForm:state.woodForm,
+      woodFlavor:state.woodFlavor
+    };
+    state=defaultState();
+    Object.assign(state,setup);
+    state.cookId=null;
+    state.start=null;
+    state.finishTime=null;
+    state.events=[];
+    state.cloudCookSynced=false;
+    state.cloudCookUuid=null;
+    state.cloudCookStateSynced=false;
+    state.cloudSyncMessage='New cook ready. Cook ID will be assigned when Meat On starts.';
+    state.cloudLastKnownUpdatedAt=null;
+    state.cloudConflict=null;
+    state.fireboardCookStartAt=null;
+    viewedCloudRecovery=null;
+    save();
+    render();
+    if(typeof renderCloudSyncStatus==='function') renderCloudSyncStatus();
+  }
+
+  const newCook=document.getElementById('newCookV1309');
+  if(newCook){
+    newCook.addEventListener('click',()=>{
+      const hasCurrent=!!(state.cookId||state.start||state.events.length);
+      const message=hasCurrent
+        ? 'Start a new cook? The current cook will remain in cloud history, and this device will be separated from it. The new Cook ID is assigned when you tap Meat On.'
+        : 'Prepare a fresh cook? The Cook ID will be assigned when you tap Meat On.';
+      if(!confirm(message)) return;
+      beginFreshCookV1309();
+    });
+  }
+
+  document.title='LDCookLog Mobile V1.30.9';
+  const headerSub=document.querySelector('header .sub');
+  if(headerSub) headerSub.textContent='V1.30.9 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');
+  if(footer) footer.innerHTML=`V1.30.9 adds an explicit New Cook boundary so a fresh cook cannot inherit the previous cook's cloud identity, events, phase timers, or FireBoard boundary.<br><strong>Build ${BUILD}</strong>`;
   save();render();
 })();
 </script>
