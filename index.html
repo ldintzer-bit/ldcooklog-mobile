@@ -97,8 +97,8 @@ $("meatToggle").addEventListener("click",()=>withActionLock("meat",()=>{if(state
 $("lidToggle").addEventListener("click",()=>withActionLock("lid",()=>{if(state.finishTime)return;state.lidOpen=!state.lidOpen;logEvent(state.lidOpen?"Lid Open":"Lid Closed")}));
 $("wrapToggle").addEventListener("click",()=>withActionLock("wrap",()=>{if(state.finishTime)return;if(!state.wrapped){const answer=prompt("Wrap method: Foil, Butcher Paper, Foil Boat, or Other:",state.wrapMethod||"Foil");if(answer===null)return;const raw=answer.trim();if(!raw)return;const canonical={"foil":"Foil","butcher paper":"Butcher Paper","foil boat":"Foil Boat","other":"Other"}[raw.toLowerCase()];if(!canonical){alert("Please enter Foil, Butcher Paper, Foil Boat, or Other.");return;}state.wrapMethod=canonical;state.wrapped=true;logEvent("Wrapped",`Wrap method: ${canonical}`);}else{state.wrapped=false;logEvent("Unwrapped",state.wrapMethod?`Previous wrap method: ${state.wrapMethod}`:"");}}));
 $("targetChange").addEventListener("click",()=>withActionLock("target",()=>{if(state.finishTime)return;const val=prompt("New pit target °F:",String(state.target||""));if(val===null)return;const n=Number(val);if(!n)return;state.target=n;$("target").value=n;logEvent("Target Change",`Target changed to ${n}°F`)}));
-$("holdToggle").addEventListener("click",()=>withActionLock("hold",()=>{if(state.finishTime)return;if(state.phase!=="Keep Warm"){const previousTarget=state.target,n=165;state.phase="Keep Warm";state.phaseStart=new Date().toISOString();state.phaseTarget=n;state.target=n;$("target").value=n;save();render();logEvent("Keep Warm Start",`Target changed from ${previousTarget}°F to 165°F; hold timer started`)}else{const duration=durString(state.phaseStart);logEvent("Keep Warm End",`Hold duration ${duration}`);state.phase="Post Hold";state.phaseStart=null;state.phaseTarget=null;markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents()}}));
-$("restToggle").addEventListener("click",()=>withActionLock("rest",()=>{if(state.finishTime)return;if(state.phase!=="Rest"){state.phase="Rest";state.phaseStart=new Date().toISOString();state.phaseTarget=null;save();render();logEvent("Rest Start","Rest timer started")}else{const duration=durString(state.phaseStart);logEvent("Rest End",`Rest duration ${duration}`);state.phase="Post Rest";state.phaseStart=null;state.phaseTarget=null;markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents()}}));
+$("holdToggle").addEventListener("click",()=>withActionLock("hold",()=>{if(state.finishTime)return;if(state.phase!=="Keep Warm"){const previousTarget=state.target,n=165;state.phase="Keep Warm";state.phaseStart=new Date().toISOString();state.phaseTarget=n;state.target=n;$("target").value=n;save();render();logEvent("Keep Warm Start",`Target changed from ${previousTarget}°F to 165°F; hold timer started`)}else{if(state.phaseStart&&Date.now()-new Date(state.phaseStart).getTime()<2000)return;const duration=durString(state.phaseStart);logEvent("Keep Warm End",`Hold duration ${duration}`);state.phase="Post Hold";state.phaseStart=null;state.phaseTarget=null;markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents()}},2000));
+$("restToggle").addEventListener("click",()=>withActionLock("rest",()=>{if(state.finishTime)return;if(state.phase!=="Rest"){state.phase="Rest";state.phaseStart=new Date().toISOString();state.phaseTarget=null;save();render();logEvent("Rest Start","Rest timer started")}else{if(state.phaseStart&&Date.now()-new Date(state.phaseStart).getTime()<2000)return;const duration=durString(state.phaseStart);logEvent("Rest End",`Rest duration ${duration}`);state.phase="Post Rest";state.phaseStart=null;state.phaseTarget=null;markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents()}},2000));
 $("serveButton").addEventListener("click",()=>withActionLock("serve",()=>{if(!state.finishTime){state.phase="Serve";logEvent("Serve / Slice / Pull")}}));$("spritzButton").addEventListener("click",()=>withActionLock("spritz",()=>{if(!state.finishTime)logEvent("Spritz")},500));$("addNote").addEventListener("click",()=>withActionLock("note",()=>{const txt=$("noteText").value.trim();if(!txt)return;logEvent("Note",txt);$("noteText").value=""},500));
 $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(state.finishTime)return;if(!state.start){alert("Start the cook with Meat On before finishing it.");return}if(!ensureCookId())return;if(!confirm("Finish this cook? The main cook timer will stop and the cook will be marked Finished."))return;const now=new Date();state.finishTime=now.toISOString();state.meatOn=false;state.phase="Finished";state.phaseStart=null;state.phaseTarget=null;state.events.push(makeEvent("Cook Finished",`Total cook time ${durString(state.start,state.finishTime)}`,state.finishTime));markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents()}));
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
@@ -3097,24 +3097,7 @@ Your cook data is unaffected.`, 'bad');
 (() => {
   const BUILD="2026-09-16E";
 
-  // Ignore an immediate second tap on phase toggles. A later deliberate tap
-  // still ends the phase normally.
-  const lastPhaseTapV1305={rest:0,hold:0};
-  function protectDoubleTapV1305(id,key){
-    const el=document.getElementById(id);
-    if(!el) return;
-    el.addEventListener('click',ev=>{
-      const now=Date.now();
-      if(now-lastPhaseTapV1305[key]<1000){
-        ev.preventDefault();
-        ev.stopImmediatePropagation();
-        return;
-      }
-      lastPhaseTapV1305[key]=now;
-    },true);
-  }
-  protectDoubleTapV1305('restToggle','rest');
-  protectDoubleTapV1305('holdToggle','hold');
+  // V1.30.8: obsolete phase double-tap gate removed; Wrap Method UI retained.
 
   // Replace typed wrap-choice validation with large tap targets. "Other"
   // intentionally opens a text field so uncommon methods remain recordable.
@@ -3173,132 +3156,19 @@ Your cook data is unaffected.`, 'bad');
 </script>
 
 
-<script>
-// LDCookLog Mobile V1.30.6 double-tap fix
-(() => {
-  const BUILD="2026-09-16F";
 
-  // V1.30.5 installed its capture listener after the original bubble listener
-  // had already been registered. stopImmediatePropagation in capture therefore
-  // could also prevent the first tap from reaching the original handler.
-  // V1.30.6 instead installs a small capture-phase gate that lets the first tap
-  // pass through normally and suppresses only a second tap inside 1000 ms.
-  const phaseTapTimesV1306=new WeakMap();
-  function installPhaseTapGateV1306(id){
-    const el=document.getElementById(id);
-    if(!el) return;
-    el.addEventListener('click',function(ev){
-      const now=Date.now();
-      const previous=phaseTapTimesV1306.get(el)||0;
-      if(previous && now-previous<1000){
-        ev.preventDefault();
-        ev.stopImmediatePropagation();
-        return;
-      }
-      phaseTapTimesV1306.set(el,now);
-    },true);
-  }
 
-  // Neutralize the V1.30.5 gate by replacing the two buttons with clones.
-  // Cloning removes all old listeners on those elements; then reattach the
-  // original phase behavior explicitly and put the corrected gate in front.
-  function replacePhaseButtonV1306(id,handler){
-    const old=document.getElementById(id);
-    if(!old) return;
-    const fresh=old.cloneNode(true);
-    old.replaceWith(fresh);
-    fresh.addEventListener('click',handler);
-    installPhaseTapGateV1306(id);
-  }
-
-  replacePhaseButtonV1306('restToggle',()=>withActionLock('rest',()=>{
-    if(state.finishTime)return;
-    if(state.phase==='Rest'){
-      state.phase='Cooking';state.phaseStart=null;state.phaseTarget=null;logEvent('Rest End');
-    }else{
-      state.phase='Rest';state.phaseStart=new Date().toISOString();state.phaseTarget=null;logEvent('Rest Start');
-    }
-  }));
-
-  replacePhaseButtonV1306('holdToggle',()=>withActionLock('hold',()=>{
-    if(state.finishTime)return;
-    if(state.phase==='Keep Warm'){
-      state.phase='Cooking';state.phaseStart=null;state.phaseTarget=null;logEvent('Keep Warm End');
-    }else{
-      state.phase='Keep Warm';state.phaseStart=new Date().toISOString();state.phaseTarget=165;logEvent('Keep Warm Start','165°F');
-    }
-  }));
-
-  document.title='LDCookLog Mobile V1.30.6';
-  const headerSub=document.querySelector('header .sub');
-  if(headerSub) headerSub.textContent='V1.30.6 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');
-  if(footer) footer.innerHTML=`V1.30.6 corrects Rest and Keep Warm double-tap protection while retaining V1.30.5 Wrap Method buttons.<br><strong>Build ${BUILD}</strong>`;
-  save();render();
-})();
-</script>
 
 
 <script>
-// LDCookLog Mobile V1.30.7 phase stop guard
+// LDCookLog Mobile V1.30.8 consolidated phase controls
 (() => {
-  const BUILD="2026-09-16G";
-  const MIN_PHASE_RUN_MS=2000;
-
-  // V1.30.7 protects the phase transition itself rather than trying to
-  // distinguish browser click events. A newly started Rest or Keep Warm phase
-  // cannot be ended during its first two seconds. This makes an accidental
-  // double-tap harmless even if iOS delivers the taps through different event
-  // paths or with delayed click timing.
-  function phaseJustStartedV1307(){
-    if(!state.phaseStart) return false;
-    const started=new Date(state.phaseStart).getTime();
-    return Number.isFinite(started) && Date.now()-started<MIN_PHASE_RUN_MS;
-  }
-
-  function replacePhaseButtonV1307(id,handler){
-    const old=document.getElementById(id);
-    if(!old) return;
-    const fresh=old.cloneNode(true);
-    old.replaceWith(fresh);
-    fresh.addEventListener('click',handler);
-  }
-
-  replacePhaseButtonV1307('restToggle',()=>withActionLock('rest-v1307',()=>{
-    if(state.finishTime)return;
-    if(state.phase==='Rest'){
-      if(phaseJustStartedV1307())return;
-      const duration=durString(state.phaseStart);
-      logEvent('Rest End',`Rest duration ${duration}`);
-      state.phase='Post Rest';state.phaseStart=null;state.phaseTarget=null;
-      markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents();
-    }else{
-      state.phase='Rest';state.phaseStart=new Date().toISOString();state.phaseTarget=null;
-      save();render();logEvent('Rest Start','Rest timer started');
-    }
-  },2000));
-
-  replacePhaseButtonV1307('holdToggle',()=>withActionLock('hold-v1307',()=>{
-    if(state.finishTime)return;
-    if(state.phase==='Keep Warm'){
-      if(phaseJustStartedV1307())return;
-      const duration=durString(state.phaseStart);
-      logEvent('Keep Warm End',`Hold duration ${duration}`);
-      state.phase='Post Hold';state.phaseStart=null;state.phaseTarget=null;
-      markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents();
-    }else{
-      const previousTarget=state.target,n=165;
-      state.phase='Keep Warm';state.phaseStart=new Date().toISOString();state.phaseTarget=n;state.target=n;
-      $('target').value=n;save();render();
-      logEvent('Keep Warm Start',`Target changed from ${previousTarget}°F to 165°F; hold timer started`);
-    }
-  },2000));
-
-  document.title='LDCookLog Mobile V1.30.7';
+  const BUILD="2026-09-16H";
+  document.title='LDCookLog Mobile V1.30.8';
   const headerSub=document.querySelector('header .sub');
-  if(headerSub) headerSub.textContent='V1.30.7 Stateful BBQ Control Panel';
+  if(headerSub) headerSub.textContent='V1.30.8 Stateful BBQ Control Panel';
   const footer=document.querySelector('.footer-note');
-  if(footer) footer.innerHTML=`V1.30.7 protects Rest and Keep Warm phase transitions from accidental immediate stop taps.<br><strong>Build ${BUILD}</strong>`;
+  if(footer) footer.innerHTML=`V1.30.8 consolidates Rest and Keep Warm into one authoritative handler each, with a 2-second stop guard.<br><strong>Build ${BUILD}</strong>`;
   save();render();
 })();
 </script>
