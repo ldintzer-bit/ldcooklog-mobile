@@ -3349,186 +3349,51 @@ Your cook data is unaffected.`, 'bad');
 </script>
 
 
-<script>
-// LDCookLog Mobile V1.30.9.4 newer cloud cook adoption
-(() => {
-  const BUILD='2026-09-16M';
-  document.title='LDCookLog Mobile V1.30.9.4';
-  const headerSub=document.querySelector('header .sub');
-  if(headerSub) headerSub.textContent='V1.30.9.4 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');
-  if(footer) footer.innerHTML=`V1.30.9.4 adds protection for a clean device left on an older Cook ID when a newer active cook exists in cloud history.<br><strong>Build ${BUILD}</strong>`;
 
-  function cookSeq(id){
-    const m=String(id||'').match(/^(\d{8})-(\d+)$/);
-    return m ? [Number(m[1]),Number(m[2])] : null;
-  }
-  function isNewerCookId(a,b){
-    const A=cookSeq(a), B=cookSeq(b);
-    if(!A||!B) return false;
-    return A[0]>B[0] || (A[0]===B[0] && A[1]>B[1]);
-  }
-  function localIsClean(){
-    if(!state || !state.cookId) return true;
-    if(state.cloudCookStateSynced===false) return false;
-    return !(state.events||[]).some(e=>e && e.cloudSynced===false);
-  }
-  async function adoptNewerActiveCloudCookV13094(){
-    try{
-      if(!cloudSession || !cloudSession.access_token || !state || !state.cookId || !localIsClean()) return false;
-      const rows=await supabaseRequest('/rest/v1/cooks?select=*&order=started_at.desc&limit=20','GET',null,true);
-      if(!Array.isArray(rows)) return false;
-      const newer=rows.find(r=>r && r.cook_id && !r.finished_at && isNewerCookId(r.cook_id,state.cookId));
-      if(!newer) return false;
-      viewedCloudRecovery=newer;
-      if(typeof applyCloudRecovery==='function'){
-        await applyCloudRecovery(newer);
-        state.cloudConflict=null;
-        state.cloudSyncMessage=`Adopted newer active cloud cook ${newer.cook_id}.`;
-        save(); render();
-        if(typeof mergeCloudEventsForCurrentCookV1303==='function') await mergeCloudEventsForCurrentCookV1303();
-        return true;
-      }
-    }catch(err){ console.warn('V1.30.9.4 newer-cook check:',err); }
-    return false;
-  }
-  window.adoptNewerActiveCloudCookV13094=adoptNewerActiveCloudCookV13094;
-  setTimeout(()=>adoptNewerActiveCloudCookV13094(),2200);
-})();
-</script>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 <script>
-// LDCookLog Mobile V1.30.9.5 active cook selection
+// LDCookLog Mobile V1.30.9.9 consolidated startup sync
 (() => {
- const BUILD='2026-09-16N';
- document.title='LDCookLog Mobile V1.30.9.5';
- const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.9.5 Stateful BBQ Control Panel';
- const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.9.5 selects the newest unfinished cloud cook by actual start time and restores it through the full recovery path.<br><strong>Build ${BUILD}</strong>`;
+ const BUILD='2026-09-16R'; let busy=false;
+ document.title='LDCookLog Mobile V1.30.9.9';
+ const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.9.9 Stateful BBQ Control Panel';
+ const f=document.querySelector('.footer-note');if(f)f.innerHTML=`V1.30.9.9 replaces the competing V1.30.9.4–.8 startup timers with one authoritative cloud startup reconciliation.<br><strong>Build ${BUILD}</strong>`;
  function clean(){return state&&state.cloudCookStateSynced!==false&&!(state.events||[]).some(e=>e&&e.cloudSynced===false)}
+ async function req(s,path){let r=await fetch(`${SUPABASE_URL}${path}`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}});if(r.status===401){s=await refreshCloudSession(s);r=await fetch(`${SUPABASE_URL}${path}`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}})}const x=await r.json();if(!r.ok)throw new Error(x.message||x.hint||x.details||'Cloud read failed.');return {rows:Array.isArray(x)?x:[],session:s}}
  async function run(){
+  if(busy||!state||state.cloudConflict||!clean())return false;let s=loadCloudSession();if(!s||!s.access_token)return false;busy=true;
   try{
-   let s=loadCloudSession(); if(!s||!s.access_token||!state||!state.cookId||!clean())return false;
-   let r=await fetch(`${SUPABASE_URL}/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&finish_time=is.null&order=start_time.desc&limit=10`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}});
-   if(r.status===401){s=await refreshCloudSession(s);r=await fetch(`${SUPABASE_URL}/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&finish_time=is.null&order=start_time.desc&limit=10`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}})}
-   const rows=await r.json(); if(!r.ok||!Array.isArray(rows)||!rows.length)return false;
-   const newest=rows.find(x=>x&&x.id&&x.cook_id&&x.start_time&&x.phase!=='Finished');
-   if(!newest||newest.cook_id===state.cookId)return false;
-   const localStart=state.start?Date.parse(state.start):0, cloudStart=Date.parse(newest.start_time)||0;
-   if(cloudStart<=localStart)return false;
-   let recovery=await fetchCloudCookRecovery(s.access_token,newest.id);
-   if(typeof applyCloudRecovery!=='function')return false;
-   applyCloudRecovery(recovery);
-   state.cloudSyncMessage=`Adopted newest active cloud cook ${state.cookId}.`;
-   state.cloudConflict=false; save(); render();
-   if(typeof mergeCloudEventsForCurrentCookV1303==='function')await mergeCloudEventsForCurrentCookV1303();
-   return true;
-  }catch(e){console.warn('V1.30.9.5 active-cook selection:',e);return false}
- }
- window.adoptNewestActiveCloudCookV13095=run;
- setTimeout(run,2600);
-})();
-</script>
-
-
-<script>
-// LDCookLog Mobile V1.30.9.6 event down-sync
-(() => {
- const BUILD='2026-09-16O';
- document.title='LDCookLog Mobile V1.30.9.6';
- const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.9.6 Stateful BBQ Control Panel';
- const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.9.6 makes cloud-event down-sync callable after active-cook adoption and on startup, so every device converges to the complete cloud event history.<br><strong>Build ${BUILD}</strong>`;
- let busy=false;
- async function pull(){
-  if(busy||!state||state.cloudConflict||!state.start||!state.cookId||!state.cloudCookUuid)return false;
-  let s=loadCloudSession(); if(!s||!s.access_token)return false; busy=true;
-  try{
-   async function get(){const r=await fetch(`${SUPABASE_URL}/rest/v1/events?select=id,event_type,event_time,note,target_temp,phase,smoker,setup_context&cook_id=eq.${encodeURIComponent(state.cloudCookUuid)}&order=event_time.asc`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}});if(r.status===401)throw Object.assign(new Error('Session expired.'),{code:401});const x=await r.json();if(!r.ok)throw new Error(x.message||x.hint||x.details||'Cloud events could not be read.');return x}
-   let rows; try{rows=await get()}catch(e){if(e.code!==401)throw e;s=await refreshCloudSession(s);rows=await get()}
-   const local=Array.isArray(state.events)?state.events:[]; const ids=new Map();
-   for(const e of local){ensureEventId(e);ids.set(e.eventId,e)}
-   let added=0;
-   for(const e of rows){if(ids.has(e.id)){ids.get(e.id).cloudSynced=true;continue}const x={eventId:e.id,cloudSynced:true,cookId:state.cookId,ts:e.event_time,type:e.event_type,note:e.note||'',target:e.target_temp==null?'':e.target_temp,phase:e.phase||state.phase,smoker:e.smoker||state.smoker,cookName:state.cookName||'Cook',weight:state.weight||'',setup:e.setup_context||'Recovered from Supabase'};local.push(x);ids.set(x.eventId,x);added++}
-   local.sort((a,b)=>String(a.ts||'').localeCompare(String(b.ts||''))); state.events=local;
-   if(added){const r=reconstructEventStates(local.map(e=>({event_type:e.type,event_time:e.ts,note:e.note||''})));state.lidOpen=r.lidOpen;state.wrapped=r.wrapped;state.meatOn=state.finishTime?false:r.meatOn;if(r.wrapMethod)state.wrapMethod=r.wrapMethod}
-   state.cloudSyncMessage='';save();render();renderCloudSyncState();return true;
-  }catch(e){state.cloudSyncMessage=`Cloud event download warning: ${e.message}\nLocal events are safe and can be retried.`;save();renderCloudSyncState();return false}finally{busy=false}
- }
- window.mergeCloudEventsForCurrentCookV1303=pull;
- window.pullCompleteCloudEventsV13096=pull;
- const prior=window.adoptNewestActiveCloudCookV13095;
- if(typeof prior==='function')window.adoptNewestActiveCloudCookV13095=async function(){const adopted=await prior.apply(this,arguments);await pull();return adopted};
- setTimeout(pull,4200);
-})();
-</script>
-
-
-<script>
-// LDCookLog Mobile V1.30.9.7 resolve cloud UUID
-(() => {
- const BUILD='2026-09-16P';
- document.title='LDCookLog Mobile V1.30.9.7';
- const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.9.7 Stateful BBQ Control Panel';
- const f=document.querySelector('.footer-note');if(f)f.innerHTML=`V1.30.9.7 resolves the current Cook ID to its authoritative Supabase cook UUID before event recovery, preventing a stale UUID from pulling the wrong event history.<br><strong>Build ${BUILD}</strong>`;
- let busy=false;
- async function run(){
-  if(busy||!state||state.cloudConflict||!state.cookId)return false;
-  let s=loadCloudSession();if(!s||!s.access_token)return false;busy=true;
-  try{
-   async function resolve(){const r=await fetch(`${SUPABASE_URL}/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&cook_id=eq.${encodeURIComponent(state.cookId)}&order=updated_at.desc&limit=1`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}});if(r.status===401)throw Object.assign(new Error('Session expired.'),{code:401});const x=await r.json();if(!r.ok)throw new Error(x.message||x.hint||x.details||'Cloud cook could not be resolved.');return Array.isArray(x)&&x.length?x[0]:null}
-   let cook;try{cook=await resolve()}catch(e){if(e.code!==401)throw e;s=await refreshCloudSession(s);cook=await resolve()}
-   if(!cook||!cook.id)return false;
-   // Cook ID is the human identity; always repair the backing UUID from Supabase.
-   state.cloudCookUuid=cook.id;state.cloudCookSynced=true;state.cloudCookStateSynced=true;state.cloudLastSeenUpdatedAt=cook.updated_at||state.cloudLastSeenUpdatedAt;state.cloudConflict=false;save();
-   // Fetch the complete recovery using the authoritative UUID, then merge only cloud events
-   // into the current local cook so local-only unsynced events remain protected.
-   let recovery=await fetchCloudCookRecovery(s.access_token,cook.id);
-   const rows=recovery&&Array.isArray(recovery.events)?recovery.events:[];
-   const local=Array.isArray(state.events)?state.events:[];const ids=new Map();
-   for(const e of local){ensureEventId(e);ids.set(e.eventId,e)}
-   let added=0;
-   for(const e of rows){const id=e.id;if(!id)continue;if(ids.has(id)){ids.get(id).cloudSynced=true;continue}const x={eventId:id,cloudSynced:true,cookId:state.cookId,ts:e.event_time,type:e.event_type,note:e.note||'',target:e.target_temp==null?'':e.target_temp,phase:e.phase||state.phase,smoker:e.smoker||state.smoker,cookName:state.cookName||'Cook',weight:state.weight||'',setup:e.setup_context||'Recovered from Supabase'};local.push(x);ids.set(id,x);added++}
-   local.sort((a,b)=>String(a.ts||'').localeCompare(String(b.ts||'')));state.events=local;
-   if(added){const r=reconstructEventStates(local.map(e=>({event_type:e.type,event_time:e.ts,note:e.note||''})));state.lidOpen=r.lidOpen;state.wrapped=r.wrapped;state.meatOn=state.finishTime?false:r.meatOn;if(r.wrapMethod)state.wrapMethod=r.wrapMethod}
-   state.cloudSyncMessage='';save();render();renderCloudSyncState();return true;
-  }catch(e){state.cloudSyncMessage=`Cloud identity/event recovery warning: ${e.message}\nLocal events are safe and can be retried.`;save();renderCloudSyncState();return false}finally{busy=false}
- }
- window.resolveCurrentCookCloudUuidV13097=run;
- setTimeout(run,5000);
-})();
-</script>
-
-
-<script>
-// LDCookLog Mobile V1.30.9.8 Cook ID event recovery
-(() => {
- const BUILD='2026-09-16Q';
- document.title='LDCookLog Mobile V1.30.9.8';
- const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.9.8 Stateful BBQ Control Panel';
- const f=document.querySelector('.footer-note');if(f)f.innerHTML=`V1.30.9.8 traces cloud event membership by Cook ID: it resolves every Supabase cook row for the current Cook ID and merges events from all matching UUIDs, preventing split/duplicate parent rows from hiding part of a cook history.<br><strong>Build ${BUILD}</strong>`;
- let busy=false;
- async function run(){
-  if(busy||!state||state.cloudConflict||!state.cookId)return false;
-  let s=loadCloudSession();if(!s||!s.access_token)return false;busy=true;
-  try{
-   async function req(path){let r=await fetch(`${SUPABASE_URL}${path}`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}});if(r.status===401){s=await refreshCloudSession(s);r=await fetch(`${SUPABASE_URL}${path}`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${s.access_token}`,Accept:'application/json'}})}const x=await r.json();if(!r.ok)throw new Error(x.message||x.hint||x.details||'Cloud read failed.');return Array.isArray(x)?x:[]}
-   const cooks=await req(`/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&cook_id=eq.${encodeURIComponent(state.cookId)}&order=start_time.asc`);
-   if(!cooks.length)return false;
-   // The newest matching parent remains the canonical UUID, but event recovery
-   // reads every matching UUID because earlier code could create duplicate rows.
-   const canonical=cooks.slice().sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')))[0];
-   state.cloudCookUuid=canonical.id;state.cloudCookSynced=true;state.cloudCookStateSynced=true;state.cloudLastSeenUpdatedAt=canonical.updated_at||state.cloudLastSeenUpdatedAt;
-   let rows=[];
-   for(const c of cooks){const ev=await req(`/rest/v1/events?select=id,event_type,event_time,note,target_temp,phase,smoker,setup_context,cook_id&cook_id=eq.${encodeURIComponent(c.id)}&order=event_time.asc`);rows.push(...ev)}
+   // One decision only: newest unfinished cloud cook by real start_time.
+   let q=await req(s,'/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&finish_time=is.null&order=start_time.desc&limit=20');s=q.session;
+   const newest=q.rows.find(c=>c&&c.id&&c.cook_id&&c.start_time&&c.phase!=='Finished');if(!newest)return false;
+   const localStart=state.start?(Number.isFinite(Number(state.start))?Number(state.start):Date.parse(String(state.start))):0;
+   const cloudStart=Date.parse(newest.start_time)||0;
+   if(!state.cookId||newest.cook_id!==state.cookId){if(state.cookId&&cloudStart<=localStart)return false;const recovery=await fetchCloudCookRecovery(s.access_token,newest.id);applyCloudRecovery(recovery);state.cloudConflict=false;save();render()}
+   // Resolve every parent row for the selected human Cook ID and merge all events.
+   q=await req(s,`/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&cook_id=eq.${encodeURIComponent(state.cookId)}&order=start_time.asc`);s=q.session;const parents=q.rows;if(!parents.length)return false;
+   const canonical=parents.slice().sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')))[0];state.cloudCookUuid=canonical.id;state.cloudCookSynced=true;state.cloudCookStateSynced=true;state.cloudLastSeenUpdatedAt=canonical.updated_at||state.cloudLastSeenUpdatedAt;
+   let rows=[];for(const p of parents){q=await req(s,`/rest/v1/events?select=id,event_type,event_time,note,target_temp,phase,smoker,setup_context&cook_id=eq.${encodeURIComponent(p.id)}&order=event_time.asc`);s=q.session;rows.push(...q.rows)}
    const unique=new Map();for(const e of rows)if(e&&e.id)unique.set(e.id,e);rows=[...unique.values()].sort((a,b)=>String(a.event_time||'').localeCompare(String(b.event_time||'')));
-   const local=Array.isArray(state.events)?state.events:[];const ids=new Map();for(const e of local){ensureEventId(e);ids.set(e.eventId,e)}
-   let added=0;for(const e of rows){if(ids.has(e.id)){ids.get(e.id).cloudSynced=true;continue}const x={eventId:e.id,cloudSynced:true,cookId:state.cookId,ts:e.event_time,type:e.event_type,note:e.note||'',target:e.target_temp==null?'':e.target_temp,phase:e.phase||state.phase,smoker:e.smoker||state.smoker,cookName:state.cookName||'Cook',weight:state.weight||'',setup:e.setup_context||'Recovered from Supabase'};local.push(x);ids.set(x.eventId,x);added++}
-   local.sort((a,b)=>String(a.ts||'').localeCompare(String(b.ts||'')));state.events=local;
-   if(added){const r=reconstructEventStates(local.map(e=>({event_type:e.type,event_time:e.ts,note:e.note||''})));state.lidOpen=r.lidOpen;state.wrapped=r.wrapped;state.meatOn=state.finishTime?false:r.meatOn;if(r.wrapMethod)state.wrapMethod=r.wrapMethod}
-   state.cloudSyncMessage=`Cloud recovery checked ${cooks.length} parent row${cooks.length===1?'':'s'} for ${state.cookId} and found ${rows.length} unique cloud event${rows.length===1?'':'s'}.`;save();render();renderCloudSyncState();return true;
-  }catch(e){state.cloudSyncMessage=`Cloud Cook-ID recovery warning: ${e.message}\nLocal events are safe and can be retried.`;save();renderCloudSyncState();return false}finally{busy=false}
+   const local=Array.isArray(state.events)?state.events:[];const ids=new Map();for(const e of local){ensureEventId(e);ids.set(e.eventId,e)}let added=0;
+   for(const e of rows){if(ids.has(e.id)){ids.get(e.id).cloudSynced=true;continue}const x={eventId:e.id,cloudSynced:true,cookId:state.cookId,ts:e.event_time,type:e.event_type,note:e.note||'',target:e.target_temp==null?'':e.target_temp,phase:e.phase||state.phase,smoker:e.smoker||state.smoker,cookName:state.cookName||'Cook',weight:state.weight||'',setup:e.setup_context||'Recovered from Supabase'};local.push(x);ids.set(x.eventId,x);added++}
+   local.sort((a,b)=>String(a.ts||'').localeCompare(String(b.ts||'')));state.events=local;if(added){const r=reconstructEventStates(local.map(e=>({event_type:e.type,event_time:e.ts,note:e.note||''})));state.lidOpen=r.lidOpen;state.wrapped=r.wrapped;state.meatOn=state.finishTime?false:r.meatOn;if(r.wrapMethod)state.wrapMethod=r.wrapMethod}
+   state.cloudSyncMessage=`Startup sync: ${state.cookId}; ${parents.length} cloud parent row${parents.length===1?'':'s'}; ${rows.length} unique cloud event${rows.length===1?'':'s'}.`;save();render();renderCloudSyncState();return true;
+  }catch(e){state.cloudSyncMessage=`Startup cloud sync warning: ${e.message}\nLocal events are safe.`;save();renderCloudSyncState();return false}finally{busy=false}
  }
- window.recoverEventsByCookIdV13098=run;setTimeout(run,6000);
+ window.reconcileCloudStartupV13099=run;setTimeout(run,3000);
 })();
 </script>
 
