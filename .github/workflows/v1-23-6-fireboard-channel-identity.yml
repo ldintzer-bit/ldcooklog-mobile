@@ -1,10 +1,10 @@
-name: V1.30.9.2 New Cook Target Reset
+name: V1.30.9.3 Fresh Cook Target UI Reset
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-30-9-2-new-cook-target.py'
+      - 'tools/patch-v1-30-9-3-new-cook-target-ui.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.30.9.2 New Cook target reset
-        run: python3 tools/patch-v1-30-9-2-new-cook-target.py
+      - name: Apply V1.30.9.3 fresh cook target UI reset
+        run: python3 tools/patch-v1-30-9-3-new-cook-target-ui.py
 
-      - name: Commit V1.30.9.2
+      - name: Commit V1.30.9.3
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.30.9.2 reset fresh cook target to 225F"
+          git commit -m "V1.30.9.3 make fresh cook target 225F authoritative"
           git push
