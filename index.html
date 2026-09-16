@@ -3278,8 +3278,17 @@ Your cook data is unaffected.`, 'bad');
     state.cloudConflict=null;
     state.fireboardCookStartAt=null;
     viewedCloudRecovery=null;
+    state.target=225;
     save();
     render();
+    const targetInput=document.getElementById('target');
+    if(targetInput) targetInput.value='225';
+    const targetDisplay=document.getElementById('targetDisplay');
+    if(targetDisplay) targetDisplay.textContent='225';
+    // Persist once more after the UI has been normalized so a stale setup
+    // control cannot become the source of truth on the next interaction.
+    state.target=225;
+    save();
     if(typeof renderCloudSyncStatus==='function') renderCloudSyncStatus();
   }
 
@@ -3323,6 +3332,19 @@ Your cook data is unaffected.`, 'bad');
   if(headerSub) headerSub.textContent='V1.30.9.2 Stateful BBQ Control Panel';
   const footer=document.querySelector('.footer-note');
   if(footer) footer.innerHTML=`V1.30.9.2 resets a fresh cook's Initial Target to 225&deg;F instead of carrying forward a temporary Keep Warm target.<br><strong>Build ${BUILD}</strong>`;
+})();
+</script>
+
+
+<script>
+// LDCookLog Mobile V1.30.9.3 fresh cook target UI reset
+(() => {
+  const BUILD="2026-09-16L";
+  document.title='LDCookLog Mobile V1.30.9.3';
+  const headerSub=document.querySelector('header .sub');
+  if(headerSub) headerSub.textContent='V1.30.9.3 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');
+  if(footer) footer.innerHTML=`V1.30.9.3 makes the New Cook 225&deg;F Initial Target authoritative in both saved state and the Cook Setup control.<br><strong>Build ${BUILD}</strong>`;
 })();
 </script>
 
