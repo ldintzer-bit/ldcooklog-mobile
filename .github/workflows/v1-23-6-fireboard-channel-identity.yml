@@ -1,10 +1,10 @@
-name: V1.30.6 Double-Tap Fix
+name: V1.30.7 Phase Stop Guard
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-30-6-double-tap-fix.py'
+      - 'tools/patch-v1-30-7-phase-stop-guard.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -19,14 +19,14 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Apply V1.30.6 double-tap fix
-        run: python3 tools/patch-v1-30-6-double-tap-fix.py
+      - name: Apply V1.30.7 phase stop guard
+        run: python3 tools/patch-v1-30-7-phase-stop-guard.py
 
-      - name: Commit V1.30.6
+      - name: Commit V1.30.7
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.30.6 correct Rest and Keep Warm double-tap protection"
+          git commit -m "V1.30.7 protect Rest and Keep Warm from immediate stop taps"
           git push
