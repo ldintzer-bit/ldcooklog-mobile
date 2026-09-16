@@ -3390,7 +3390,7 @@ Your cook data is unaffected.`, 'bad');
     const candidates=q.rows.filter(c=>c&&c.id&&c.cook_id&&c.start_time).sort(cmp);const newest=candidates[0];const seen=candidates.slice(0,5).map(c=>`${c.cook_id} [${c.phase||'—'}, ${c.finish_time?'finished':'open'}]`).join(' | ');
     if(!newest){state.cloudConflict=false;state.cloudSyncMessage='Startup reconciliation reached Supabase but found no cook rows with Cook ID + start time.';save();renderCloudSyncState();return false}
     const A=seq(state.cookId),B=seq(newest.cook_id);const newerId=B[0]>A[0]||(B[0]===A[0]&&B[1]>A[1]);const localStart=state.start?Date.parse(String(state.start)):0,cloudStart=Date.parse(newest.start_time)||0;
-    if(!state.cookId||newest.cook_id!==state.cookId){if(state.cookId&&!newerId&&cloudStart<=localStart){state.cloudConflict=false;state.cloudSyncMessage=`Startup reconciliation saw ${seen}; retained ${state.cookId}.`;save();renderCloudSyncState();return false}const recovery=await fetchCloudCookRecovery(s.access_token,newest.id);applyCloudRecovery(recovery)}
+    if(!state.cookId||newest.cook_id!==state.cookId){if(state.cookId&&!newerId&&cloudStart<=localStart){state.cloudConflict=false;state.cloudSyncMessage=`Startup reconciliation saw ${seen}; retained ${state.cookId}.`;save();renderCloudSyncState();return false}const recovery=await fetchCloudCookRecovery(s.access_token,newest.id);const c=recovery&&recovery.cook;if(!c)throw new Error('Cloud recovery returned no cook');const keep=defaultState();state=Object.assign(keep,{cookId:c.cook_id||null,cookName:c.food||'',weight:c.weight_value==null?'':String(c.weight_value),target:c.target_temp==null?225:Number(c.target_temp),start:c.start_time||null,finishTime:c.finish_time||null,phase:c.phase||'Cooking',phaseStart:null,phaseTarget:null,events:[],cloudCookSynced:true,cloudCookUuid:c.id,cloudCookStateSynced:true,cloudLastSeenUpdatedAt:c.updated_at||null,cloudConflict:false,cloudSyncMessage:''});const recoveredEvents=Array.isArray(recovery.events)?recovery.events:[];state.events=recoveredEvents.map(e=>({eventId:e.id,cloudSynced:true,cookId:state.cookId,ts:e.event_time,type:e.event_type,note:e.note||'',target:e.target_temp==null?'':e.target_temp,phase:e.phase||state.phase,smoker:e.smoker||state.smoker,cookName:state.cookName||'Cook',weight:state.weight||'',setup:e.setup_context||'Recovered from Supabase'}));if(state.events.length){const rr=reconstructEventStates(state.events.map(e=>({event_type:e.type,event_time:e.ts,note:e.note||''})));state.lidOpen=rr.lidOpen;state.wrapped=rr.wrapped;state.meatOn=state.finishTime?false:rr.meatOn;if(rr.wrapMethod)state.wrapMethod=rr.wrapMethod}save();render()}
     state.cloudConflict=false;
     q=await req(s,`/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&cook_id=eq.${encodeURIComponent(state.cookId)}&order=start_time.asc`);s=q.session;const parents=q.rows;if(!parents.length)throw new Error(`No parent row for ${state.cookId}`);
     const canonical=parents.slice().sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')))[0];state.cloudCookUuid=canonical.id;state.cloudCookSynced=true;state.cloudCookStateSynced=true;state.cloudLastSeenUpdatedAt=canonical.updated_at||null;
@@ -3423,6 +3423,19 @@ Your cook data is unaffected.`, 'bad');
      proof(`RUNTIME CHECK: Build ${BUILD} JavaScript executed.\nStartup reconciliation returned ${String(ok)}.\n${msg}`);
    }catch(e){proof(`RUNTIME CHECK: Build ${BUILD} JavaScript executed.\nSTARTUP ERROR: ${e&&e.message?e.message:String(e)}`)}
  },2500);
+})();
+</script>
+
+
+<script>
+// LDCookLog Mobile V1.30.14 self-contained cloud adoption
+(() => {
+ const BUILD='2026-09-16W';
+ document.title='LDCookLog Mobile V1.30.14';
+ const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.14 Stateful BBQ Control Panel';
+ const f=document.querySelector('.footer-note');if(f)f.innerHTML=`V1.30.14 makes newer-cook startup adoption self-contained and removes the unavailable applyCloudRecovery dependency.<br><strong>Build ${BUILD}</strong>`;
+ let el=document.getElementById('runtimeProofV13013');if(el)el.textContent=`RUNTIME CHECK: Build ${BUILD} JavaScript executed. Waiting for startup reconciliation…`;
+ setTimeout(async()=>{try{if(typeof window.reconcileCloudStartupV13012!=='function')throw new Error('Startup reconciliation function missing');const ok=await window.reconcileCloudStartupV13012();el=document.getElementById('runtimeProofV13013');if(el)el.textContent=`RUNTIME CHECK: Build ${BUILD} JavaScript executed.\nStartup reconciliation returned ${String(ok)}.\n${state&&state.cloudSyncMessage?state.cloudSyncMessage:'No diagnostic produced.'}`;}catch(e){el=document.getElementById('runtimeProofV13013');if(el)el.textContent=`RUNTIME CHECK: Build ${BUILD} JavaScript executed.\nSTARTUP ERROR: ${e&&e.message?e.message:String(e)}`;}},2500);
 })();
 </script>
 
