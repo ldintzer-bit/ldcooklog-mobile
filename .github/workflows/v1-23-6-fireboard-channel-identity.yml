@@ -1,10 +1,10 @@
-name: V1.30.9.3 Fresh Cook Target UI Reset
+name: V1.30.9.4 Newer Cloud Cook
 
 on:
   push:
     branches: [main]
     paths:
-      - 'tools/patch-v1-30-9-3-new-cook-target-ui.py'
+      - 'tools/patch-v1-30-9-4-newer-cloud-cook.py'
       - '.github/workflows/v1-23-6-fireboard-channel-identity.yml'
   workflow_dispatch:
 
@@ -18,15 +18,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Apply V1.30.9.3 fresh cook target UI reset
-        run: python3 tools/patch-v1-30-9-3-new-cook-target-ui.py
-
-      - name: Commit V1.30.9.3
+      - name: Apply patch
+        run: python3 tools/patch-v1-30-9-4-newer-cloud-cook.py
+      - name: Commit result
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add index.html service-worker.js
           git diff --cached --quiet && exit 0
-          git commit -m "V1.30.9.3 make fresh cook target 225F authoritative"
+          git commit -m "V1.30.9.4 adopt newer active cloud cook"
           git push
