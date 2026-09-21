@@ -104,7 +104,7 @@ $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(s
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
 $("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??""]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
-if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13027",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13028",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
 <!-- v1-15.js consolidated into index.html in V1.16.0; marker prevents older service workers from injecting the retired file. -->
@@ -3620,59 +3620,45 @@ Your cook data is unaffected.`, 'bad');
 </script>
 
 <script>
-// LDCookLog Mobile V1.30.27 preserve visible probe drafts at the FireBoard refresh boundary
+// LDCookLog Mobile V1.30.28 safe refresh-boundary probe draft preservation
 (() => {
-  const BUILD='2026-09-21O';
-  const drafts=window.__fireboardProbeDrafts=window.__fireboardProbeDrafts||new Map();
+  const BUILD='2026-09-21P';
+  try {
+    const drafts=window.__fireboardProbeDrafts=window.__fireboardProbeDrafts||new Map();
+    const capture=()=>{
+      document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row=>{
+        const s=row.querySelector('select'),i=row.querySelector('input');
+        if(s&&i)drafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});
+      });
+    };
+    const restore=()=>{
+      const wrap=document.querySelector('.fireboard-probe-assignments');if(!wrap)return;
+      wrap.querySelectorAll('[data-probe-key]').forEach(row=>{
+        const s=row.querySelector('select'),i=row.querySelector('input'),d=drafts.get(row.dataset.probeKey);
+        if(d&&s&&i){s.value=d.role_type||'';i.value=d.cook_role||'';}
+      });
+      let d=wrap.querySelector('#probeDraftDiagnostic');
+      if(!d){d=document.createElement('div');d.id='probeDraftDiagnostic';d.className='sub';d.style.cssText='margin-top:10px;border-top:1px solid #343434;padding-top:8px';wrap.appendChild(d);}
+      d.textContent='PROBE DRAFT DIAGNOSTIC ACTIVE';
+    };
+    document.addEventListener('change',e=>{const row=e.target?.closest?.('.fireboard-probe-assignments [data-probe-key]');if(!row)return;const s=row.querySelector('select'),i=row.querySelector('input');if(s&&i)drafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});},true);
+    document.addEventListener('input',e=>{const row=e.target?.closest?.('.fireboard-probe-assignments [data-probe-key]');if(!row)return;const s=row.querySelector('select'),i=row.querySelector('input');if(s&&i)drafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});},true);
+    if(typeof renderLiveFireboardHeading==='function'){
+      const oldHeading=renderLiveFireboardHeading;
+      renderLiveFireboardHeading=function(...args){capture();return oldHeading(...args);};
+    }
+    if(typeof renderFireboardProbeAssignments==='function'){
+      const oldAssignments=renderFireboardProbeAssignments;
+      renderFireboardProbeAssignments=async function(...args){await oldAssignments(...args);restore();};
+    }
+    // Do not touch polling timers here. The existing 60-second loop will use these wrappers on its next call.
+    setTimeout(restore,500);
+  } catch(err) { console.error('V1.30.28 probe patch failed',err); }
 
-  function captureVisibleProbeDrafts(){
-    const wrap=document.querySelector('.fireboard-probe-assignments');if(!wrap)return;
-    wrap.querySelectorAll('[data-probe-key]').forEach(row=>{
-      const select=row.querySelector('select'),input=row.querySelector('input');
-      if(select&&input)drafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
-    });
-  }
-  function restoreVisibleProbeDrafts(){
-    const wrap=document.querySelector('.fireboard-probe-assignments');if(!wrap)return;
-    wrap.querySelectorAll('[data-probe-key]').forEach(row=>{
-      const select=row.querySelector('select'),input=row.querySelector('input'),draft=drafts.get(row.dataset.probeKey);
-      if(draft&&select&&input){select.value=draft.role_type||'';input.value=draft.cook_role||'';}
-    });
-    let diag=wrap.querySelector('#probeDraftDiagnostic');
-    if(!diag){diag=document.createElement('div');diag.id='probeDraftDiagnostic';diag.className='sub';diag.style.cssText='margin-top:10px;white-space:pre-wrap;border-top:1px solid #343434;padding-top:8px';wrap.appendChild(diag);}
-    diag.textContent='PROBE DRAFT DIAGNOSTIC ACTIVE\\n'+[...wrap.querySelectorAll('[data-probe-key]')].map(row=>{const select=row.querySelector('select'),draft=drafts.get(row.dataset.probeKey);return row.dataset.probeKey+' | UI='+(select?.value||'(default)')+' | draft='+(draft?.role_type||'(none)');}).join('\\n');
-  }
-
-  document.addEventListener('change',event=>{
-    const row=event.target?.closest?.('.fireboard-probe-assignments [data-probe-key]');if(!row)return;
-    const select=row.querySelector('select'),input=row.querySelector('input');if(select&&input)drafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
-    setTimeout(restoreVisibleProbeDrafts,0);
-  },true);
-  document.addEventListener('input',event=>{
-    const row=event.target?.closest?.('.fireboard-probe-assignments [data-probe-key]');if(!row)return;
-    const select=row.querySelector('select'),input=row.querySelector('input');if(select&&input)drafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
-  },true);
-
-  // Intercept the exact function that destroys and rebuilds the live FireBoard panel.
-  const originalHeading=renderLiveFireboardHeading;
-  renderLiveFireboardHeading=function(...args){
-    captureVisibleProbeDrafts();
-    return originalHeading(...args);
-  };
-  const originalAssignments=renderFireboardProbeAssignments;
-  renderFireboardProbeAssignments=async function(...args){
-    await originalAssignments(...args);
-    restoreVisibleProbeDrafts();
-  };
-
-  // Base startup scheduled a refresh before these wrappers existed. Restart once, safely.
-  if(liveFireboardPollTimer)clearInterval(liveFireboardPollTimer);
-  liveFireboardPollTimer=setInterval(()=>syncActiveFireboard(false),60000);
-  setTimeout(()=>syncActiveFireboard(false),2500);
-
-  document.title='LDCookLog Mobile V1.30.27';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.27 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.27 preserves unsaved probe choices at the exact FireBoard panel refresh boundary and displays the probe diagnostic.<br><strong>Build '+BUILD+'</strong>';
+  // Marker is outside the patch try/catch so failures cannot masquerade as V1.30.18.
+  document.title='LDCookLog Mobile V1.30.28';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.28 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.28 safely captures probe drafts at the live-panel refresh boundary without replacing polling timers.<br><strong>Build '+BUILD+'</strong>';
 })();
 </script>
 </body>
