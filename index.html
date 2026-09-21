@@ -3618,5 +3618,27 @@ Your cook data is unaffected.`, 'bad');
   document.title='LDCookLog Mobile V1.30.18';const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.18 Stateful BBQ Control Panel';const f=document.querySelector('.footer-note');if(f)f.innerHTML='V1.30.18 preserves unsaved FireBoard probe choices across automatic refresh and makes the custom label optional.<br><strong>Build '+BUILD+'</strong>';
 })();
 </script>
+
+<script>
+// LDCookLog Mobile V1.30.19 preserve live probe drafts before whole FireBoard panel refresh
+(() => {
+ const BUILD='2026-09-21G';
+ window.__fireboardProbeDrafts = window.__fireboardProbeDrafts || new Map();
+ function capture(){
+   document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row=>{const s=row.querySelector('select'),i=row.querySelector('input');if(s&&i)window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});});
+ }
+ const oldHeading=renderLiveFireboardHeading;
+ renderLiveFireboardHeading=function(...args){capture();return oldHeading(...args);};
+ const oldAssignments=renderFireboardProbeAssignments;
+ renderFireboardProbeAssignments=async function(host,rows,fbSession=null){
+   await oldAssignments(host,rows,fbSession);
+   const wrap=host?.querySelector('.fireboard-probe-assignments');if(!wrap)return;
+   wrap.querySelectorAll('[data-probe-key]').forEach(row=>{const d=window.__fireboardProbeDrafts.get(row.dataset.probeKey),s=row.querySelector('select'),i=row.querySelector('input');if(d&&s&&i){s.value=d.role_type||'';i.value=d.cook_role||'';}
+     if(s&&i){const keep=()=>window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});s.addEventListener('change',keep);i.addEventListener('input',keep);}
+   });
+ };
+ document.title='LDCookLog Mobile V1.30.19';const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.19 Stateful BBQ Control Panel';const f=document.querySelector('.footer-note');if(f)f.innerHTML='V1.30.19 captures unsaved probe choices before the entire live FireBoard panel is rebuilt during automatic refresh.<br><strong>Build '+BUILD+'</strong>';
+})();
+</script>
 </body>
 </html>
