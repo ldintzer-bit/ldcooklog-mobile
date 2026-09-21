@@ -104,7 +104,7 @@ $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(s
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
 $("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??""]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
-if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13029",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13030",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
 <!-- v1-15.js consolidated into index.html in V1.16.0; marker prevents older service workers from injecting the retired file. -->
@@ -1881,7 +1881,7 @@ Your cook data is unaffected.`, 'bad');
     const title=document.createElement('strong'); title.textContent='Probe assignments'; wrap.appendChild(title);
     const help=document.createElement('div'); help.className='sub'; help.textContent='Assign a cook-specific role. FireBoard device and channel identity remain unchanged.'; wrap.appendChild(help);
     sensors.forEach(sensor=>{
-      const key=`${sensor.device_uuid}::${sensor.channel_id}`; const row=document.createElement('div'); row.style.cssText='margin-top:10px';
+      const key=`${sensor.device_uuid}::${sensor.channel_id}`; const row=document.createElement('div'); row.dataset.probeKey=key; row.style.cssText='margin-top:10px';
       const lab=document.createElement('label'); lab.textContent=`${sensor.label} • channel ${sensor.channel_id}`; row.appendChild(lab);
       const purpose=document.createElement('select'); purpose.style.marginBottom='8px';
       [['','Choose sensor purpose…'],['food','Food'],['chamber','Smoker / chamber'],['other','Other / reference']].forEach(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;purpose.appendChild(option);});
@@ -3620,61 +3620,41 @@ Your cook data is unaffected.`, 'bad');
 </script>
 
 <script>
-// LDCookLog Mobile V1.30.29 direct probe-panel refresh fix
+// LDCookLog Mobile V1.30.30 original-renderer sensor identity fix
 (() => {
-  const BUILD='2026-09-21Q';
+  const BUILD='2026-09-21R';
   const drafts=window.__fireboardProbeDrafts=window.__fireboardProbeDrafts||new Map();
 
-  function rowsIn(wrap){return [...(wrap?.children||[])].filter(el=>el.querySelector?.('select')&&el.querySelector?.('input'));}
-  function ensureKeys(wrap,rows){
-    rowsIn(wrap).forEach(row=>{
-      if(row.dataset.probeKey)return;
-      const label=row.querySelector('label')?.textContent||'',m=label.match(/channel\s+(\d+)$/i);
-      if(!m)return;
-      const sensorLabel=label.replace(/\s*•\s*channel\s+\d+$/i,'').trim();
-      const sample=rows.find(x=>Number(x.channel_index)===Number(m[1])&&(x.channel_label||('Channel '+m[1]))===sensorLabel);
-      if(sample)row.dataset.probeKey=(sample.device_uuid||'unknown-device')+'::'+Number(sample.channel_index);
+  const capture=()=>{
+    document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row=>{
+      const select=row.querySelector('select'),input=row.querySelector('input');
+      if(select&&input)drafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
     });
-  }
-  function capture(wrap){
-    rowsIn(wrap).forEach(row=>{const k=row.dataset.probeKey,s=row.querySelector('select'),i=row.querySelector('input');if(k&&s&&i)drafts.set(k,{role_type:s.value,cook_role:i.value});});
-  }
-  function restoreAndDiagnose(wrap){
-    rowsIn(wrap).forEach(row=>{const k=row.dataset.probeKey,s=row.querySelector('select'),i=row.querySelector('input'),d=drafts.get(k);if(d&&s&&i){s.value=d.role_type||'';i.value=d.cook_role||'';}});
-    let diag=wrap.querySelector('#probeDraftDiagnostic');if(!diag){diag=document.createElement('div');diag.id='probeDraftDiagnostic';diag.className='sub';diag.style.cssText='margin-top:10px;border-top:1px solid #343434;padding-top:8px';wrap.appendChild(diag);}diag.textContent='PROBE DRAFT DIAGNOSTIC ACTIVE';
-  }
-
-  // Replace only the live panel rebuild function. It captures before innerHTML clears the panel,
-  // then schedules restoration after syncActiveFireboard finishes rendering assignments.
-  renderLiveFireboardHeading=function(fbSession,sampleCount,newCount){
-    const oldWrap=liveFireboardWrap.querySelector('.live-fireboard-graph-host .fireboard-probe-assignments');
-    if(oldWrap)capture(oldWrap);
-    liveFireboardWrap.style.display='block';liveFireboardWrap.innerHTML='';
-    const heading=document.createElement('strong');heading.textContent='Live FireBoard — '+(fbSession.title||('Session '+fbSession.id));liveFireboardWrap.appendChild(heading);
-    const detail=document.createElement('div');detail.className='sub';detail.style.marginTop='4px';detail.textContent=sampleCount+' stored samples'+(newCount?(' • '+newCount+' new this refresh'):' • up to date')+' • automatic refresh every 60 seconds';liveFireboardWrap.appendChild(detail);
-    const graphHost=document.createElement('div');graphHost.className='live-fireboard-graph-host';liveFireboardWrap.appendChild(graphHost);
-    setTimeout(()=>{
-      const wrap=graphHost.querySelector('.fireboard-probe-assignments');if(!wrap)return;
-      const rows=window.__lastFireboardRows||[];ensureKeys(wrap,rows);restoreAndDiagnose(wrap);
-    },100);
-    return graphHost;
   };
-
-  // Keep the latest row identity available to the post-render step and add keys/diagnostic immediately.
-  const oldAssignments=renderFireboardProbeAssignments;
-  renderFireboardProbeAssignments=async function(host,rows,fbSession=null){
-    window.__lastFireboardRows=rows;
-    await oldAssignments(host,rows,fbSession);
-    const wrap=host?.querySelector('.fireboard-probe-assignments');if(!wrap)return;
-    ensureKeys(wrap,rows);restoreAndDiagnose(wrap);
+  const restore=()=>{
+    const wrap=document.querySelector('.fireboard-probe-assignments');if(!wrap)return;
+    wrap.querySelectorAll('[data-probe-key]').forEach(row=>{
+      const select=row.querySelector('select'),input=row.querySelector('input'),draft=drafts.get(row.dataset.probeKey);
+      if(draft&&select&&input){select.value=draft.role_type||'';input.value=draft.cook_role||'';}
+    });
+    let diag=wrap.querySelector('#probeDraftDiagnostic');
+    if(!diag){diag=document.createElement('div');diag.id='probeDraftDiagnostic';diag.className='sub';diag.style.cssText='margin-top:10px;border-top:1px solid #343434;padding-top:8px';wrap.appendChild(diag);}
+    diag.textContent='PROBE DRAFT DIAGNOSTIC ACTIVE';
   };
+  document.addEventListener('change',e=>{if(e.target?.closest?.('.fireboard-probe-assignments')){capture();restore();}},true);
+  document.addEventListener('input',e=>{if(e.target?.closest?.('.fireboard-probe-assignments'))capture();},true);
 
-  document.addEventListener('change',e=>{const wrap=e.target?.closest?.('.fireboard-probe-assignments');if(wrap)capture(wrap);},true);
-  document.addEventListener('input',e=>{const wrap=e.target?.closest?.('.fireboard-probe-assignments');if(wrap)capture(wrap);},true);
+  try {
+    const oldHeading=renderLiveFireboardHeading;
+    renderLiveFireboardHeading=function(...args){capture();return oldHeading(...args);};
+    const oldAssignments=renderFireboardProbeAssignments;
+    renderFireboardProbeAssignments=async function(...args){await oldAssignments(...args);restore();};
+    setTimeout(restore,500);
+  } catch(err){console.error('V1.30.30 probe identity patch failed',err);}
 
-  document.title='LDCookLog Mobile V1.30.29';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.29 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.29 captures probe drafts inside the exact live FireBoard panel rebuild and restores them after assignment rendering.<br><strong>Build '+BUILD+'</strong>';
+  document.title='LDCookLog Mobile V1.30.30';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.30 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.30 gives every original Probe Assignments row permanent FireBoard sensor identity and preserves unsaved choices across live refresh.<br><strong>Build '+BUILD+'</strong>';
 })();
 </script>
 </body>
