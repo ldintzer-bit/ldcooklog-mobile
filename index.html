@@ -2285,8 +2285,9 @@ Your cook data is unaffected.`, 'bad');
     const raw = state.start;
     const startMs = Number.isFinite(Number(raw)) ? Number(raw) : Date.parse(String(raw || ''));
     if (!Number.isFinite(startMs)) return -Infinity;
-    // Keep a small grace window so polling/clock timing cannot discard the first legitimate reading.
-    return startMs - (2 * 60 * 1000);
+    // The LDCookLog Meat On timestamp is the authoritative cook boundary.
+    // Do not admit FireBoard samples recorded before the cook actually started.
+    return startMs;
   }
 
   async function purgeFireboardSamplesBeforeCookStart(accessToken, associationId) {
@@ -3524,5 +3525,17 @@ Your cook data is unaffected.`, 'bad');
 })();
 </script>
 
+
+<script>
+// LDCookLog Mobile V1.30.16 exact FireBoard cook boundary
+(() => {
+  const BUILD="2026-09-21A";
+  document.title='LDCookLog Mobile V1.30.16';
+  const headerSub=document.querySelector('header .sub');
+  if(headerSub) headerSub.textContent='V1.30.16 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');
+  if(footer) footer.innerHTML=`V1.30.16 makes Meat On the exact FireBoard sample boundary; pre-cook samples are purged and excluded from live imports.<br><strong>Build ${BUILD}</strong>`;
+})();
+</script>
 </body>
 </html>
