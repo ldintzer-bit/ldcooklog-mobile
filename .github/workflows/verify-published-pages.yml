@@ -19,6 +19,6 @@ jobs:
           set -euxo pipefail
           URL="https://ldintzer-bit.github.io/ldcooklog-mobile/ldcooklog-v130171.html?verify=$GITHUB_SHA"
           curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$URL" -o published.html
-          grep -F "V1.30.17.1" published.html
-          grep -F "2026-09-21C" published.html
-          echo "Published Pages contains V1.30.17.1 / Build 2026-09-21C"
+          grep -F "V1.30.17.2" published.html
+          grep -F "2026-09-21D" published.html
+          echo "Published Pages contains V1.30.17.2 / Build 2026-09-21D"
