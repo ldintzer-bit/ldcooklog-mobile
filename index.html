@@ -3541,7 +3541,7 @@ Your cook data is unaffected.`, 'bad');
 <script>
 // LDCookLog Mobile V1.30.17 probe-assignment usability
 (() => {
-  const BUILD="2026-09-21B";
+  const BUILD="2026-09-21C";
   const drafts=new Map();
   const defaultRole={food:'Food probe',chamber:'Smoker / chamber',other:'Other / reference'};
   const original=renderFireboardProbeAssignments;
@@ -3579,9 +3579,9 @@ Your cook data is unaffected.`, 'bad');
       btn.addEventListener('click',()=>{if(purpose.value&&!input.value.trim())input.value=defaultRole[purpose.value]||'Probe';drafts.set(key,{role_type:purpose.value,cook_role:input.value});},true);
     });
   };
-  document.title='LDCookLog Mobile V1.30.17';
-  const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.17 Stateful BBQ Control Panel';
-  const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.17 preserves unsaved probe-assignment edits during FireBoard refresh and makes the role name optional by supplying a sensible default from the selected purpose.<br><strong>Build ${BUILD}</strong>`;
+  document.title='LDCookLog Mobile V1.30.17.1';
+  const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.17.1 Stateful BBQ Control Panel';
+  const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.17.1 preserves the V1.30.17 probe-assignment fix and provides an unmistakable fresh deployment marker.<br><strong>Build ${BUILD}</strong>`;
 })();
 </script>
 </body>
