@@ -1,5 +1,5 @@
 // V1.30.17.2 emergency cache retirement: always use network and remove all old LDCookLog caches.
-const CACHE_NAME = 'ldcooklog-v1-30-24';
+const CACHE_NAME = 'ldcooklog-v1-30-25';
 self.addEventListener("install", event => { self.skipWaiting(); });
 self.addEventListener("activate", event => {
   event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(key => caches.delete(key)))).then(()=>self.clients.claim()));
