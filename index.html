@@ -3537,5 +3537,52 @@ Your cook data is unaffected.`, 'bad');
   if(footer) footer.innerHTML=`V1.30.16 makes Meat On the exact FireBoard sample boundary; pre-cook samples are purged and excluded from live imports.<br><strong>Build ${BUILD}</strong>`;
 })();
 </script>
+
+<script>
+// LDCookLog Mobile V1.30.17 probe-assignment usability
+(() => {
+  const BUILD="2026-09-21B";
+  const drafts=new Map();
+  const defaultRole={food:'Food probe',chamber:'Smoker / chamber',other:'Other / reference'};
+  const original=renderFireboardProbeAssignments;
+  renderFireboardProbeAssignments=async function(host,rows,fbSession=null){
+    if(!host||!state.cloudCookUuid||!Array.isArray(rows)||!rows.length)return;
+    const existing=host.querySelector('.fireboard-probe-assignments');
+    if(existing){
+      existing.querySelectorAll('[data-probe-key]').forEach(el=>{
+        const key=el.dataset.probeKey, purpose=el.querySelector('select'), input=el.querySelector('input');
+        if(key&&purpose&&input) drafts.set(key,{role_type:purpose.value,cook_role:input.value});
+      });
+    }
+    await original(host,rows,fbSession);
+    const wrap=host.querySelector('.fireboard-probe-assignments'); if(!wrap)return;
+    const sensorRows=[...wrap.children].filter(el=>el.querySelector&&el.querySelector('select')&&el.querySelector('input'));
+    sensorRows.forEach(row=>{
+      const label=row.querySelector('label'), purpose=row.querySelector('select'), input=row.querySelector('input'), btn=row.querySelector('button');
+      if(!label||!purpose||!input||!btn)return;
+      const m=label.textContent.match(/channel\s+(\d+)$/i); if(!m)return;
+      const sensorLabel=label.textContent.replace(/\s*•\s*channel\s+\d+$/i,'');
+      let key=null;
+      for(const [k,v] of fireboardProbeRoleCache){if(Number(v.channel_id)===Number(m[1])&&(v.source_label||sensorLabel)===sensorLabel){key=k;break;}}
+      if(!key){const match=rows.find(x=>Number(x.channel_index)===Number(m[1])&&(x.channel_label||`Channel ${m[1]}`)===sensorLabel);if(match)key=`${match.device_uuid||'unknown-device'}::${Number(match.channel_index)}`;}
+      if(!key)return; row.dataset.probeKey=key;
+      const draft=drafts.get(key); if(draft){purpose.value=draft.role_type||'';input.value=draft.cook_role||'';}
+      input.placeholder='Optional label — e.g. Pork Butt #1';
+      const syncInput=()=>{
+        const saved=fireboardProbeRoleCache.get(key);
+        const untouched=!input.value.trim()||input.value===defaultRole[saved?.role_type];
+        if(untouched && purpose.value) input.value=defaultRole[purpose.value]||'';
+      };
+      purpose.addEventListener('change',syncInput);
+      if(!draft&&!input.value.trim())syncInput();
+      const oldClick=btn.onclick;
+      btn.addEventListener('click',()=>{if(purpose.value&&!input.value.trim())input.value=defaultRole[purpose.value]||'Probe';drafts.set(key,{role_type:purpose.value,cook_role:input.value});},true);
+    });
+  };
+  document.title='LDCookLog Mobile V1.30.17';
+  const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.17 Stateful BBQ Control Panel';
+  const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.17 preserves unsaved probe-assignment edits during FireBoard refresh and makes the role name optional by supplying a sensible default from the selected purpose.<br><strong>Build ${BUILD}</strong>`;
+})();
+</script>
 </body>
 </html>
