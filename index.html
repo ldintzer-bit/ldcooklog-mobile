@@ -3620,24 +3620,59 @@ Your cook data is unaffected.`, 'bad');
 </script>
 
 <script>
-// LDCookLog Mobile V1.30.19 preserve live probe drafts before whole FireBoard panel refresh
+// LDCookLog Mobile V1.30.20 preserve probe drafts safely across whole-panel refresh
 (() => {
- const BUILD='2026-09-21G';
- window.__fireboardProbeDrafts = window.__fireboardProbeDrafts || new Map();
- function capture(){
-   document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row=>{const s=row.querySelector('select'),i=row.querySelector('input');if(s&&i)window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});});
- }
- const oldHeading=renderLiveFireboardHeading;
- renderLiveFireboardHeading=function(...args){capture();return oldHeading(...args);};
- const oldAssignments=renderFireboardProbeAssignments;
- renderFireboardProbeAssignments=async function(host,rows,fbSession=null){
-   await oldAssignments(host,rows,fbSession);
-   const wrap=host?.querySelector('.fireboard-probe-assignments');if(!wrap)return;
-   wrap.querySelectorAll('[data-probe-key]').forEach(row=>{const d=window.__fireboardProbeDrafts.get(row.dataset.probeKey),s=row.querySelector('select'),i=row.querySelector('input');if(d&&s&&i){s.value=d.role_type||'';i.value=d.cook_role||'';}
-     if(s&&i){const keep=()=>window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});s.addEventListener('change',keep);i.addEventListener('input',keep);}
-   });
- };
- document.title='LDCookLog Mobile V1.30.19';const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.19 Stateful BBQ Control Panel';const f=document.querySelector('.footer-note');if(f)f.innerHTML='V1.30.19 captures unsaved probe choices before the entire live FireBoard panel is rebuilt during automatic refresh.<br><strong>Build '+BUILD+'</strong>';
+  const BUILD='2026-09-21H';
+  try {
+    window.__fireboardProbeDrafts = window.__fireboardProbeDrafts || new Map();
+
+    function captureProbeDrafts() {
+      document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row => {
+        const select=row.querySelector('select'), input=row.querySelector('input');
+        if (select && input) window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
+      });
+    }
+
+    if (typeof renderLiveFireboardHeading === 'function') {
+      const previousHeading=renderLiveFireboardHeading;
+      renderLiveFireboardHeading=function(...args){
+        captureProbeDrafts();
+        return previousHeading(...args);
+      };
+    }
+
+    if (typeof renderFireboardProbeAssignments === 'function') {
+      const previousAssignments=renderFireboardProbeAssignments;
+      renderFireboardProbeAssignments=async function(host,rows,fbSession=null){
+        await previousAssignments(host,rows,fbSession);
+        const wrap=host && host.querySelector ? host.querySelector('.fireboard-probe-assignments') : null;
+        if (!wrap) return;
+        wrap.querySelectorAll('[data-probe-key]').forEach(row => {
+          const draft=window.__fireboardProbeDrafts.get(row.dataset.probeKey);
+          const select=row.querySelector('select'), input=row.querySelector('input');
+          if (draft && select && input) {
+            select.value=draft.role_type || '';
+            input.value=draft.cook_role || '';
+          }
+          if (select && input) {
+            const keep=()=>window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
+            select.addEventListener('change',keep);
+            input.addEventListener('input',keep);
+          }
+        });
+      };
+    }
+  } catch (err) {
+    console.error('V1.30.20 probe draft patch failed',err);
+  }
+
+  // Version marker is deliberately outside the patch try-block so a probe-patch
+  // problem can never masquerade as an old deployed app again.
+  document.title='LDCookLog Mobile V1.30.20';
+  const h=document.querySelector('header .sub');
+  if(h) h.textContent='V1.30.20 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');
+  if(footer) footer.innerHTML='V1.30.20 safely preserves unsaved probe choices across automatic FireBoard refresh.<br><strong>Build '+BUILD+'</strong>';
 })();
 </script>
 </body>
