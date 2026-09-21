@@ -1,0 +1,24 @@
+name: Verify Published Pages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-published-pages.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch published page bypassing caches
+        run: |
+          set -euxo pipefail
+          URL="https://ldintzer-bit.github.io/ldcooklog-mobile/?verify=$GITHUB_SHA"
+          curl -fsSL -H 'Cache-Control: no-cache' -H 'Pragma: no-cache' "$URL" -o published.html
+          grep -F "V1.30.17.1" published.html
+          grep -F "2026-09-21C" published.html
+          echo "Published Pages contains V1.30.17.1 / Build 2026-09-21C"
