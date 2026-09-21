@@ -3540,6 +3540,7 @@ Your cook data is unaffected.`, 'bad');
 
 <script>
 // LDCookLog Mobile V1.30.17 probe-assignment usability
+try {
 (() => {
   const BUILD="2026-09-21D";
   const drafts=new Map();
@@ -3579,6 +3580,7 @@ Your cook data is unaffected.`, 'bad');
       btn.addEventListener('click',()=>{if(purpose.value&&!input.value.trim())input.value=defaultRole[purpose.value]||'Probe';drafts.set(key,{role_type:purpose.value,cook_role:input.value});},true);
     });
   };
+  } catch (err) { console.error('V1.30.17.2 probe assignment patch failed', err); }
   document.title='LDCookLog Mobile V1.30.17.2';
   const h=document.querySelector('header .sub'); if(h)h.textContent='V1.30.17.2 Stateful BBQ Control Panel';
   const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.17.2 preserves the probe-assignment fix and retires stale PWA caches so the current app is loaded from the network.<br><strong>Build ${BUILD}</strong>`;
