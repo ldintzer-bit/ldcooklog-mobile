@@ -3586,5 +3586,37 @@ Your cook data is unaffected.`, 'bad');
   const f=document.querySelector('.footer-note'); if(f)f.innerHTML=`V1.30.17.3 fixes the probe-assignment patch error isolation and keeps the current app on network-first loading.<br><strong>Build ${BUILD}</strong>`;
 })();
 </script>
+
+<script>
+// LDCookLog Mobile V1.30.18 durable FireBoard probe assignment drafts
+(() => {
+  const BUILD='2026-09-21F';
+  const drafts=new Map();
+  const defaults={food:'Food probe',chamber:'Smoker / chamber',other:'Other / reference'};
+  renderFireboardProbeAssignments=async function(host,rows,fbSession=null){
+    if(!host||!state.cloudCookUuid||!Array.isArray(rows)||!rows.length)return;
+    const old=host.querySelector('.fireboard-probe-assignments');
+    if(old) old.querySelectorAll('[data-probe-key]').forEach(row=>{const key=row.dataset.probeKey,s=row.querySelector('select'),i=row.querySelector('input');if(key&&s&&i)drafts.set(key,{role_type:s.value,cook_role:i.value});});
+    old?.remove();
+    let auth=loadCloudSession();if(!auth?.access_token)return;
+    let roles;try{roles=await readFireboardProbeRoles(auth.access_token);}catch(e){return;}
+    if(fbSession)renderFireboardTemperatureGraph(host,fbSession,rows,roles);
+    const sensors=new Map();
+    rows.forEach(r=>{const d=r.device_uuid||'unknown-device',ch=Number(r.channel_index);if(!Number.isFinite(ch))return;const key=d+'::'+ch;if(!sensors.has(key))sensors.set(key,{device_uuid:d,channel_id:ch,label:r.channel_label||('Channel '+ch)});});
+    const wrap=document.createElement('div');wrap.className='fireboard-probe-assignments';wrap.style.cssText='margin-top:12px;padding:10px;border:1px solid #343434;border-radius:12px';
+    const title=document.createElement('strong');title.textContent='Probe assignments';wrap.appendChild(title);
+    const help=document.createElement('div');help.className='sub';help.textContent='Choose a purpose. The label is optional; Save will supply a sensible default.';wrap.appendChild(help);
+    sensors.forEach(sensor=>{
+      const key=sensor.device_uuid+'::'+sensor.channel_id,saved=roles.get(key),draft=drafts.get(key);const row=document.createElement('div');row.dataset.probeKey=key;row.style.cssText='margin-top:10px';
+      const lab=document.createElement('label');lab.textContent=sensor.label+' • channel '+sensor.channel_id;row.appendChild(lab);
+      const purpose=document.createElement('select');purpose.style.marginBottom='8px';[['','Choose sensor purpose…'],['food','Food'],['chamber','Smoker / chamber'],['other','Other / reference']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;purpose.appendChild(o);});purpose.value=draft?.role_type??saved?.role_type??'';row.appendChild(purpose);
+      const line=document.createElement('div');line.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px';const input=document.createElement('input');input.placeholder='Optional label — e.g. Pork Butt #1';input.value=draft?.cook_role??saved?.cook_role??'';line.appendChild(input);
+      const remember=()=>drafts.set(key,{role_type:purpose.value,cook_role:input.value});purpose.addEventListener('change',remember);input.addEventListener('input',remember);
+      const btn=document.createElement('button');btn.className='secondary';btn.style.cssText='min-height:44px;padding:8px 12px';btn.textContent='Save';btn.addEventListener('click',async()=>{const roleType=purpose.value;if(!roleType){alert('Choose Food, Smoker / chamber, or Other / reference first.');return;}const role=input.value.trim()||defaults[roleType];input.value=role;remember();btn.disabled=true;btn.textContent='Saving…';try{auth=loadCloudSession();await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role,roleType);roles.set(key,{cook_role:role,source_label:sensor.label,role_type:roleType});fireboardProbeRoleCache=roles;drafts.delete(key);if(fbSession)renderFireboardTemperatureGraph(host,fbSession,rows,roles);btn.textContent='Saved';setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);}catch(e){btn.textContent='Save';btn.disabled=false;alert('Could not save probe role: '+e.message);}});line.appendChild(btn);row.appendChild(line);wrap.appendChild(row);
+    });host.appendChild(wrap);
+  };
+  document.title='LDCookLog Mobile V1.30.18';const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.18 Stateful BBQ Control Panel';const f=document.querySelector('.footer-note');if(f)f.innerHTML='V1.30.18 preserves unsaved FireBoard probe choices across automatic refresh and makes the custom label optional.<br><strong>Build '+BUILD+'</strong>';
+})();
+</script>
 </body>
 </html>
