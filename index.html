@@ -104,7 +104,7 @@ $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(s
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
 $("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??""]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
-if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13020",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13021",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
 <!-- v1-15.js consolidated into index.html in V1.16.0; marker prevents older service workers from injecting the retired file. -->
@@ -3620,26 +3620,30 @@ Your cook data is unaffected.`, 'bad');
 </script>
 
 <script>
-// LDCookLog Mobile V1.30.20 preserve probe drafts safely across whole-panel refresh
+// LDCookLog Mobile V1.30.21 persist unsaved probe drafts independently of DOM refresh timing
 (() => {
-  const BUILD='2026-09-21H';
+  const BUILD='2026-09-21I';
   try {
     window.__fireboardProbeDrafts = window.__fireboardProbeDrafts || new Map();
 
-    function captureProbeDrafts() {
-      document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row => {
-        const select=row.querySelector('select'), input=row.querySelector('input');
-        if (select && input) window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
-      });
-    }
-
-    if (typeof renderLiveFireboardHeading === 'function') {
-      const previousHeading=renderLiveFireboardHeading;
-      renderLiveFireboardHeading=function(...args){
-        captureProbeDrafts();
-        return previousHeading(...args);
-      };
-    }
+    // Capture a probe choice at the moment the user changes it. This no longer
+    // depends on the old FireBoard panel surviving until the next refresh.
+    document.addEventListener('change', event => {
+      const select=event.target;
+      if (!(select instanceof HTMLSelectElement)) return;
+      const row=select.closest('.fireboard-probe-assignments [data-probe-key]');
+      if (!row) return;
+      const input=row.querySelector('input');
+      window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input?.value || ''});
+    }, true);
+    document.addEventListener('input', event => {
+      const input=event.target;
+      if (!(input instanceof HTMLInputElement)) return;
+      const row=input.closest('.fireboard-probe-assignments [data-probe-key]');
+      if (!row) return;
+      const select=row.querySelector('select');
+      window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:select?.value || '',cook_role:input.value});
+    }, true);
 
     if (typeof renderFireboardProbeAssignments === 'function') {
       const previousAssignments=renderFireboardProbeAssignments;
@@ -3654,25 +3658,16 @@ Your cook data is unaffected.`, 'bad');
             select.value=draft.role_type || '';
             input.value=draft.cook_role || '';
           }
-          if (select && input) {
-            const keep=()=>window.__fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:select.value,cook_role:input.value});
-            select.addEventListener('change',keep);
-            input.addEventListener('input',keep);
-          }
         });
       };
     }
   } catch (err) {
-    console.error('V1.30.20 probe draft patch failed',err);
+    console.error('V1.30.21 probe draft patch failed',err);
   }
-
-  // Version marker is deliberately outside the patch try-block so a probe-patch
-  // problem can never masquerade as an old deployed app again.
-  document.title='LDCookLog Mobile V1.30.20';
-  const h=document.querySelector('header .sub');
-  if(h) h.textContent='V1.30.20 Stateful BBQ Control Panel';
+  document.title='LDCookLog Mobile V1.30.21';
+  const h=document.querySelector('header .sub'); if(h) h.textContent='V1.30.21 Stateful BBQ Control Panel';
   const footer=document.querySelector('.footer-note');
-  if(footer) footer.innerHTML='V1.30.20 safely preserves unsaved probe choices across automatic FireBoard refresh.<br><strong>Build '+BUILD+'</strong>';
+  if(footer) footer.innerHTML='V1.30.21 preserves unsaved probe choices at the instant they are changed, independent of the 60-second FireBoard panel rebuild.<br><strong>Build '+BUILD+'</strong>';
 })();
 </script>
 </body>
