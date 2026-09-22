@@ -104,7 +104,7 @@ $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(s
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
 $("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??""]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
-if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13035",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13036",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
 <!-- v1-15.js consolidated into index.html in V1.16.0; marker prevents older service workers from injecting the retired file. -->
@@ -2172,6 +2172,16 @@ Your cook data is unaffected.`, 'bad');
       }
     });
 
+    referenceStats.forEach(stat => {
+      const row = document.createElement('div');
+      row.style.cssText = 'margin-top:9px;padding-top:9px;border-top:1px solid #2b2b2b;font-size:12px';
+      const min = Math.min(...stat.temps), max = Math.max(...stat.temps);
+      const latest = stat.points[stat.points.length-1]?.temp;
+      const unit = Number(stat.group.degree) === 1 ? 'C' : Number(stat.group.degree) === 2 ? 'F' : String(stat.group.degree || 'F');
+      row.textContent = `Other / reference — ${stat.cookRole}: current ${latest.toFixed(1)}°${unit}; avg ${stat.avg.toFixed(1)}°; range ${min.toFixed(1)}–${max.toFixed(1)}°; ${stat.points.length} sample${stat.points.length===1?'':'s'}`;
+      analysis.appendChild(row);
+    });
+
     if (!foodStats.length && !chamberStats.length) {
       const note=document.createElement('div');
       note.className='sub'; note.style.marginTop='8px';
@@ -3561,9 +3571,9 @@ Your cook data is unaffected.`, 'bad');
 
 <script>
 (() => {
-  document.title='LDCookLog Mobile V1.30.35';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.35 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.35 removes the temporary Probe Draft diagnostic while retaining the verified probe assignment and Save behavior.<br><strong>Build 2026-09-21W</strong>';
+  document.title='LDCookLog Mobile V1.30.36';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.36 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.36 removes the temporary Probe Draft diagnostic while retaining the verified probe assignment and Save behavior.<br><strong>Build 2026-09-22A</strong>';
 })();
 </script>
 </body>
