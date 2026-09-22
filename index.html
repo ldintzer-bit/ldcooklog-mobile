@@ -104,7 +104,7 @@ $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(s
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
 $("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??""]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
-if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13032",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13033",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
 <!-- v1-15.js consolidated into index.html in V1.16.0; marker prevents older service workers from injecting the retired file. -->
@@ -1869,29 +1869,44 @@ Your cook data is unaffected.`, 'bad');
     if (!r.ok) { const data=await r.json().catch(()=>null); throw new Error(data?.message || `Could not save probe role (${r.status}).`); }
   }
 
+  const fireboardProbeDrafts = new Map();
+
+  function captureFireboardProbeDrafts() {
+    document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row => {
+      const purpose=row.querySelector('select'), input=row.querySelector('input');
+      if (purpose && input) fireboardProbeDrafts.set(row.dataset.probeKey,{role_type:purpose.value,cook_role:input.value});
+    });
+  }
+
   async function renderFireboardProbeAssignments(host, rows, fbSession = null) {
     if (!host || !state.cloudCookUuid || !Array.isArray(rows) || !rows.length) return;
+    captureFireboardProbeDrafts();
     host.querySelector('.fireboard-probe-assignments')?.remove();
     let auth=loadCloudSession(); if(!auth?.access_token) return;
     let roles; try { roles=await readFireboardProbeRoles(auth.access_token); } catch(e) { return; }
     if (fbSession) renderFireboardTemperatureGraph(host, fbSession, rows, roles);
     const sensors=new Map();
-    rows.forEach(row=>{const d=row.device_uuid||'unknown-device', c=Number(row.channel_index); if(!Number.isFinite(c))return; const k=`${d}::${c}`; if(!sensors.has(k)) sensors.set(k,{device_uuid:d,channel_id:c,label:row.channel_label||`Channel ${c}`});});
-    const wrap=document.createElement('div'); wrap.className='fireboard-probe-assignments'; wrap.style.cssText='margin-top:12px;padding:10px;border:1px solid #343434;border-radius:12px';
-    const title=document.createElement('strong'); title.textContent='Probe assignments'; wrap.appendChild(title);
-    const help=document.createElement('div'); help.className='sub'; help.textContent='Assign a cook-specific role. FireBoard device and channel identity remain unchanged.'; wrap.appendChild(help);
+    rows.forEach(r=>{const d=r.device_uuid||'unknown-device',ch=Number(r.channel_index);if(!Number.isFinite(ch))return;const key=d+'::'+ch;if(!sensors.has(key))sensors.set(key,{device_uuid:d,channel_id:ch,label:r.channel_label||('Channel '+ch)});});
+    const wrap=document.createElement('div');wrap.className='fireboard-probe-assignments';wrap.style.cssText='margin-top:12px;padding:10px;border:1px solid #343434;border-radius:12px';
+    const title=document.createElement('strong');title.textContent='Probe assignments';wrap.appendChild(title);
+    const help=document.createElement('div');help.className='sub';help.textContent='Choose a purpose. The label is optional; Save will supply a sensible default.';wrap.appendChild(help);
+    const defaults={food:'Food probe',chamber:'Smoker / chamber',other:'Other / reference'};
     sensors.forEach(sensor=>{
-      const key=`${sensor.device_uuid}::${sensor.channel_id}`; const row=document.createElement('div'); row.dataset.probeKey=key; row.style.cssText='margin-top:10px';
-      const lab=document.createElement('label'); lab.textContent=`${sensor.label} • channel ${sensor.channel_id}`; row.appendChild(lab);
-      const purpose=document.createElement('select'); purpose.style.marginBottom='8px';
-      [['','Choose sensor purpose…'],['food','Food'],['chamber','Smoker / chamber'],['other','Other / reference']].forEach(([value,label])=>{const option=document.createElement('option');option.value=value;option.textContent=label;purpose.appendChild(option);});
-      purpose.value=roles.get(key)?.role_type||''; row.appendChild(purpose);
-      const line=document.createElement('div'); line.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px';
-      const input=document.createElement('input'); input.placeholder='e.g. Pork Butt #1 or Smoker Chamber'; input.value=roles.get(key)?.cook_role||''; line.appendChild(input);
-      const btn=document.createElement('button'); btn.className='secondary'; btn.style.cssText='min-height:44px;padding:8px 12px'; btn.textContent='Save';
-      btn.addEventListener('click',async()=>{const role=input.value.trim(), roleType=purpose.value; if(!role){alert('Enter a probe role first.');return;} if(!roleType){alert('Choose whether this sensor is Food, Smoker / chamber, or Other / reference.');return;} btn.disabled=true; btn.textContent='Saving…'; try{auth=loadCloudSession(); await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role,roleType); roles.set(key,{cook_role:role,source_label:sensor.label,role_type:roleType}); fireboardProbeRoleCache=roles; if(fbSession){renderFireboardTemperatureGraph(host,fbSession,rows,roles);host.appendChild(wrap);} btn.textContent='Saved'; setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);}catch(e){btn.textContent='Save';btn.disabled=false;alert(`Could not save probe role: ${e.message}`);}});
-      line.appendChild(btn); row.appendChild(line); wrap.appendChild(row);
+      const key=sensor.device_uuid+'::'+sensor.channel_id,saved=roles.get(key),draft=fireboardProbeDrafts.get(key);
+      const row=document.createElement('div');row.dataset.probeKey=key;row.style.cssText='margin-top:10px';
+      const lab=document.createElement('label');lab.textContent=sensor.label+' • channel '+sensor.channel_id;row.appendChild(lab);
+      const purpose=document.createElement('select');purpose.style.marginBottom='8px';
+      [['','Choose sensor purpose…'],['food','Food'],['chamber','Smoker / chamber'],['other','Other / reference']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;purpose.appendChild(o);});
+      purpose.value=draft?.role_type??saved?.role_type??'';row.appendChild(purpose);
+      const line=document.createElement('div');line.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px';
+      const input=document.createElement('input');input.placeholder='Optional label — e.g. Pork Butt #1';input.value=draft?.cook_role??saved?.cook_role??'';line.appendChild(input);
+      const remember=()=>fireboardProbeDrafts.set(key,{role_type:purpose.value,cook_role:input.value});
+      purpose.addEventListener('change',remember);input.addEventListener('input',remember);
+      const btn=document.createElement('button');btn.className='secondary';btn.style.cssText='min-height:44px;padding:8px 12px';btn.textContent='Save';
+      btn.addEventListener('click',async()=>{const roleType=purpose.value;if(!roleType){alert('Choose Food, Smoker / chamber, or Other / reference first.');return;}const role=input.value.trim()||defaults[roleType];input.value=role;remember();btn.disabled=true;btn.textContent='Saving…';try{auth=loadCloudSession();await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role,roleType);roles.set(key,{cook_role:role,source_label:sensor.label,role_type:roleType});fireboardProbeRoleCache=roles;fireboardProbeDrafts.delete(key);if(fbSession)renderFireboardTemperatureGraph(host,fbSession,rows,roles);btn.textContent='Saved';setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);}catch(err){btn.textContent='Save';btn.disabled=false;alert('Could not save probe role: '+err.message);}});
+      line.appendChild(btn);row.appendChild(line);wrap.appendChild(row);
     });
+    const diag=document.createElement('div');diag.id='probeDraftDiagnostic';diag.className='sub';diag.style.cssText='margin-top:10px;border-top:1px solid #343434;padding-top:8px';diag.textContent='PROBE DRAFT DIAGNOSTIC ACTIVE';wrap.appendChild(diag);
     host.appendChild(wrap);
   }
 
@@ -2371,6 +2386,7 @@ Your cook data is unaffected.`, 'bad');
 
   function renderLiveFireboardHeading(fbSession, sampleCount, newCount) {
     liveFireboardWrap.style.display = 'block';
+    captureFireboardProbeDrafts();
     liveFireboardWrap.innerHTML = '';
     const heading = document.createElement('strong');
     heading.textContent = `Live FireBoard — ${fbSession.title || `Session ${fbSession.id}`}`;
@@ -3543,84 +3559,12 @@ Your cook data is unaffected.`, 'bad');
 
 
 
+
 <script>
-// LDCookLog Mobile V1.30.32 consolidated probe assignments
 (() => {
-  const BUILD='2026-09-21T';
-  const drafts=new Map();
-  const defaults={food:'Food probe',chamber:'Smoker / chamber',other:'Other / reference'};
-
-  function captureCurrent(){
-    document.querySelectorAll('.fireboard-probe-assignments [data-probe-key]').forEach(row=>{
-      const s=row.querySelector('select'),i=row.querySelector('input');
-      if(s&&i)drafts.set(row.dataset.probeKey,{role_type:s.value,cook_role:i.value});
-    });
-  }
-
-  async function consolidatedAssignments(host,rows,fbSession){
-    if(!host||!state.cloudCookUuid||!Array.isArray(rows)||!rows.length)return;
-    captureCurrent();
-    host.querySelector('.fireboard-probe-assignments')?.remove();
-    let auth=loadCloudSession();if(!auth?.access_token)return;
-    let roles;try{roles=await readFireboardProbeRoles(auth.access_token);}catch(err){return;}
-    if(fbSession)renderFireboardTemperatureGraph(host,fbSession,rows,roles);
-    const sensors=new Map();
-    rows.forEach(r=>{
-      const device=r.device_uuid||'unknown-device',channel=Number(r.channel_index);
-      if(!Number.isFinite(channel))return;
-      const key=device+'::'+channel;
-      if(!sensors.has(key))sensors.set(key,{key,device_uuid:device,channel_id:channel,label:r.channel_label||('Channel '+channel)});
-    });
-    const wrap=document.createElement('div');wrap.className='fireboard-probe-assignments';wrap.style.cssText='margin-top:12px;padding:10px;border:1px solid #343434;border-radius:12px';
-    const title=document.createElement('strong');title.textContent='Probe assignments';wrap.appendChild(title);
-    const help=document.createElement('div');help.className='sub';help.textContent='Choose a purpose. The label is optional; Save will supply a sensible default.';wrap.appendChild(help);
-    sensors.forEach(sensor=>{
-      const saved=roles.get(sensor.key),draft=drafts.get(sensor.key);
-      const row=document.createElement('div');row.dataset.probeKey=sensor.key;row.style.cssText='margin-top:10px';
-      const lab=document.createElement('label');lab.textContent=sensor.label+' • channel '+sensor.channel_id;row.appendChild(lab);
-      const purpose=document.createElement('select');purpose.style.marginBottom='8px';
-      [['','Choose sensor purpose…'],['food','Food'],['chamber','Smoker / chamber'],['other','Other / reference']].forEach(([v,l])=>{const o=document.createElement('option');o.value=v;o.textContent=l;purpose.appendChild(o);});
-      purpose.value=draft?.role_type??saved?.role_type??'';row.appendChild(purpose);
-      const line=document.createElement('div');line.style.cssText='display:grid;grid-template-columns:1fr auto;gap:8px';
-      const input=document.createElement('input');input.placeholder='Optional label — e.g. Pork Butt #1';input.value=draft?.cook_role??saved?.cook_role??'';line.appendChild(input);
-      const remember=()=>drafts.set(sensor.key,{role_type:purpose.value,cook_role:input.value});
-      purpose.addEventListener('change',remember);input.addEventListener('input',remember);
-      const btn=document.createElement('button');btn.className='secondary';btn.style.cssText='min-height:44px;padding:8px 12px';btn.textContent='Save';
-      btn.addEventListener('click',async()=>{
-        const roleType=purpose.value;if(!roleType){alert('Choose Food, Smoker / chamber, or Other / reference first.');return;}
-        const role=input.value.trim()||defaults[roleType];input.value=role;remember();btn.disabled=true;btn.textContent='Saving…';
-        try{
-          auth=loadCloudSession();await saveFireboardProbeRole(auth.access_token,sensor.device_uuid,sensor.channel_id,sensor.label,role,roleType);
-          roles.set(sensor.key,{cook_role:role,source_label:sensor.label,role_type:roleType});fireboardProbeRoleCache=roles;drafts.delete(sensor.key);
-          if(fbSession)renderFireboardTemperatureGraph(host,fbSession,rows,roles);
-          btn.textContent='Saved';setTimeout(()=>{btn.textContent='Save';btn.disabled=false},1200);
-        }catch(err){btn.textContent='Save';btn.disabled=false;alert('Could not save probe role: '+err.message);}
-      });
-      line.appendChild(btn);row.appendChild(line);wrap.appendChild(row);
-    });
-    const diag=document.createElement('div');diag.id='probeDraftDiagnostic';diag.className='sub';diag.style.cssText='margin-top:10px;border-top:1px solid #343434;padding-top:8px';diag.textContent='PROBE DRAFT DIAGNOSTIC ACTIVE';wrap.appendChild(diag);
-    host.appendChild(wrap);
-  }
-
-  try{
-    window.addEventListener('load',()=>{
-      try{
-        const poll=window.setInterval(()=>{
-          const live=document.querySelector('.live-fireboard-graph-host');
-          if(!live)return;
-          const rows=window.__lastFireboardRows;
-          if(Array.isArray(rows)&&rows.length) consolidatedAssignments(live,rows,null);
-        },59000);
-        void poll;
-      }catch(err){console.error(err);}
-    });
-    document.addEventListener('change',e=>{if(e.target?.closest?.('.fireboard-probe-assignments'))captureCurrent();},true);
-    document.addEventListener('input',e=>{if(e.target?.closest?.('.fireboard-probe-assignments'))captureCurrent();},true);
-  }catch(err){console.error('probe draft listeners failed',err);}
-
-  document.title='LDCookLog Mobile V1.30.32';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.32 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.32 loads independently of lexical FireBoard function bindings while retaining the cleaned probe-assignment source.<br><strong>Build '+BUILD+'</strong>';
+  document.title='LDCookLog Mobile V1.30.33';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.33 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.33 moves probe draft preservation into the original FireBoard renderer and live-panel rebuild path.<br><strong>Build 2026-09-21U</strong>';
 })();
 </script>
 </body>
