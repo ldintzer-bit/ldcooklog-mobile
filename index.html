@@ -104,7 +104,7 @@ $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(s
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
 $("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??""]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
-if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13042",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13043",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
 <!-- v1-15.js consolidated into index.html in V1.16.0; marker prevents older service workers from injecting the retired file. -->
@@ -2608,6 +2608,9 @@ Your cook data is unaffected.`, 'bad');
   }
 
   fireboardLoad.addEventListener('click', loadFireboardSessions);
+  // The Finish Cook handler in the later script uses these FireBoard functions.
+  window.ldCookLogFireboardStatus = setFireboardStatus;
+  window.ldCookLogFinalFireboardSync = () => syncActiveFireboard(true);
   // Final FireBoard sync is owned by the authoritative Finish Cook handler
   // below. Do not attach a second delayed Finish listener here.
   startLiveFireboardPolling();
@@ -3501,7 +3504,7 @@ Your cook data is unaffected.`, 'bad');
       // so do not redeclare it here; just clear the timer when present.
       // Do not touch the FireBoard module's private polling timer here.
       // syncActiveFireboard(true) already waits for any in-progress refresh.
-      setFireboardStatus('Finishing cook — waiting for final FireBoard temperature capture…');
+      window.ldCookLogFireboardStatus?.('Finishing cook — waiting for final FireBoard temperature capture…');
       const now=new Date();
       state.finishTime=now.toISOString();
       state.meatOn=false;
@@ -3517,13 +3520,13 @@ Your cook data is unaffected.`, 'bad');
         try{ await syncCurrentCookAndEvents(); }
         catch(err){ state.cloudSyncMessage=`Cook is finished locally, but cloud sync needs retry: ${err&&err.message?err.message:String(err)}`; save(); renderCloudSyncState(); }
       }
-      if(typeof syncActiveFireboard==='function'){
+      if(typeof window.ldCookLogFinalFireboardSync==='function'){
         state.fireboardFinalSyncPending=true;
         state.fireboardFinalSyncFailed=false;
         save();
-        setFireboardStatus(`Final FireBoard sync in progress for cook ${state.cookId}…`);
+        window.ldCookLogFireboardStatus?.(`Final FireBoard sync in progress for cook ${state.cookId}…`);
         try{
-          const finalFireboardOk = await syncActiveFireboard(true);
+          const finalFireboardOk = await window.ldCookLogFinalFireboardSync();
           if (!finalFireboardOk) throw new Error('Final FireBoard sync did not complete.');
           state.fireboardFinalSyncPending=false;
           state.fireboardFinalSyncFailed=false;
@@ -3534,7 +3537,7 @@ Your cook data is unaffected.`, 'bad');
           const finalSyncError = err&&err.message?err.message:String(err);
           state.cloudSyncMessage=`Cook is finished, but the final FireBoard sync needs retry: ${finalSyncError}`;
           save(); renderCloudSyncState();
-          setFireboardStatus(`Final FireBoard sync FAILED for cook ${state.cookId}: ${finalSyncError}\nThe finished cook is safe and starting a new cook is blocked until this is resolved.`, 'bad');
+          window.ldCookLogFireboardStatus?.(`Final FireBoard sync FAILED for cook ${state.cookId}: ${finalSyncError}\nThe finished cook is safe and starting a new cook is blocked until this is resolved.`, 'bad');
         }
       }
       render();
@@ -3613,9 +3616,9 @@ Your cook data is unaffected.`, 'bad');
 
 <script>
 (() => {
-  document.title='LDCookLog Mobile V1.30.42';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.42 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.42 removes the temporary Probe Draft diagnostic while retaining the verified probe assignment and Save behavior.<br><strong>Build 2026-09-22A</strong>';
+  document.title='LDCookLog Mobile V1.30.43';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.43 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.43 repairs Finish Cook and its final FireBoard sync.<br><strong>Build 2026-09-22A</strong>';
 })();
 </script>
 </body>
