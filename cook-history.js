@@ -1,4 +1,4 @@
-/* LDCookLog V1.30.48 — read-only history and side-by-side cook comparisons. */
+/* LDCookLog V1.30.49 — read-only history and side-by-side cook comparisons. */
 (() => {
   'use strict';
   const TEST_MARKER = '[TEST COOK: EXCLUDE FROM ANALYSIS]';
@@ -76,6 +76,51 @@
       order: 'start_time.desc.nullslast,id.asc'
     }, read);
   }
+
+  // User-authorized cleanup, bounded to the history preceding the real October 1 cook.
+  function testCleanupPlan(rows) {
+    const anchor = rows.find(c => c.cook_id === '20261001-001');
+    if (!anchor || !Number.isFinite(Date.parse(anchor.start_time))) throw new Error('Cannot identify the October 1 real cook for test cleanup.');
+    if (rows.some(c => !Number.isFinite(Date.parse(c.start_time)))) throw new Error('A cook is missing its start date; cleanup paused to protect the 10 oldest cooks.');
+    const historical = rows.filter(c => c.id !== anchor.id && Date.parse(c.start_time) <= Date.parse(anchor.start_time));
+    if (historical.some(c => !c.cook_id)) throw new Error('A historical cook is missing its Cook ID.');
+    historical.sort((a,b) => Date.parse(a.start_time) - Date.parse(b.start_time) || String(a.cook_id).localeCompare(String(b.cook_id)) || a.id.localeCompare(b.id));
+    const keep = new Set(historical.slice(0,10).map(c => c.id)); keep.add(anchor.id);
+    return [...historical,anchor].map(c => ({id:c.id,test:!keep.has(c.id)}));
+  }
+  async function cleanHistoricalTests(rows) {
+    const auth = loadCloudSession();
+    const key = 'ldcooklog-test-cleanup-13049-' + auth.user.id;
+    let job;
+    try { job = JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) {}
+    if (job?.complete) return rows;
+    if (!job) {
+      job = {plan:testCleanupPlan(rows),complete:false};
+      localStorage.setItem(key,JSON.stringify(job)); // Freeze the exact authorized set before the first write.
+    }
+    for (const item of job.plan) {
+      const [fresh] = await get('cooks',{select:'id,cook_id,notes,updated_at',id:'eq.'+item.id,limit:'1'});
+      if (!fresh) throw new Error('A cook in the cleanup could not be found.');
+      if (isTest(fresh) === item.test) continue;
+      const notes = item.test ? String(fresh.notes || '') + '\n' + TEST_MARKER : String(fresh.notes || '').split(TEST_MARKER).join('').trim();
+      const session = loadCloudSession();
+      const params = {id:'eq.'+item.id,updated_at:fresh.updated_at ? 'eq.'+fresh.updated_at : 'is.null',select:'id,updated_at'};
+      const response = await fetch(SUPABASE_URL+'/rest/v1/cooks?'+new URLSearchParams(params), {
+        method:'PATCH',headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:'Bearer '+session.access_token,'Content-Type':'application/json',Prefer:'return=representation'},
+        body:JSON.stringify({notes})
+      });
+      const changed = await response.json();
+      if (!response.ok || !Array.isArray(changed) || changed.length !== 1) throw new Error('Test cleanup paused because a cook changed or could not be saved. Refresh History to retry.');
+      if (typeof state !== 'undefined' && state.cloudCookUuid === item.id) {
+        state.isTestCook = item.test;
+        state.cloudLastSeenUpdatedAt = changed[0].updated_at || state.cloudLastSeenUpdatedAt;
+        save();
+      }
+    }
+    job.complete = true; localStorage.setItem(key,JSON.stringify(job));
+    return loadIndex();
+  }
+
   async function loadRecord(id, read = get) {
     const rows = await read('cooks', { select: '*', id: `eq.${id}`, limit: '1' });
     if (!rows[0]) throw new Error('This cook could not be found in cloud history.');
@@ -210,7 +255,7 @@
   }
   // Pure/read-only functions are also usable by the focused Node checks.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments };
+    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan };
     return;
   }
 
@@ -291,7 +336,8 @@
     const ticket = ++generation;
     loading = true; status.textContent = 'Reading saved cooks…';
     try {
-      const result = await loadIndex();
+      status.textContent = 'Updating historical test flags…';
+      const result = await cleanHistoricalTests(await loadIndex());
       if (ticket !== generation) return;
       cooks = result; loaded = true; visible = DISPLAY_PAGE;
       options(inputs.food, [['', 'All meat / cuts'], ...[...new Set(cooks.map(c => c.food).filter(Boolean))].sort().map(x => [x, x])]);
