@@ -1,4 +1,4 @@
-/* LDCookLog V1.30.51 — read-only history and side-by-side cook comparisons. */
+/* LDCookLog V1.30.52 — read-only history and side-by-side cook comparisons. */
 (() => {
   'use strict';
   const TEST_MARKER = '[TEST COOK: EXCLUDE FROM ANALYSIS]';
@@ -140,6 +140,28 @@
     if (!response.ok) throw new Error(data.error || 'FireBoard history could not be read.');
     return data;
   }
+
+  const originalRealFireboardIds = new Set(['9414689','9614781','9772492','11246760','11372662','11524054','11620357','11661004','11729611','11789318']);
+  function realFireboardSessions(sessions, cookRows, links) {
+    const realCookIds = new Set(cookRows.filter(c => !isTest(c)).map(c => c.id));
+    const keep = new Set(originalRealFireboardIds);
+    for (const link of links) if(realCookIds.has(link.cook_id)) keep.add(String(link.fireboard_session_id));
+    return sessions.filter(session => keep.has(String(session.id)));
+  }
+  async function loadArchiveIndex(read = fireboardArchiveRequest) {
+    const sessions = [], seen = new Set();
+    let offset=0;
+    for(let page=0;page<500;page++) {
+      const data=await read({mode:'archive',offset:String(offset)});
+      if(typeof data.has_more!=='boolean' || !Array.isArray(data.sessions)) throw new Error('The FireBoard history service is still updating. Try again shortly.');
+      for(const session of data.sessions) if(!seen.has(String(session.id))) {seen.add(String(session.id));sessions.push(session);}
+      if(!data.has_more)return sessions;
+      if(!Number.isSafeInteger(data.next_offset) || data.next_offset<=offset) throw new Error('FireBoard history pagination did not advance.');
+      offset=data.next_offset;
+    }
+    throw new Error('FireBoard history could not be read completely.');
+  }
+
   function archiveSamples(data) {
     const result = [];
     for (const ch of data.channels || []) for (const sample of ch.samples || []) {
@@ -285,7 +307,7 @@
   }
   // Pure/read-only functions are also usable by the focused Node checks.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan, septemberTestPlan, archiveSamples };
+    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan, septemberTestPlan, archiveSamples, realFireboardSessions, loadArchiveIndex };
     return;
   }
 
@@ -317,31 +339,42 @@
   let cooks = [], loaded = false, loading = false, visible = DISPLAY_PAGE, generation = 0;
 
   const archiveSection = make('section', null, 'card');
-  archiveSection.append(make('h2','FireBoard Session History'),make('p','Past completed sessions from FireBoard, including those without an LDCookLog cook record. These sessions are reviewed separately from app test cooks.','sub'));
+  archiveSection.append(make('h2','FireBoard Session History'),make('p','Original historical cooks and sessions linked to real app cooks. Test sessions are hidden.','sub'));
   const archiveStatus = make('p', 'Load your FireBoard history to see older sessions.');
   const archiveList = make('div');
-  let archiveOffset = 0, archiveLoaded = false, archiveBusy = false;
+  let archiveOffset = 0, archiveLoaded = false, archiveBusy = false, archiveSessions = [], archiveHiddenCount = 0;
   const archiveMore = button('Load FireBoard History', () => loadArchive());
   archiveSection.append(archiveStatus,archiveList,archiveMore); listView.append(archiveSection);
+
+  function renderArchivePage() {
+    archiveList.replaceChildren();
+    for(const session of archiveSessions.slice(0,archiveOffset)) {
+      const card=make('article',null,'card');
+      card.append(make('strong',session.title),make('div',dateTime(session.start_time)+' — '+dateTime(session.end_time),'sub'),button('View FireBoard Session',()=>openArchiveSession(session)));
+      archiveList.append(card);
+    }
+    archiveMore.hidden=archiveOffset>=archiveSessions.length;
+    archiveMore.textContent='Show More FireBoard Sessions';
+    archiveStatus.textContent=archiveList.childElementCount+' real sessions shown • '+archiveSessions.length+' real sessions available • '+archiveHiddenCount+' other sessions hidden';
+  }
   async function loadArchive(reset = false) {
-    if (archiveBusy) return;
-    if (reset) { archiveOffset=0; archiveList.replaceChildren(); archiveLoaded=false; }
-    archiveBusy=true; archiveMore.disabled=true; archiveStatus.textContent='Reading FireBoard history…';
+    if(archiveBusy)return;
+    if(reset){archiveOffset=0;archiveSessions=[];archiveList.replaceChildren();archiveLoaded=false;}
+    if(archiveLoaded){archiveOffset+=DISPLAY_PAGE;renderArchivePage();return;}
+    archiveBusy=true;archiveMore.disabled=true;archiveStatus.textContent='Matching real cooks to FireBoard sessions…';
     const ticket=generation;
     try {
-      const data = await fireboardArchiveRequest({mode:'archive',offset:String(archiveOffset)});
-      if (ticket!==generation) return;
-      if (typeof data.has_more !== 'boolean') throw new Error('The FireBoard history service is still updating. Try Load FireBoard History again shortly.');
-      for (const session of data.sessions || []) {
-        const card=make('article',null,'card');
-        card.append(make('strong',session.title),make('div',dateTime(session.start_time)+' — '+dateTime(session.end_time),'sub'),button('View FireBoard Session',()=>openArchiveSession(session)));
-        archiveList.append(card);
-      }
-      archiveLoaded=true; archiveOffset=data.next_offset;
-      archiveMore.hidden=!data.has_more; archiveMore.textContent='Show More FireBoard Sessions';
-      archiveStatus.textContent=archiveList.childElementCount+' sessions shown • '+data.count+' completed sessions in FireBoard history';
-    } catch(err) { if(ticket===generation) {archiveStatus.textContent=err.message;archiveMore.hidden=false;} }
-    finally {archiveBusy=false;archiveMore.disabled=false;}
+      const [sessions,links,cookRows]=await Promise.all([
+        loadArchiveIndex(),
+        allRows('cook_fireboard_sessions',{select:'id,cook_id,fireboard_session_id',order:'id.asc'}),
+        loadIndex()
+      ]);
+      if(ticket!==generation)return;
+      archiveSessions=realFireboardSessions(sessions,cookRows,links);
+      archiveHiddenCount=sessions.length-archiveSessions.length;
+      archiveLoaded=true;archiveOffset=DISPLAY_PAGE;renderArchivePage();
+    }catch(err){if(ticket===generation){archiveStatus.textContent=err.message;archiveMore.hidden=false;archiveMore.textContent='Retry FireBoard History';}}
+    finally{archiveBusy=false;archiveMore.disabled=false;}
   }
   async function openArchiveSession(session) {
     const ticket=++generation; listView.hidden=true;detail.hidden=false;detail.replaceChildren();
@@ -677,7 +710,7 @@
     if (unmatched.length) message(parent, `${unmatched.length} additional saved probe assignment(s) have no graphed samples in this session.`);
   }
   document.getElementById('cloudSignOut')?.addEventListener('click', () => {
-    archiveOffset=0; archiveLoaded=false; archiveList.replaceChildren(); archiveMore.hidden=false; archiveMore.textContent='Load FireBoard History';
+    archiveOffset=0; archiveLoaded=false; archiveSessions=[]; archiveList.replaceChildren(); archiveMore.hidden=false; archiveMore.textContent='Load FireBoard History';
     generation++; cooks = []; selected.clear(); updateSelection(); loaded = false; list.replaceChildren(); detail.replaceChildren(); detail.hidden = true; listView.hidden = false;
     status.textContent = 'Sign in to LDCookLog Cloud to view your history.';
   });
