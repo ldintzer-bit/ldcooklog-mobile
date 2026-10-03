@@ -1,4 +1,4 @@
-/* LDCookLog V1.30.49 — read-only history and side-by-side cook comparisons. */
+/* LDCookLog V1.30.50 — read-only history and side-by-side cook comparisons. */
 (() => {
   'use strict';
   const TEST_MARKER = '[TEST COOK: EXCLUDE FROM ANALYSIS]';
@@ -88,14 +88,17 @@
     const keep = new Set(historical.slice(0,10).map(c => c.id)); keep.add(anchor.id);
     return [...historical,anchor].map(c => ({id:c.id,test:!keep.has(c.id)}));
   }
-  async function cleanHistoricalTests(rows) {
+  function septemberTestPlan(rows) {
+    return rows.filter(c => /^202609(?:11|12|13)-\d+$/.test(String(c.cook_id))).map(c => ({id:c.id,test:true}));
+  }
+  async function cleanHistoricalTests(rows, supplemental = false) {
     const auth = loadCloudSession();
-    const key = 'ldcooklog-test-cleanup-13049-' + auth.user.id;
+    const key = (supplemental ? 'ldcooklog-test-cleanup-13050-' : 'ldcooklog-test-cleanup-13049-') + auth.user.id;
     let job;
     try { job = JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) {}
     if (job?.complete) return rows;
     if (!job) {
-      job = {plan:testCleanupPlan(rows),complete:false};
+      job = {plan:supplemental ? septemberTestPlan(rows) : testCleanupPlan(rows),complete:false};
       localStorage.setItem(key,JSON.stringify(job)); // Freeze the exact authorized set before the first write.
     }
     for (const item of job.plan) {
@@ -255,7 +258,7 @@
   }
   // Pure/read-only functions are also usable by the focused Node checks.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan };
+    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan, septemberTestPlan };
     return;
   }
 
@@ -337,7 +340,7 @@
     loading = true; status.textContent = 'Reading saved cooks…';
     try {
       status.textContent = 'Updating historical test flags…';
-      const result = await cleanHistoricalTests(await loadIndex());
+      const result = await cleanHistoricalTests(await cleanHistoricalTests(await loadIndex()), true);
       if (ticket !== generation) return;
       cooks = result; loaded = true; visible = DISPLAY_PAGE;
       options(inputs.food, [['', 'All meat / cuts'], ...[...new Set(cooks.map(c => c.food).filter(Boolean))].sort().map(x => [x, x])]);
