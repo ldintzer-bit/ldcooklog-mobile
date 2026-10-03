@@ -80,7 +80,7 @@ async function viewCloudCook(cookUuid){let session=loadCloudSession();const wrap
 function inferSmokerFromNotes(notes){const text=String(notes||"");for(const known of ["Traeger Ironwood 885","Traeger Pro",'Weber 22" Kettle'])if(text.includes(`Smoker: ${known}`))return known;return "Other"}
 function reconstructEventStates(events){let lidOpen=false,wrapped=false,meatOn=false,wrapMethod=null;for(const ev of events){if(ev.event_type==="Lid Open")lidOpen=true;else if(ev.event_type==="Lid Closed")lidOpen=false;else if(ev.event_type==="Wrapped"){wrapped=true;const m=String(ev.note||"").match(/^Wrap method: (Foil|Butcher Paper|Foil Boat|Other)$/);if(m)wrapMethod=m[1];}else if(ev.event_type==="Unwrapped")wrapped=false;else if(ev.event_type==="Meat On")meatOn=true;else if(ev.event_type==="Meat Off"||ev.event_type==="Cook Finished")meatOn=false}return {lidOpen,wrapped,meatOn,wrapMethod}}
 function latestEventTime(events,eventType){for(let i=events.length-1;i>=0;i--)if(events[i].event_type===eventType)return events[i].event_time;return null}
-function restoreViewedCloudCook(){if(storageBlocked){alert("Restore/resume is disabled because local storage is not currently safe to write.");return}if(!viewedCloudRecovery)return;const {cook,events}=viewedCloudRecovery;if(!cook.start_time){alert("This cloud cook has no start time and cannot be resumed safely.");return}const finished=Boolean(cook.finish_time)||cook.phase==="Finished";const action=finished?"Restore":"Resume";const currentLabel=state.cookId?`Current local cook: ${state.cookId}.\n\n`:"";const warning=finished?"This will REPLACE the current local cook on this device with the finished cloud copy.":"This will REPLACE the current local cook on this device with the unfinished cloud copy and make it the active cook. The original start time will continue, so the elapsed timer will reflect the full cook duration.";if(!confirm(`${currentLabel}${action} cloud cook ${cook.cook_id}?\n\n${warning}\n\nThe Supabase copy will not be changed by the restore itself.`))return;const recovered=reconstructEventStates(events),smoker=inferSmokerFromNotes(cook.notes);let phaseStart=null,phaseTarget=null;if(!finished&&cook.phase==="Keep Warm"){phaseStart=latestEventTime(events,"Keep Warm Start");phaseTarget=165}else if(!finished&&cook.phase==="Rest"){phaseStart=latestEventTime(events,"Rest Start")}const restoredEvents=events.map(ev=>({eventId:ev.id,cloudSynced:true,cookId:cook.cook_id,ts:ev.event_time,type:ev.event_type,note:ev.note||"",target:ev.target_temp??cook.target_temp??"",phase:ev.phase||cook.phase,smoker:ev.smoker||smoker,cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),setup:ev.setup_context||"Recovered from Supabase"}));state=Object.assign(defaultState(),{smoker,isTestCook:isTestCookFromNotes(cook.notes),cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),target:Number(cook.target_temp)||0,cookId:cook.cook_id,start:cook.start_time,finishTime:finished?(cook.finish_time||latestEventTime(events,"Cook Finished")):null,meatOn:finished?false:recovered.meatOn,lidOpen:recovered.lidOpen,wrapped:recovered.wrapped,phase:finished?"Finished":(cook.phase||"Cooking"),phaseStart,phaseTarget,events:restoredEvents,cloudCookSynced:true,cloudCookUuid:cook.id,cloudCookStateSynced:true,cloudSyncMessage:finished?"Restored from Supabase.":"Resumed from Supabase."});state.wrapMethod=recovered.wrapMethod||null;render();if(!save()){alert("The cloud cook was displayed but could not be safely saved locally. Do not close the app until storage is resolved.");return}render();alert(finished?`Restored ${cook.cook_id} from Supabase.\n\nThe restored cook is Finished and contains ${events.length} cloud event(s).`:`Resumed ${cook.cook_id} from Supabase.\n\nThe cook is active in phase ${state.phase}. The original start time and ${events.length} cloud event(s) were restored.`)}
+function restoreViewedCloudCook(){if(storageBlocked){alert("Restore/resume is disabled because local storage is not currently safe to write.");return}if(!viewedCloudRecovery)return;const {cook,events}=viewedCloudRecovery;if(!cook.start_time){alert("This cloud cook has no start time and cannot be resumed safely.");return}const finished=Boolean(cook.finish_time)||cook.phase==="Finished";const action=finished?"Restore":"Resume";const currentLabel=state.cookId?`Current local cook: ${state.cookId}.\n\n`:"";const warning=finished?"This will REPLACE the current local cook on this device with the finished cloud copy.":"This will REPLACE the current local cook on this device with the unfinished cloud copy and make it the active cook. The original start time will continue, so the elapsed timer will reflect the full cook duration.";if(!confirm(`${currentLabel}${action} cloud cook ${cook.cook_id}?\n\n${warning}\n\nThe Supabase copy will not be changed by the restore itself.`))return;const recovered=reconstructEventStates(events),smoker=inferSmokerFromNotes(cook.notes);let phaseStart=null,phaseTarget=null;if(!finished&&cook.phase==="Keep Warm"){phaseStart=latestEventTime(events,"Keep Warm Start");phaseTarget=165}else if(!finished&&cook.phase==="Rest"){phaseStart=latestEventTime(events,"Rest Start")}const restoredEvents=events.map(ev=>({eventId:ev.id,cloudSynced:true,cookId:cook.cook_id,ts:ev.event_time,type:ev.event_type,note:ev.note||"",target:ev.target_temp??cook.target_temp??"",phase:ev.phase||cook.phase,smoker:ev.smoker||smoker,cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),setup:ev.setup_context||"Recovered from Supabase"}));state=Object.assign(defaultState(),{smoker,isTestCook:isTestCookFromNotes(cook.notes),fireboardFinalSyncRecord:readFinalFireboardRecord(cook.notes,cook.cook_id),cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),target:Number(cook.target_temp)||0,cookId:cook.cook_id,start:cook.start_time,finishTime:finished?(cook.finish_time||latestEventTime(events,"Cook Finished")):null,meatOn:finished?false:recovered.meatOn,lidOpen:recovered.lidOpen,wrapped:recovered.wrapped,phase:finished?"Finished":(cook.phase||"Cooking"),phaseStart,phaseTarget,events:restoredEvents,cloudCookSynced:true,cloudCookUuid:cook.id,cloudCookStateSynced:true,cloudSyncMessage:finished?"Restored from Supabase.":"Resumed from Supabase."});state.wrapMethod=recovered.wrapMethod||null;render();if(!save()){alert("The cloud cook was displayed but could not be safely saved locally. Do not close the app until storage is resolved.");return}render();alert(finished?`Restored ${cook.cook_id} from Supabase.\n\nThe restored cook is Finished and contains ${events.length} cloud event(s).`:`Resumed ${cook.cook_id} from Supabase.\n\nThe cook is active in phase ${state.phase}. The original start time and ${events.length} cloud event(s) were restored.`)}
 async function findCloudCook(accessToken,cookId){const response=await fetch(`${SUPABASE_URL}/rest/v1/cooks?select=id,cook_id,food,phase,target_temp,finish_time&cook_id=eq.${encodeURIComponent(cookId)}&limit=1`,{headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${accessToken}`,Accept:"application/json"}});if(response.status===401)throw Object.assign(new Error("Session expired."),{code:401});const data=await response.json();if(!response.ok)throw new Error(data.message||data.hint||data.details||"Cloud lookup failed.");return data[0]||null}
 function cloudCookPayload(){return {food:state.cookName||"Cook",weight_value:state.weight?Number(state.weight):null,weight_unit:state.weight?"lb":null,target_temp:Number(state.target)||null,finish_time:state.finishTime||null,phase:state.phase||"Cooking",notes:`Updated by LDCookLog Mobile V1.14.0. Smoker: ${state.smoker}. ${setupContext()}`}}
 async function insertCloudCook(accessToken){const payload={cook_id:state.cookId,start_time:state.start,...cloudCookPayload()};const response=await fetch(`${SUPABASE_URL}/rest/v1/cooks`,{method:"POST",headers:{apikey:SUPABASE_PUBLISHABLE_KEY,Authorization:`Bearer ${accessToken}`,"Content-Type":"application/json",Prefer:"return=representation"},body:JSON.stringify(payload)});if(response.status===401)throw Object.assign(new Error("Session expired."),{code:401});const data=await response.json().catch(()=>null);if(response.status===409)return {duplicate:true};if(!response.ok)throw new Error((data&&(data.message||data.hint||data.details))||"Cloud insert failed.");return {row:Array.isArray(data)?data[0]:data}}
@@ -105,7 +105,7 @@ $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(s
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
 $("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup","is_test_cook"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??"",state.isTestCook?"true":"false"]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
-if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13045",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
+if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13046",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
 <!-- v1-15.js consolidated into index.html in V1.16.0; marker prevents older service workers from injecting the retired file. -->
@@ -139,7 +139,7 @@ load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterv
   syncCloudCookState=async function(){if(state.cloudConflict){renderCloudSyncState();return false;}const parentOk=await syncCurrentCookToCloud();if(!parentOk||!state.cloudCookUuid)return false;let session=loadCloudSession();if(!session||!session.access_token)return false;state.cloudSyncMessage=`Checking ${state.cookId} for cloud conflicts…`;save();renderCloudSyncState();try{let access=session.access_token;let current;try{current=await fetchCloudCookVersion(access);}catch(err){if(err.code!==401)throw err;session=await refreshCloudSession(session);access=session.access_token;current=await fetchCloudCookVersion(access);}if(!current)throw new Error("Cloud cook could not be found for conflict checking.");if(!state.cloudLastSeenUpdatedAt){if(state.cloudCookStateSynced||cloudMatchesLocal(current)){state.cloudLastSeenUpdatedAt=current.updated_at;state.cloudConflict=false;save();}else{setCloudConflict(current.updated_at);return false;}}if(current.updated_at!==state.cloudLastSeenUpdatedAt){setCloudConflict(current.updated_at);return false;}state.cloudSyncMessage=`Updating ${state.cookId} cloud cook state…`;save();renderCloudSyncState();let row;try{row=await patchCloudCook(access);}catch(err){if(err.code==="CLOUD_CONFLICT"){let latest=current;try{latest=await fetchCloudCookVersion(access)||current;}catch(_){}setCloudConflict(latest&&latest.updated_at);return false;}if(err.code!==401)throw err;session=await refreshCloudSession(session);access=session.access_token;row=await patchCloudCook(access);}state.cloudLastSeenUpdatedAt=row.updated_at||state.cloudLastSeenUpdatedAt;state.cloudCookStateSynced=true;state.cloudConflict=false;state.cloudSyncMessage="";save();renderCloudSyncState();return true;}catch(err){state.cloudCookStateSynced=false;state.cloudSyncMessage=`Cloud cook update warning: ${err.message}\nLocal cook data is safe and can be retried.`;save();renderCloudSyncState();return false;}};
   const originalSyncPendingEventsToCloud=syncPendingEventsToCloud;
   syncPendingEventsToCloud=async function(){if(state.cloudConflict){renderCloudSyncState();return false;}return originalSyncPendingEventsToCloud();};
-  function applyCloudRecovery(recovery){const {cook,events}=recovery;const finished=Boolean(cook.finish_time)||cook.phase==="Finished";const recovered=reconstructEventStates(events);const smoker=inferSmokerFromNotes(cook.notes);let phaseStart=null,phaseTarget=null;if(!finished&&cook.phase==="Keep Warm"){phaseStart=latestEventTime(events,"Keep Warm Start");phaseTarget=165;}else if(!finished&&cook.phase==="Rest"){phaseStart=latestEventTime(events,"Rest Start");}const restoredEvents=events.map(ev=>({eventId:ev.id,cloudSynced:true,cookId:cook.cook_id,ts:ev.event_time,type:ev.event_type,note:ev.note||"",target:ev.target_temp??cook.target_temp??"",phase:ev.phase||cook.phase,smoker:ev.smoker||smoker,cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),setup:ev.setup_context||"Recovered from Supabase"}));state=Object.assign(defaultState(),{smoker,isTestCook:isTestCookFromNotes(cook.notes),cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),target:Number(cook.target_temp)||0,cookId:cook.cook_id,start:cook.start_time,finishTime:finished?(cook.finish_time||latestEventTime(events,"Cook Finished")):null,meatOn:finished?false:recovered.meatOn,lidOpen:recovered.lidOpen,wrapped:recovered.wrapped,phase:finished?"Finished":(cook.phase||"Cooking"),phaseStart,phaseTarget,events:restoredEvents,cloudCookSynced:true,cloudCookUuid:cook.id,cloudCookStateSynced:true,cloudSyncMessage:"Conflict resolved using the cloud version.",cloudLastSeenUpdatedAt:cook.updated_at||null,cloudConflict:false});render();if(!save())throw new Error("The cloud version was read but could not be safely saved locally.");render();}
+  function applyCloudRecovery(recovery){const {cook,events}=recovery;const finished=Boolean(cook.finish_time)||cook.phase==="Finished";const recovered=reconstructEventStates(events);const smoker=inferSmokerFromNotes(cook.notes);let phaseStart=null,phaseTarget=null;if(!finished&&cook.phase==="Keep Warm"){phaseStart=latestEventTime(events,"Keep Warm Start");phaseTarget=165;}else if(!finished&&cook.phase==="Rest"){phaseStart=latestEventTime(events,"Rest Start");}const restoredEvents=events.map(ev=>({eventId:ev.id,cloudSynced:true,cookId:cook.cook_id,ts:ev.event_time,type:ev.event_type,note:ev.note||"",target:ev.target_temp??cook.target_temp??"",phase:ev.phase||cook.phase,smoker:ev.smoker||smoker,cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),setup:ev.setup_context||"Recovered from Supabase"}));state=Object.assign(defaultState(),{smoker,isTestCook:isTestCookFromNotes(cook.notes),fireboardFinalSyncRecord:readFinalFireboardRecord(cook.notes,cook.cook_id),cookName:cook.food||"Cook",weight:cook.weight_value==null?"":String(cook.weight_value),target:Number(cook.target_temp)||0,cookId:cook.cook_id,start:cook.start_time,finishTime:finished?(cook.finish_time||latestEventTime(events,"Cook Finished")):null,meatOn:finished?false:recovered.meatOn,lidOpen:recovered.lidOpen,wrapped:recovered.wrapped,phase:finished?"Finished":(cook.phase||"Cooking"),phaseStart,phaseTarget,events:restoredEvents,cloudCookSynced:true,cloudCookUuid:cook.id,cloudCookStateSynced:true,cloudSyncMessage:"Conflict resolved using the cloud version.",cloudLastSeenUpdatedAt:cook.updated_at||null,cloudConflict:false});render();if(!save())throw new Error("The cloud version was read but could not be safely saved locally.");render();}
   async function getSessionWithRefresh(){const session=loadCloudSession();if(!session||!session.access_token)throw new Error("Sign in to the cloud before resolving this conflict.");return session;}
   async function resolveConflictWithCloud(){if(!state.cloudConflict||!state.cloudCookUuid)return;if(storageBlocked){alert("Conflict resolution is disabled because local storage is not currently safe to write.");return;}if(!confirm(`Use the CLOUD version of cook ${state.cookId}?\n\nThis will replace this device's stale local copy with the newer Supabase copy. The Supabase copy itself will not be changed.`))return;const box=ensureConflictActions();[...box.querySelectorAll("button")].forEach(b=>b.disabled=true);try{let session=await getSessionWithRefresh();let recovery;try{recovery=await fetchCloudCookRecovery(session.access_token,state.cloudCookUuid);}catch(err){if(err.code!==401)throw err;session=await refreshCloudSession(session);recovery=await fetchCloudCookRecovery(session.access_token,state.cloudCookUuid);}applyCloudRecovery(recovery);alert(`Conflict resolved.\n\nThis device now uses the cloud version of ${state.cookId}.`);}catch(err){state.cloudSyncMessage=`Conflict resolution failed: ${err.message}\nNeither copy was overwritten.`;save();renderCloudSyncState();alert(state.cloudSyncMessage);}finally{[...box.querySelectorAll("button")].forEach(b=>b.disabled=false);}}
   async function resolveConflictWithLocal(){if(!state.cloudConflict||!state.cloudCookUuid)return;if(storageBlocked){alert("Conflict resolution is disabled because local storage is not currently safe to write.");return;}if(!confirm(`Use THIS DEVICE's version of cook ${state.cookId}?\n\nThis will deliberately replace the current cloud cook state with this device's values. Existing cloud event history will be preserved, and this device's pending events will then be uploaded.`))return;const box=ensureConflictActions();[...box.querySelectorAll("button")].forEach(b=>b.disabled=true);try{let session=await getSessionWithRefresh();let access=session.access_token;let row;try{row=await forcePatchCloudCook(access);}catch(err){if(err.code!==401)throw err;session=await refreshCloudSession(session);access=session.access_token;row=await forcePatchCloudCook(access);}const resolutionEvent=makeEvent("Conflict Resolved","This device was explicitly chosen over a newer cloud copy.");resolutionEvent.cloudSynced=false;state.events.push(resolutionEvent);state.cloudLastSeenUpdatedAt=row.updated_at||null;state.cloudConflict=false;state.cloudCookSynced=true;state.cloudCookStateSynced=true;state.cloudSyncMessage="Conflict resolved using this device. Uploading pending events…";save();render();const eventsOk=await syncPendingEventsToCloud();state.cloudSyncMessage=eventsOk?"Conflict resolved using this device.":"Conflict resolved using this device. Some events are still waiting to sync.";save();render();alert(eventsOk?`Conflict resolved.\n\nThis device is now authoritative for ${state.cookId}, and pending events were synchronized.`:`Conflict resolved for the cook state.\n\nThis device is authoritative, but one or more events are still waiting to sync. They remain safe locally.`);}catch(err){state.cloudSyncMessage=`Conflict resolution failed: ${err.message}\nNeither copy was intentionally replaced.`;save();renderCloudSyncState();alert(state.cloudSyncMessage);}finally{[...box.querySelectorAll("button")].forEach(b=>b.disabled=false);}}
@@ -2375,6 +2375,7 @@ Your cook data is unaffected.`, 'bad');
         const observedIso = fireboardTimestampToIso(sample.observed_at);
         const observedMs = Date.parse(observedIso);
         if (observedMs < fireboardCookStartCutoffMs()) return;
+        if (state.finishTime && observedMs > Date.parse(state.finishTime)) return;
         if (observedMs <= latest) return;
         rows.push({
           cook_fireboard_session_id: associationId,
@@ -2433,35 +2434,36 @@ Your cook data is unaffected.`, 'bad');
     if (!authSession?.access_token) return;
     liveFireboardSyncInProgress = true;
     try {
-      let data;
-      try {
-        data = await requestFireboardSessions(authSession.access_token);
-      } catch (err) {
-        if (err.code !== 401) throw err;
-        authSession = await refreshCloudSession(authSession);
-        data = await requestFireboardSessions(authSession.access_token);
-      }
-      const active = Array.isArray(data.active_sessions) ? data.active_sessions : [];
-      if (active.length > 1) {
-        setFireboardStatus(`More than one active FireBoard session was found (${active.length}). Automatic linking is paused rather than guessing.`, 'warn');
-        return;
-      }
-
-      let fbSession = active.length === 1 ? active[0] : null;
-      // Finish Cook should still capture the last samples even if FireBoard stops
-      // reporting the session as active between the button press and this final sync.
-      if (!fbSession && forceFinal && liveFireboardSession) fbSession = liveFireboardSession;
-      if (!fbSession) {
-        if (forceFinal) {
-          // A test cook may never have had a FireBoard session. Check cloud
-          // associations before treating the absence as safe to finish.
-          const linked = await readStoredFireboardAssociations(authSession.access_token);
-          if (linked.length) throw new Error('A FireBoard session was linked, but its final temperatures could not be captured.');
-          setFireboardStatus(`Cook ${state.cookId} finished without a FireBoard session. No temperatures were expected.`, 'good');
-          return true;
+      let fbSession;
+      if (forceFinal) {
+        // Recover only the session already linked to this finished cook.
+        let linked;
+        try { linked = await readStoredFireboardAssociations(authSession.access_token); }
+        catch (err) {
+          if (err.code !== 401) throw err;
+          authSession = await refreshCloudSession(authSession);
+          linked = await readStoredFireboardAssociations(authSession.access_token);
         }
-        setFireboardStatus('LDCookLog is active. Waiting for an active FireBoard session…');
-        return;
+        if (linked.length > 1) throw new Error('More than one FireBoard session is linked. Final capture needs review.');
+        if (!linked.length) {
+          setFireboardStatus(`Cook ${state.cookId} finished without a FireBoard session. No temperatures were expected.`, 'good');
+          return {status:'no_session',samples:0};
+        }
+        const link=linked[0];
+        fbSession={id:link.fireboard_session_id,title:link.session_title,start_time:link.start_time,end_time:link.end_time,devices:link.devices||[]};
+        if (!fbSession.id) throw new Error('The linked FireBoard session ID is missing.');
+      } else {
+        let data;
+        try { data = await requestFireboardSessions(authSession.access_token); }
+        catch (err) {
+          if (err.code !== 401) throw err;
+          authSession = await refreshCloudSession(authSession);
+          data = await requestFireboardSessions(authSession.access_token);
+        }
+        const active=Array.isArray(data.active_sessions)?data.active_sessions:[];
+        if(active.length>1){setFireboardStatus(`More than one active FireBoard session was found (${active.length}). Automatic linking is paused rather than guessing.`,'warn');return false}
+        fbSession=active.length===1?active[0]:null;
+        if(!fbSession){setFireboardStatus('LDCookLog is active. Waiting for an active FireBoard session…');return false}
       }
       liveFireboardSession = fbSession;
       const parentOk = await syncCurrentCookToCloud();
@@ -2482,7 +2484,7 @@ Your cook data is unaffected.`, 'bad');
       setFireboardStatus(forceFinal
         ? `Final FireBoard sync complete for cook ${state.cookId}. The latest available temperatures were stored.`
         : `Active FireBoard session ${fbSession.title || fbSession.id} is linked to cook ${state.cookId}. Live temperatures are being stored automatically.`, 'good');
-      return true;
+      return forceFinal ? {status:'complete',samples:rows.length,sessionId:String(fbSession.id)} : true;
     } catch (err) {
       setFireboardStatus(`Live FireBoard sync warning: ${err.message}\nThe LDCookLog cook remains safe.`, 'bad');
       if (forceFinal) throw err;
@@ -3441,7 +3443,7 @@ Your cook data is unaffected.`, 'bad');
     const candidates=q.rows.filter(c=>c&&c.id&&c.cook_id&&c.start_time).sort(cmp);const newest=candidates[0];const seen=candidates.slice(0,5).map(c=>`${c.cook_id} [${c.phase||'—'}, ${c.finish_time?'finished':'open'}]`).join(' | ');
     if(!newest){state.cloudConflict=false;state.cloudSyncMessage='Startup reconciliation reached Supabase but found no cook rows with Cook ID + start time.';save();renderCloudSyncState();return false}
     const A=seq(state.cookId),B=seq(newest.cook_id);const newerId=B[0]>A[0]||(B[0]===A[0]&&B[1]>A[1]);const localStart=state.start?Date.parse(String(state.start)):0,cloudStart=Date.parse(newest.start_time)||0;
-    if(!state.cookId||newest.cook_id!==state.cookId){if(state.cookId&&!newerId&&cloudStart<=localStart){state.cloudConflict=false;state.cloudSyncMessage=`Startup reconciliation saw ${seen}; retained ${state.cookId}.`;save();renderCloudSyncState();return false}const recovery=await fetchCloudCookRecovery(s.access_token,newest.id);const c=recovery&&recovery.cook;if(!c)throw new Error('Cloud recovery returned no cook');const keep=defaultState();state=Object.assign(keep,{isTestCook:isTestCookFromNotes(c.notes),cookId:c.cook_id||null,cookName:c.food||'',weight:c.weight_value==null?'':String(c.weight_value),target:c.target_temp==null?225:Number(c.target_temp),start:c.start_time||null,finishTime:c.finish_time||null,phase:c.phase||'Cooking',phaseStart:null,phaseTarget:null,events:[],cloudCookSynced:true,cloudCookUuid:c.id,cloudCookStateSynced:true,cloudLastSeenUpdatedAt:c.updated_at||null,cloudConflict:false,cloudSyncMessage:''});const recoveredEvents=Array.isArray(recovery.events)?recovery.events:[];state.events=recoveredEvents.map(e=>({eventId:e.id,cloudSynced:true,cookId:state.cookId,ts:e.event_time,type:e.event_type,note:e.note||'',target:e.target_temp==null?'':e.target_temp,phase:e.phase||state.phase,smoker:e.smoker||state.smoker,cookName:state.cookName||'Cook',weight:state.weight||'',setup:e.setup_context||'Recovered from Supabase'}));if(state.events.length){const rr=reconstructEventStates(state.events.map(e=>({event_type:e.type,event_time:e.ts,note:e.note||''})));state.lidOpen=rr.lidOpen;state.wrapped=rr.wrapped;state.meatOn=state.finishTime?false:rr.meatOn;if(rr.wrapMethod)state.wrapMethod=rr.wrapMethod}save();render()}
+    if(!state.cookId||newest.cook_id!==state.cookId){if(state.cookId&&!newerId&&cloudStart<=localStart){state.cloudConflict=false;state.cloudSyncMessage=`Startup reconciliation saw ${seen}; retained ${state.cookId}.`;save();renderCloudSyncState();return false}const recovery=await fetchCloudCookRecovery(s.access_token,newest.id);const c=recovery&&recovery.cook;if(!c)throw new Error('Cloud recovery returned no cook');const keep=defaultState();state=Object.assign(keep,{isTestCook:isTestCookFromNotes(c.notes),fireboardFinalSyncRecord:readFinalFireboardRecord(c.notes,c.cook_id),cookId:c.cook_id||null,cookName:c.food||'',weight:c.weight_value==null?'':String(c.weight_value),target:c.target_temp==null?225:Number(c.target_temp),start:c.start_time||null,finishTime:c.finish_time||null,phase:c.phase||'Cooking',phaseStart:null,phaseTarget:null,events:[],cloudCookSynced:true,cloudCookUuid:c.id,cloudCookStateSynced:true,cloudLastSeenUpdatedAt:c.updated_at||null,cloudConflict:false,cloudSyncMessage:''});const recoveredEvents=Array.isArray(recovery.events)?recovery.events:[];state.events=recoveredEvents.map(e=>({eventId:e.id,cloudSynced:true,cookId:state.cookId,ts:e.event_time,type:e.event_type,note:e.note||'',target:e.target_temp==null?'':e.target_temp,phase:e.phase||state.phase,smoker:e.smoker||state.smoker,cookName:state.cookName||'Cook',weight:state.weight||'',setup:e.setup_context||'Recovered from Supabase'}));if(state.events.length){const rr=reconstructEventStates(state.events.map(e=>({event_type:e.type,event_time:e.ts,note:e.note||''})));state.lidOpen=rr.lidOpen;state.wrapped=rr.wrapped;state.meatOn=state.finishTime?false:rr.meatOn;if(rr.wrapMethod)state.wrapMethod=rr.wrapMethod}save();render()}
     state.cloudConflict=false;
     q=await req(s,`/rest/v1/cooks?select=id,cook_id,start_time,finish_time,phase,updated_at&cook_id=eq.${encodeURIComponent(state.cookId)}&order=start_time.asc`);s=q.session;const parents=q.rows;if(!parents.length)throw new Error(`No parent row for ${state.cookId}`);
     const canonical=parents.slice().sort((a,b)=>String(b.updated_at||'').localeCompare(String(a.updated_at||'')))[0];state.cloudCookUuid=canonical.id;state.cloudCookSynced=true;state.cloudCookStateSynced=true;state.cloudLastSeenUpdatedAt=canonical.updated_at||null;
@@ -3529,26 +3531,7 @@ Your cook data is unaffected.`, 'bad');
         try{ await syncCurrentCookAndEvents(); }
         catch(err){ state.cloudSyncMessage=`Cook is finished locally, but cloud sync needs retry: ${err&&err.message?err.message:String(err)}`; save(); renderCloudSyncState(); }
       }
-      if(typeof window.ldCookLogFinalFireboardSync==='function'){
-        state.fireboardFinalSyncPending=true;
-        state.fireboardFinalSyncFailed=false;
-        save();
-        window.ldCookLogFireboardStatus?.(`Final FireBoard sync in progress for cook ${state.cookId}…`);
-        try{
-          const finalFireboardOk = await window.ldCookLogFinalFireboardSync();
-          if (!finalFireboardOk) throw new Error('Final FireBoard sync did not complete.');
-          state.fireboardFinalSyncPending=false;
-          state.fireboardFinalSyncFailed=false;
-          save();
-        }catch(err){
-          state.fireboardFinalSyncPending=true;
-          state.fireboardFinalSyncFailed=true;
-          const finalSyncError = err&&err.message?err.message:String(err);
-          state.cloudSyncMessage=`Cook is finished, but the final FireBoard sync needs retry: ${finalSyncError}`;
-          save(); renderCloudSyncState();
-          window.ldCookLogFireboardStatus?.(`Final FireBoard sync FAILED for cook ${state.cookId}: ${finalSyncError}\nThe finished cook is safe and starting a new cook is blocked until this is resolved.`, 'bad');
-        }
-      }
+      await runFinalFireboardSync();
       render();
     });
   }
@@ -3565,7 +3548,7 @@ Your cook data is unaffected.`, 'bad');
         alert(`Cook ${state.cookId||''} is still active. Finish Cook first so its finish time and final event are saved before starting a new cook.`);
         return;
       }
-      if(state.finishTime && state.fireboardFinalSyncPending){
+      if(state.finishTime && (state.fireboardFinalSyncPending || ["pending","failed"].includes(state.fireboardFinalSyncRecord?.status))){
         alert('This finished cook is still waiting for its final FireBoard temperature sync. Keep this cook open and retry the final FireBoard sync before starting a new cook.');
         return;
       }
@@ -3625,9 +3608,9 @@ Your cook data is unaffected.`, 'bad');
 
 <script>
 (() => {
-  document.title='LDCookLog Mobile V1.30.45';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.45 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.45 marks test cooks for exclusion from future analysis.<br><strong>Build 2026-09-22A</strong>';
+  document.title='LDCookLog Mobile V1.30.46';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.46 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.46 preserves final FireBoard sync confirmation after reopening.<br><strong>Build 2026-09-22A</strong>';
 })();
 </script>
 <script>
@@ -3660,6 +3643,91 @@ setTimeout(async()=>{
   if(state.cloudCookStateSynced)await cloudReadCooks();
 },6000);
 render();
+</script>
+
+<script>
+// V1.30.46: cook-bound final capture evidence, retained locally and in cloud notes.
+function readFinalFireboardRecord(notes,cookId){
+  const line=String(notes||'').split('\n').find(x=>x.startsWith('[LDC_FINAL_FIREBOARD_SYNC] '));
+  if(!line)return null;
+  try{const r=JSON.parse(line.slice('[LDC_FINAL_FIREBOARD_SYNC] '.length));return r.cookId===cookId&&['complete','no_session','failed','pending'].includes(r.status)?r:null}catch(_){return null}
+}
+function renderFinalFireboardConfirmation(){
+  const panel=document.getElementById('finalFireboardConfirmation');
+  if(!panel)return;
+  panel.hidden=!state.finishTime;
+  if(!state.finishTime)return;
+  const record=state.fireboardFinalSyncRecord;
+  const r=record&&record.cookId===state.cookId&&record.finishTime===state.finishTime?record:null;
+  const text=document.getElementById('finalFireboardConfirmationText');
+  const retry=document.getElementById('retryFinalFireboardSync');
+  let message;
+  if(r?.status==='complete')message=`Final FireBoard sync confirmed for cook ${state.cookId}.\nConfirmed: ${fmtDateTime(new Date(r.checkedAt))}\n${r.samples} stored temperature samples.`;
+  else if(r?.status==='no_session')message=`Cook ${state.cookId} finished without a linked FireBoard session.\nVerified: ${fmtDateTime(new Date(r.checkedAt))}\nNo FireBoard temperatures were expected.`;
+  else if(r?.status==='pending')message=`Final FireBoard sync is pending for cook ${state.cookId}. Retry if the previous attempt was interrupted.`;
+  else if(r?.status==='failed')message=`Final FireBoard sync needs retry for cook ${state.cookId}.\n${r.error||'The last attempt did not complete.'}`;
+  else message=`Final FireBoard sync is unverified for cook ${state.cookId}.\nStored temperatures may be available, but no dated confirmation was saved. You can retry capture from this cook's linked session.`;
+  if(r&&state.cloudCookStateSynced===false)message+='\nConfirmation saved locally; cloud sync is waiting. Use Sync Current Cook.';
+  text.textContent=message;
+  panel.className='cloud-status '+(r&&['complete','no_session'].includes(r.status)?'good':'warn');
+  retry.hidden=Boolean(r&&['complete','no_session'].includes(r.status));
+  retry.disabled=finalFireboardConfirmationBusy;
+}
+let finalFireboardConfirmationBusy=false;
+async function runFinalFireboardSync(){
+  if(finalFireboardConfirmationBusy||!state.finishTime||!state.cookId)return false;
+  finalFireboardConfirmationBusy=true;
+  const cookId=state.cookId,finishTime=state.finishTime;
+  state.fireboardFinalSyncRecord={cookId,finishTime,status:'pending'};
+  state.fireboardFinalSyncPending=true;state.fireboardFinalSyncFailed=false;
+  markCloudCookDirty();save();renderFinalFireboardConfirmation();
+  let ok=false;
+  try{
+    const result=await window.ldCookLogFinalFireboardSync();
+    if(!result||!['complete','no_session'].includes(result.status))throw new Error('Final capture did not complete. Check your cloud sign-in and retry.');
+    if(state.cookId!==cookId||state.finishTime!==finishTime)throw new Error('The current cook changed during capture.');
+    state.fireboardFinalSyncRecord={cookId,finishTime,...result,checkedAt:new Date().toISOString()};
+    state.fireboardFinalSyncPending=false;state.fireboardFinalSyncFailed=false;
+    ok=true;
+  }catch(err){
+    if(state.cookId===cookId){
+      state.fireboardFinalSyncRecord={cookId,finishTime,status:'failed',checkedAt:new Date().toISOString(),error:err.message||String(err)};
+      state.fireboardFinalSyncPending=true;state.fireboardFinalSyncFailed=true;
+    }
+  }finally{
+    finalFireboardConfirmationBusy=false;
+    if(state.cookId===cookId){
+      markCloudCookDirty();save();render();
+      if(loadCloudSession())await syncCloudCookState();
+      renderFinalFireboardConfirmation();
+    }
+  }
+  return ok;
+}
+const priorFinalConfirmationPayload=cloudCookPayload;
+cloudCookPayload=function(){
+  const payload=priorFinalConfirmationPayload();
+  const r=state.fireboardFinalSyncRecord;
+  if(r&&r.cookId===state.cookId&&r.finishTime===state.finishTime)payload.notes=(payload.notes||'')+'\n[LDC_FINAL_FIREBOARD_SYNC] '+JSON.stringify(r);
+  return payload;
+};
+const finalConfirmationPanel=document.createElement('div');
+finalConfirmationPanel.id='finalFireboardConfirmation';
+finalConfirmationPanel.style.cssText='margin-top:12px;font-size:15px';
+const finalConfirmationText=document.createElement('div');
+finalConfirmationText.id='finalFireboardConfirmationText';
+const finalConfirmationRetry=document.createElement('button');
+finalConfirmationRetry.id='retryFinalFireboardSync';
+finalConfirmationRetry.className='secondary';
+finalConfirmationRetry.textContent='Retry Final FireBoard Sync';
+finalConfirmationRetry.addEventListener('click',()=>runFinalFireboardSync());
+finalConfirmationPanel.append(finalConfirmationText,finalConfirmationRetry);
+document.getElementById('fireboardStatus').after(finalConfirmationPanel);
+const priorFinalConfirmationRender=render;
+render=function(){priorFinalConfirmationRender();renderFinalFireboardConfirmation()};
+const priorFinalConfirmationCloudRender=renderCloudSyncState;
+renderCloudSyncState=function(){priorFinalConfirmationCloudRender();renderFinalFireboardConfirmation()};
+renderFinalFireboardConfirmation();
 </script>
 </body>
 </html>
