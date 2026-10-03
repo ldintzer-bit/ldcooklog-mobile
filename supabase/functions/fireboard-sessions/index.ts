@@ -137,6 +137,32 @@ export default {
         return json({ session_id: sessionId, ...summary })
       }
 
+
+      if (url.searchParams.get('mode') === 'archive') {
+        const offset = Number(url.searchParams.get('offset') || 0)
+        const limit = 20
+        if (!Number.isSafeInteger(offset) || offset < 0) return json({ error: 'Invalid archive offset.' }, 400)
+        const collected: any[] = []
+        let path: string | null = '/sessions.json'
+        const visited = new Set<string>()
+        while (path) {
+          if (visited.has(path) || visited.size >= 200) throw new Error('FireBoard archive pagination could not be completed.')
+          visited.add(path)
+          const page: any = await fireboardFetch(path)
+          const rows = Array.isArray(page) ? page : page?.results
+          if (!Array.isArray(rows)) throw new Error('Unexpected FireBoard archive response.')
+          collected.push(...rows)
+          if (page?.next) {
+            const next = new URL(page.next, FIREBOARD_BASE + '/')
+            if (next.origin !== 'https://fireboard.io' || !next.pathname.startsWith('/api/v1/sessions')) throw new Error('Unexpected FireBoard archive pagination link.')
+            path = next.pathname.slice('/api/v1'.length) + next.search
+          } else path = null
+        }
+        const unique = [...new Map(collected.map(s => [String(s.id), s])).values()]
+        const completed = unique.filter(s => s.end_time).sort((a,b) => Date.parse(b.start_time) - Date.parse(a.start_time) || Number(b.id)-Number(a.id))
+        return json({ sessions:completed.slice(offset,offset+limit).map(normalizeSession), count:completed.length, has_more:offset+limit<completed.length, next_offset:offset+limit })
+      }
+
       const [rawSessions, rawDevices] = await Promise.all([
         fireboardFetch('/sessions.json'),
         fireboardFetch('/devices.json'),
