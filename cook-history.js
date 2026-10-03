@@ -1,4 +1,4 @@
-/* LDCookLog V1.30.52 — read-only history and side-by-side cook comparisons. */
+/* LDCookLog V1.30.53 — read-only history and side-by-side cook comparisons. */
 (() => {
   'use strict';
   const TEST_MARKER = '[TEST COOK: EXCLUDE FROM ANALYSIS]';
@@ -280,6 +280,17 @@
       targets: events.filter(e => e.event_type === 'Target Change').map(e => ({ target: e.target_temp, note: e.note || '', minutes: Number.isFinite(start) ? (Date.parse(e.event_time) - start) / 60000 : null }))
     };
   }
+
+  function archiveSelection(session, cookRows, links) {
+    const candidates=links.filter(link=>String(link.fireboard_session_id)===String(session.id)).map(link=>cookRows.find(c=>c.id===link.cook_id)).filter(c=>c && canCompare(c));
+    const unique=[...new Map(candidates.map(c=>[c.id,c])).values()];
+    if(unique.length===1)return unique[0];
+    return {id:'fireboard:'+session.id,cook_id:session.title || 'FireBoard '+session.id,food:'FireBoard session',start_time:session.start_time,finish_time:session.end_time,notes:'',source:'fireboard',session};
+  }
+  function archiveComparisonRecord(session,data) {
+    return {source:'fireboard',session,cook:{id:'fireboard:'+session.id,cook_id:session.title || 'FireBoard '+session.id,food:null,phase:'Finished',start_time:session.start_time,finish_time:session.end_time,notes:''},errors:{},events:[],preparation:[],pieces:[],evaluation:[],roles:[],sessions:[session],equipmentLinks:[],rubLinks:[],equipment:[],rubs:[],location:[],method:[],temperatures:[{session,rows:archiveSamples(data)}]};
+  }
+
   function comparisonSeries(record, purpose) {
     const start = Date.parse(record.cook.start_time);
     if (!Number.isFinite(start)) return [];
@@ -289,8 +300,8 @@
       if (entry.error) continue;
       for (const g of graphGroups(entry.rows, record.cook).groups) {
         const role = roles.get(g.key);
-        if (!role) continue;
-        if (!groups.has(g.key)) groups.set(g.key, { label: `${record.cook.cook_id} — ${role.cook_role || g.label}`, points: new Map() });
+        if (purpose === 'unassigned' ? record.roles.some(r => ['chamber','food','other'].includes(r.role_type) && `${r.device_uuid || 'unknown-device'}::${r.channel_id}` === g.key) : !role) continue;
+        if (!groups.has(g.key)) groups.set(g.key, { label: `${record.cook.cook_id} — ${role?.cook_role || g.label}`, points: new Map() });
         for (const point of g.points) groups.get(g.key).points.set(point.time, { ...point, minutes: (point.time - start) / 60000 });
       }
     }
@@ -307,7 +318,7 @@
   }
   // Pure/read-only functions are also usable by the focused Node checks.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan, septemberTestPlan, archiveSamples, realFireboardSessions, loadArchiveIndex };
+    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan, septemberTestPlan, archiveSamples, realFireboardSessions, loadArchiveIndex, archiveSelection, archiveComparisonRecord };
     return;
   }
 
@@ -342,7 +353,7 @@
   archiveSection.append(make('h2','FireBoard Session History'),make('p','Original historical cooks and sessions linked to real app cooks. Test sessions are hidden.','sub'));
   const archiveStatus = make('p', 'Load your FireBoard history to see older sessions.');
   const archiveList = make('div');
-  let archiveOffset = 0, archiveLoaded = false, archiveBusy = false, archiveSessions = [], archiveHiddenCount = 0;
+  let archiveOffset = 0, archiveLoaded = false, archiveBusy = false, archiveSessions = [], archiveHiddenCount = 0, archiveCookRows = [], archiveLinks = [];
   const archiveMore = button('Load FireBoard History', () => loadArchive());
   archiveSection.append(archiveStatus,archiveList,archiveMore); listView.append(archiveSection);
 
@@ -351,6 +362,7 @@
     for(const session of archiveSessions.slice(0,archiveOffset)) {
       const card=make('article',null,'card');
       card.append(make('strong',session.title),make('div',dateTime(session.start_time)+' — '+dateTime(session.end_time),'sub'),button('View FireBoard Session',()=>openArchiveSession(session)));
+      card.append(selectionChoice(archiveSelection(session,archiveCookRows,archiveLinks)));
       archiveList.append(card);
     }
     archiveMore.hidden=archiveOffset>=archiveSessions.length;
@@ -370,6 +382,7 @@
         loadIndex()
       ]);
       if(ticket!==generation)return;
+      archiveCookRows=cookRows;archiveLinks=links;
       archiveSessions=realFireboardSessions(sessions,cookRows,links);
       archiveHiddenCount=sessions.length-archiveSessions.length;
       archiveLoaded=true;archiveOffset=DISPLAY_PAGE;renderArchivePage();
@@ -394,10 +407,26 @@
   const selectionSummary = make('div', null, 'history-selection-summary');
   root.querySelector('.history-toolbar').after(selectionSummary);
   const compareButton = button('Compare Selected Cooks (0/4)', () => openComparison(), 'blue');
+  const archiveCompareButton = button('Compare Selected Cooks (0/4)', () => openComparison(), 'blue');
+  archiveSection.querySelector('h2').after(archiveCompareButton);
   const clearSelection = button('Clear Selection', () => { selected.clear(); updateSelection(); renderList(); });
+
+  function selectionChoice(cook) {
+    const label=make('label',null,'history-compare-choice'), check=make('input');
+    check.type='checkbox';check.checked=selected.has(cook.id);check.dataset.selectionId=cook.id;
+    check.addEventListener('change',()=>{
+      if(check.checked && !selected.has(cook.id) && selected.size>=4){check.checked=false;status.textContent='Select up to four cooks or FireBoard sessions. Remove a selection first.';archiveStatus.textContent=status.textContent;return;}
+      if(check.checked)selected.set(cook.id,cook);else selected.delete(cook.id);
+      updateSelection();
+    });
+    label.append(check,make('span','Select for comparison'));return label;
+  }
+
   function updateSelection() {
+    root.querySelectorAll('input[data-selection-id]').forEach(check=>{check.checked=selected.has(check.dataset.selectionId);});
     compareButton.textContent = `Compare Selected Cooks (${selected.size}/4)`;
     compareButton.disabled = selected.size < 2;
+    archiveCompareButton.textContent=compareButton.textContent;archiveCompareButton.disabled=compareButton.disabled;
     clearSelection.hidden = selected.size === 0;
     selectionSummary.replaceChildren(); selectionSummary.hidden = selected.size === 0;
     for (const cook of selected.values()) {
@@ -428,7 +457,7 @@
     generation++; root.hidden = true; main.hidden = false; main.querySelector('h1').tabIndex = -1; main.querySelector('h1').focus(); launch.focus();
   }), button('Refresh History', () => { detail.hidden = true; listView.hidden = false; reload(); loadArchive(true); }));
   toolbar.append(compareButton, clearSelection);
-  const compareHelp = make('p', 'Select two to four finished, real cooks for a side-by-side comparison. Selections stay selected when you change filters.', 'sub');
+  const compareHelp = make('p', 'Select two to four finished cooks or real FireBoard sessions for a side-by-side comparison. Selections stay selected when you change filters.', 'sub');
   root.querySelector('.history-filters').after(compareHelp);
   updateSelection();
   async function openHistory() {
@@ -468,14 +497,7 @@
       if (isTest(cook)) card.appendChild(make('span', 'TEST COOK — excluded from future analysis', 'history-type'));
       card.append(make('div', `${dateTime(cook.start_time)} • ${cooker(cook)}`, 'sub'), make('div', cook.phase || 'Phase not recorded', 'sub'), button('View Cook Record', () => openRecord(cook.id)));
       if (canCompare(cook)) {
-        const selectLabel = make('label', null, 'history-compare-choice');
-        const check = make('input'); check.type = 'checkbox'; check.checked = selected.has(cook.id);
-        check.addEventListener('change', () => {
-          if (check.checked && selected.size >= 4) { check.checked = false; status.textContent = 'Select up to four cooks. Clear a selection before adding another.'; return; }
-          if (check.checked) selected.set(cook.id, cook); else selected.delete(cook.id);
-          updateSelection();
-        });
-        selectLabel.append(check, make('span', 'Select for comparison')); card.appendChild(selectLabel);
+        card.append(selectionChoice(cook));
       } else card.appendChild(make('div', isTest(cook) ? 'Test cooks are excluded from comparisons.' : 'Finish this cook before comparing it.', 'sub'));
       list.appendChild(card);
     }
@@ -517,11 +539,11 @@
   }
   async function openComparison() {
     if (selected.size < 2 || selected.size > 4) return;
-    const ticket = ++generation, ids = [...selected.keys()];
+    const ticket = ++generation, ids = [...selected.keys()], chosen = [...selected.values()];
     listView.hidden = true; detail.hidden = false; detail.replaceChildren();
     detail.append(button('Back to Cook History', () => { generation++; detail.hidden = true; listView.hidden = false; renderList(); }), make('p', 'Loading selected cook records…', 'history-record-loading'));
     window.scrollTo(0, 0);
-    const results = await Promise.allSettled(ids.map(id => loadRecord(id)));
+    const results = await Promise.allSettled(chosen.map(async cook => cook.source === 'fireboard' ? archiveComparisonRecord(cook.session,await fireboardArchiveRequest({session_id:String(cook.session.id),samples:'1'})) : loadRecord(cook.id)));
     if (ticket !== generation || root.hidden) return;
     const failures = results.map((r, i) => r.status === 'rejected' ? `${selected.get(ids[i])?.cook_id || ids[i]}: ${r.reason.message || String(r.reason)}` : null).filter(Boolean);
     if (failures.length) {
@@ -547,8 +569,9 @@
   function renderComparison(records) {
     detail.replaceChildren();
     detail.append(button('Back to Cook History', () => { generation++; detail.hidden = true; listView.hidden = false; renderList(); }), make('h2', 'Compare Cooks'));
-    message(detail, 'Recorded results only. Temperature curves are aligned to each cook’s Meat On start time. Test cooks are excluded.');
-    const cuts = new Set(records.map(r => String(r.cook.food || '').trim().toLowerCase()));
+    message(detail, 'Recorded results only. App cook curves start at Meat On; historical FireBoard curves start at the FireBoard session start. These start times may differ.');
+    if(records.some(r=>r.source==='fireboard'))message(detail,'Historical FireBoard sessions provide recorded temperatures and session duration. Meat, cooker, targets, wrapping, and results are shown only when saved in an app cook record.');
+    const cuts = new Set(records.filter(r=>r.cook.food).map(r => String(r.cook.food || '').trim().toLowerCase()));
     const cookers = new Set(records.map(r => cooker(r.cook)));
     if (cuts.size > 1) message(detail, 'Different meat/cut or process labels are selected. Duration and food-temperature curves may not describe equivalent cooks.', true);
     if (cookers.size > 1) message(detail, 'Different cookers are selected. Consider their differences when comparing chamber-temperature curves.', true);
@@ -556,11 +579,12 @@
     const value = (r, key, fn) => r.errors[key] ? 'Unavailable' : fn();
     const headers = ['Recorded detail', ...records.map(r => r.cook.cook_id)];
     const rows = [
+      ['Record source', ...records.map(r=>r.source==='fireboard'?'FireBoard session':'App cook record')],
       ['Meat / Cut', ...records.map(r => r.cook.food || 'Not recorded')],
       ['Cooker', ...records.map(r => cooker(r.cook))],
       ['Started', ...records.map(r => dateTime(r.cook.start_time))],
       ['Weight', ...records.map(r => r.cook.weight_value == null ? 'Not recorded' : `${r.cook.weight_value} ${r.cook.weight_unit || ''}`)],
-      ['Total cook duration', ...metrics.map(m => durationText(m.duration))],
+      ['Recorded duration', ...metrics.map(m => durationText(m.duration))],
       ['First logged target', ...metrics.map(m => m.initialTarget == null ? 'Not recorded' : `${m.initialTarget}°F`)],
       ['Last saved target', ...metrics.map(m => m.lastTarget == null ? 'Not recorded' : `${m.lastTarget}°F`)],
       ['Target changes', ...metrics.map(m => m.targets.length ? m.targets.map(t => `${t.target == null ? t.note || 'Target not recorded' : t.target + '°F'} at ${durationText(t.minutes)}`).join('; ') : 'No target-change events recorded')],
@@ -581,21 +605,26 @@
     ];
     // Timing from unavailable event logs is unknown, never treated as an absence.
     for (const row of rows) if (['First logged target', 'Target changes', 'Wrapping', 'Rest', 'Keep warm'].includes(row[0])) records.forEach((r, i) => { if (r.errors.events) row[i + 1] = 'Unavailable'; });
-    const summary = section('Setup, Timing, and Results'); table(summary, headers, rows);
+    for(const row of rows)records.forEach((r,i)=>{if(r.source==='fireboard' && !['Record source','Started','Recorded duration'].includes(row[0]))row[i+1]='Not recorded in FireBoard';});
+    const shownRows=records.every(r=>r.source==='fireboard')?rows.filter(row=>['Record source','Started','Recorded duration'].includes(row[0])):rows;
+    const summary = section('Setup, Timing, and Results'); table(summary, headers, shownRows);
     summary.querySelector('table').classList.add('history-comparison-table');
-    for (const purpose of ['chamber', 'food']) {
-      const box = section(purpose === 'chamber' ? 'Chamber Temperature Comparison' : 'Food Temperature Comparison');
+    for (const purpose of ['chamber', 'food', 'unassigned']) {
+      if(purpose!=='unassigned' && records.every(r=>r.source==='fireboard'))continue;
+      if(purpose==='unassigned' && !records.some(r=>comparisonSeries(r,'unassigned').length))continue;
+      const box = section(purpose === 'chamber' ? 'Chamber Temperature Comparison' : purpose === 'food' ? 'Food Temperature Comparison' : 'FireBoard / Unassigned Probe Temperature Comparison');
       const series = records.flatMap(r => comparisonSeries(r, purpose));
+      if(purpose==='unassigned')message(box,'These probes have no saved chamber or food assignment. FireBoard labels identify the curves; use the legend to select the probes you want to compare.');
       for (const r of records) {
         if (r.errors.roles || r.errors.sessions || r.temperatures.some(t => t.error)) message(box, `${r.cook.cook_id}: some saved probe or temperature data could not be loaded.`, true);
-        else if (!comparisonSeries(r, purpose).length) message(box, `${r.cook.cook_id}: no usable samples with a saved ${purpose === 'chamber' ? 'chamber' : 'food'} probe assignment.`);
+        else if (!comparisonSeries(r, purpose).length) message(box, `${r.cook.cook_id}: no usable ${purpose==='unassigned'?'unassigned probe samples':'samples with a saved '+purpose+' probe assignment'}.`);
       }
       if (series.length) renderComparisonGraph(box, series);
     }
     const notes = records.flatMap(r => Object.entries(r.errors).map(([key]) => `${r.cook.cook_id}: ${key} unavailable`));
     if (notes.length) { const box = section('Unavailable Record Details'); notes.forEach(n => message(box, n, true)); }
     const links = section('Full Cook Records');
-    records.forEach(r => links.appendChild(button(`View ${r.cook.cook_id}`, () => openRecord(r.cook.id))));
+    records.forEach(r => links.appendChild(button(`View ${r.cook.cook_id}`, () => r.source==='fireboard' ? openArchiveSession(r.session) : openRecord(r.cook.id))));
     detail.querySelector('h2').tabIndex = -1; detail.querySelector('h2').focus();
   }
   function renderComparisonGraph(parent, series) {
@@ -605,7 +634,7 @@
     const W = 760, H = 350, left = 58, right = 18, top = 22, bottom = 50;
     const x = v => left + v / maxX * (W - left - right), y = v => top + (maxY - v) / (maxY - minY) * (H - top - bottom);
     const ns = 'http://www.w3.org/2000/svg', svg = document.createElementNS(ns, 'svg');
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'Cook comparison temperature graph, degrees Fahrenheit against elapsed time since Meat On'); svg.setAttribute('class', 'history-chart');
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', 'Cook comparison temperature graph, degrees Fahrenheit against elapsed time since each record start'); svg.setAttribute('class', 'history-chart');
     const node = (tag, attrs, text) => { const n = document.createElementNS(ns, tag); for (const [k, v] of Object.entries(attrs)) n.setAttribute(k, v); if (text != null) n.textContent = text; svg.appendChild(n); return n; };
     for (let i = 0; i <= 4; i++) { const t = minY + (maxY - minY) * i / 4; node('line', { x1: left, x2: W - right, y1: y(t), y2: y(t), stroke: '#444' }); node('text', { x: left - 8, y: y(t) + 5, fill: '#bbb', 'font-size': 14, 'text-anchor': 'end' }, `${Math.round(t)}°F`); }
     for (let i = 0; i <= 4; i++) node('text', { x: x(maxX * i / 4), y: H - 15, fill: '#bbb', 'font-size': 14, 'text-anchor': i === 0 ? 'start' : i === 4 ? 'end' : 'middle' }, durationText(maxX * i / 4));
@@ -621,7 +650,7 @@
       label.style.color = color; label.append(check, make('span', s.label)); legend.appendChild(label);
     });
     const scroll = make('div', null, 'history-scroll'); scroll.appendChild(svg); parent.append(scroll, legend);
-    message(parent, 'Elapsed time from Meat On • °F. Use the legend to show or hide a probe. Curves break across gaps longer than five minutes.');
+    message(parent, 'Elapsed time from each record’s start • °F. Use the legend to show or hide a probe. Curves break across gaps longer than five minutes.');
   }
   function renderRecord(r) {
     detail.replaceChildren();
