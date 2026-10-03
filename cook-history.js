@@ -1,4 +1,4 @@
-/* LDCookLog V1.30.53 — read-only history and side-by-side cook comparisons. */
+/* LDCookLog V1.30.54 — read-only history and side-by-side cook comparisons. */
 (() => {
   'use strict';
   const TEST_MARKER = '[TEST COOK: EXCLUDE FROM ANALYSIS]';
@@ -281,14 +281,42 @@
     };
   }
 
+
+  function sessionFood(session,cookRows,links,channels=[]) {
+    const foods=[...new Set(links.filter(link=>String(link.fireboard_session_id)===String(session.id)).map(link=>cookRows.find(c=>c.id===link.cook_id)).filter(c=>c && !isTest(c) && c.food).map(c=>String(c.food).trim()))];
+    if(foods.length)return {text:foods.join(' / '),source:'Cook record'};
+    if(String(session.id)==='11789318')return {text:'Pork butts (2)',source:'Confirmed historical cook'};
+    const meat=/\b(?:pork|butt|shoulder|brisket|beef|ribs?|chicken|turkey|sausage|wings?|lamb|salmon|fish|tallow|tri[ -]?tip|steak|ham|duck)\b/i;
+    const labels=[...new Set(channels.map(c=>String(c.label||'').trim()).filter(label=>meat.test(label)))];
+    if(labels.length)return {text:labels.join(' / '),source:'FireBoard probe labels'};
+    if(meat.test(session.title||''))return {text:session.title,source:'FireBoard session title'};
+    return {text:'Food not identified',source:''};
+  }
+  async function labelArchiveSessions(sessions,cookRows,links,read=fireboardArchiveRequest) {
+    const result=sessions.map(session=>({...session,foodLabel:sessionFood(session,cookRows,links)}));
+    let cursor=0;
+    async function worker(){
+      while(cursor<result.length){
+        const session=result[cursor++];
+        if(session.foodLabel.source)continue;
+        try{
+          const data=await read({session_id:String(session.id)});
+          session.foodLabel=sessionFood(session,cookRows,links,data.channels || []);
+          session.probeLabels=[...new Set((data.channels||[]).map(c=>c.label).filter(Boolean))];
+        }catch(err){session.labelError=err.message;}
+      }
+    }
+    await Promise.all([worker(),worker(),worker()]);return result;
+  }
+
   function archiveSelection(session, cookRows, links) {
     const candidates=links.filter(link=>String(link.fireboard_session_id)===String(session.id)).map(link=>cookRows.find(c=>c.id===link.cook_id)).filter(c=>c && canCompare(c));
     const unique=[...new Map(candidates.map(c=>[c.id,c])).values()];
     if(unique.length===1)return unique[0];
-    return {id:'fireboard:'+session.id,cook_id:session.title || 'FireBoard '+session.id,food:'FireBoard session',start_time:session.start_time,finish_time:session.end_time,notes:'',source:'fireboard',session};
+    return {id:'fireboard:'+session.id,cook_id:session.title || 'FireBoard '+session.id,food:session.foodLabel?.source ? session.foodLabel.text : 'FireBoard session',start_time:session.start_time,finish_time:session.end_time,notes:'',source:'fireboard',session};
   }
   function archiveComparisonRecord(session,data) {
-    return {source:'fireboard',session,cook:{id:'fireboard:'+session.id,cook_id:session.title || 'FireBoard '+session.id,food:null,phase:'Finished',start_time:session.start_time,finish_time:session.end_time,notes:''},errors:{},events:[],preparation:[],pieces:[],evaluation:[],roles:[],sessions:[session],equipmentLinks:[],rubLinks:[],equipment:[],rubs:[],location:[],method:[],temperatures:[{session,rows:archiveSamples(data)}]};
+    return {source:'fireboard',session,cook:{id:'fireboard:'+session.id,cook_id:session.title || 'FireBoard '+session.id,food:session.foodLabel?.source ? session.foodLabel.text : null,phase:'Finished',start_time:session.start_time,finish_time:session.end_time,notes:''},errors:{},events:[],preparation:[],pieces:[],evaluation:[],roles:[],sessions:[session],equipmentLinks:[],rubLinks:[],equipment:[],rubs:[],location:[],method:[],temperatures:[{session,rows:archiveSamples(data)}]};
   }
 
   function comparisonSeries(record, purpose) {
@@ -318,7 +346,7 @@
   }
   // Pure/read-only functions are also usable by the focused Node checks.
   if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan, septemberTestPlan, archiveSamples, realFireboardSessions, loadArchiveIndex, archiveSelection, archiveComparisonRecord };
+    module.exports = { isTest, cooker, finalRecord, filterCooks, allRows, loadIndex, loadRecord, graphGroups, downsample, get, canCompare, comparisonMetrics, comparisonSeries, comparisonSegments, testCleanupPlan, septemberTestPlan, archiveSamples, realFireboardSessions, loadArchiveIndex, archiveSelection, archiveComparisonRecord, sessionFood, labelArchiveSessions };
     return;
   }
 
@@ -362,6 +390,11 @@
     for(const session of archiveSessions.slice(0,archiveOffset)) {
       const card=make('article',null,'card');
       card.append(make('strong',session.title),make('div',dateTime(session.start_time)+' — '+dateTime(session.end_time),'sub'),button('View FireBoard Session',()=>openArchiveSession(session)));
+      const food=make('div',session.foodLabel?.text || 'Food not identified','history-food-label');food.style.fontWeight='700';food.style.marginTop='8px';card.querySelector('strong').after(food);
+      if(session.foodLabel?.source)food.after(make('div',session.foodLabel.source,'sub'));
+      if(session.labelError)card.append(make('div','Food labels could not be loaded: '+session.labelError,'history-error'));
+      if(session.description)card.append(make('p',session.description,'sub'));
+      if(!session.foodLabel?.source && session.probeLabels?.length)card.append(make('p','Recorded probe labels: '+session.probeLabels.join(' / '),'sub'));
       card.append(selectionChoice(archiveSelection(session,archiveCookRows,archiveLinks)));
       archiveList.append(card);
     }
@@ -383,7 +416,9 @@
       ]);
       if(ticket!==generation)return;
       archiveCookRows=cookRows;archiveLinks=links;
-      archiveSessions=realFireboardSessions(sessions,cookRows,links);
+      archiveStatus.textContent='Reading food labels from FireBoard…';
+      archiveSessions=await labelArchiveSessions(realFireboardSessions(sessions,cookRows,links),cookRows,links);
+      if(ticket!==generation)return;
       archiveHiddenCount=sessions.length-archiveSessions.length;
       archiveLoaded=true;archiveOffset=DISPLAY_PAGE;renderArchivePage();
     }catch(err){if(ticket===generation){archiveStatus.textContent=err.message;archiveMore.hidden=false;archiveMore.textContent='Retry FireBoard History';}}
@@ -391,7 +426,7 @@
   }
   async function openArchiveSession(session) {
     const ticket=++generation; listView.hidden=true;detail.hidden=false;detail.replaceChildren();
-    detail.append(button('Back to Cook History',()=>{generation++;detail.hidden=true;listView.hidden=false;renderList();}),make('h2',session.title),make('p','Loading FireBoard temperatures…'));
+    detail.append(button('Back to Cook History',()=>{generation++;detail.hidden=true;listView.hidden=false;renderList();}),make('h2',session.title),make('p',session.foodLabel?.text || 'Food not identified'),make('p','Loading FireBoard temperatures…'));
     try {
       const data=await fireboardArchiveRequest({session_id:String(session.id),samples:'1'});
       if(ticket!==generation)return;
@@ -455,6 +490,7 @@
   options(inputs.food, [['', 'All meat / cuts']]); options(inputs.cooker, [['', 'All cookers']]);
   toolbar.append(button('Back to Current Cook', () => {
     generation++; root.hidden = true; main.hidden = false; main.querySelector('h1').tabIndex = -1; main.querySelector('h1').focus(); launch.focus();
+    if(typeof cloudReadCooks==='function')cloudReadCooks();
   }), button('Refresh History', () => { detail.hidden = true; listView.hidden = false; reload(); loadArchive(true); }));
   toolbar.append(compareButton, clearSelection);
   const compareHelp = make('p', 'Select two to four finished cooks or real FireBoard sessions for a side-by-side comparison. Selections stay selected when you change filters.', 'sub');
@@ -605,8 +641,8 @@
     ];
     // Timing from unavailable event logs is unknown, never treated as an absence.
     for (const row of rows) if (['First logged target', 'Target changes', 'Wrapping', 'Rest', 'Keep warm'].includes(row[0])) records.forEach((r, i) => { if (r.errors.events) row[i + 1] = 'Unavailable'; });
-    for(const row of rows)records.forEach((r,i)=>{if(r.source==='fireboard' && !['Record source','Started','Recorded duration'].includes(row[0]))row[i+1]='Not recorded in FireBoard';});
-    const shownRows=records.every(r=>r.source==='fireboard')?rows.filter(row=>['Record source','Started','Recorded duration'].includes(row[0])):rows;
+    for(const row of rows)records.forEach((r,i)=>{if(r.source==='fireboard' && !['Record source','Meat / Cut','Started','Recorded duration'].includes(row[0]))row[i+1]='Not recorded in FireBoard';});
+    const shownRows=records.every(r=>r.source==='fireboard')?rows.filter(row=>['Record source','Meat / Cut','Started','Recorded duration'].includes(row[0])):rows;
     const summary = section('Setup, Timing, and Results'); table(summary, headers, shownRows);
     summary.querySelector('table').classList.add('history-comparison-table');
     for (const purpose of ['chamber', 'food', 'unassigned']) {
