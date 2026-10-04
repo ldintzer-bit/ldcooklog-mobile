@@ -1,0 +1,21 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert'),crypto=require('crypto');
+const {stripTypeScriptTypes}=require('module');
+let code=fs.readFileSync('supabase/functions/fireboard-sessions/index.ts','utf8').replace(/^import .*\n/,'').replace('export default {','globalThis.handler = {');
+let calls=0, result={data:[],error:null};
+const auth={supabase:{from:n=>{assert.equal(n,'fireboard_account_access');return {select:()=>({limit:async()=>result})}}}};
+const context={URL,Response,AbortSignal,Deno:{env:{get:()=> 'fixture-token'}},withSupabase:(_,fn)=>r=>fn(r,auth),fetch:async()=>{calls++;return Response.json([{channel_id:1,x:['2026-10-01'],y:[225]}]);}};
+vm.runInNewContext(stripTypeScriptTypes(code),context);
+(async()=>{
+ const request=new Request('https://fixture.test/?session_id=42');
+ assert.equal((await context.handler.fetch(request)).status,403);assert.equal(calls,0);
+ result={data:null,error:{message:'private failure'}};const failed=await context.handler.fetch(request);assert.equal(failed.status,503);assert.equal(calls,0);assert.ok(!(await failed.text()).includes('private failure'));
+ result={data:[{user_id:'owner'}],error:null};assert.equal((await context.handler.fetch(request)).status,200);assert.equal(calls,1);
+ const html=fs.readFileSync('index.html','utf8');const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]).filter(Boolean);
+ const csp=html.match(/http-equiv="Content-Security-Policy" content="([^"]+)"/)[1];
+ scripts.forEach(s=>{new Function(s);assert.ok(csp.includes("'sha256-"+crypto.createHash('sha256').update(s).digest('base64')+"'"));});
+ assert.ok(!/unsafe-eval|script-src[^;]*unsafe-inline/.test(csp));
+ const csvFunction=html.match(/function csvCell\(value\) \{[\s\S]*?\n\}/)[0];const csvCtx={};vm.runInNewContext(csvFunction,csvCtx);
+ for(const v of ['=HYPERLINK("bad")','+SUM(1,2)','-2+3','@SUM(1,2)',' \t=1','\tordinary'])assert.ok(csvCtx.csvCell(v).startsWith('"\''));
+ assert.equal(csvCtx.csvCell(-5),'"-5"');assert.equal(csvCtx.csvCell('Brisket'),'"Brisket"');assert.equal(csvCtx.csvCell('a"b'),'"a""b"');
+ console.log('PASS: unauthorized and database-error FireBoard requests make no upstream calls; owner allowed; CSV formulas neutralized; every inline script has matching CSP hash and valid syntax.');
+})().catch(e=>{console.error(e);process.exitCode=1});
