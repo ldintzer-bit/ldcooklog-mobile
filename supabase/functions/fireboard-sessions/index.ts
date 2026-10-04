@@ -1,4 +1,4 @@
-import { withSupabase } from 'npm:@supabase/server@^1'
+import { withSupabase } from 'npm:@supabase/server@1.9.0'
 
 const FIREBOARD_BASE = 'https://fireboard.io/api/v1'
 const USER_AGENT = 'LDCookLog/1.23.6 fireboard channel identity'
