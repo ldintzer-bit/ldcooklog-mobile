@@ -34,6 +34,9 @@ jobs:
               tables.append({'table':name,'columns':columns,'rls':bool(re.search(r'ALTER TABLE "public"\."'+re.escape(name)+r'" ENABLE ROW LEVEL SECURITY',s))})
           policies=re.findall(r'CREATE POLICY .*?;',s,re.S)
           policies=[re.sub(r"[0-9a-f]{8}-[0-9a-f-]{27,}",'<principal>',x) for x in policies]
+          functions=re.findall(r'CREATE OR REPLACE FUNCTION .*?(?=ALTER FUNCTION)',s,re.S)
+          functions=[re.sub(r"'(?:[^']|'')*'", "'<literal>'",x) for x in functions]
+          print('SECURITY_FUNCTION_AUDIT='+json.dumps(functions))
           grants=re.findall(r'(?:GRANT|REVOKE) .*?;',s,re.S)
           print('SECURITY_SCHEMA_AUDIT='+json.dumps({'tables':tables,'policies':policies,'grants':grants,'security_definer_function_count':len(re.findall('SECURITY DEFINER',s))}))
           PY
