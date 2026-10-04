@@ -1,0 +1,39 @@
+name: LDCookLog Security Configuration Audit
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/security-audit.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1
+        with:
+          version: 2.119.0
+      - name: Inspect live schema without reading cook data
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref ogfzgeuavfnuuzcwzwqx
+          supabase db dump --linked --schema public --file /tmp/ldcooklog-schema.sql
+          python3 - <<'PY'
+          import re,json
+          s=open('/tmp/ldcooklog-schema.sql').read()
+          tables=[]
+          for match in re.finditer(r'CREATE TABLE(?: IF NOT EXISTS)? "public"\."([^"]+)" \((.*?)\n\);',s,re.S):
+              name,body=match.groups()
+              columns=re.findall(r'^\s+"([^"]+)" ',body,re.M)
+              tables.append({'table':name,'columns':columns,'rls':bool(re.search(r'ALTER TABLE "public"\."'+re.escape(name)+r'" ENABLE ROW LEVEL SECURITY',s))})
+          policies=re.findall(r'CREATE POLICY .*?;',s,re.S)
+          policies=[re.sub(r"[0-9a-f]{8}-[0-9a-f-]{27,}",'<principal>',x) for x in policies]
+          grants=re.findall(r'(?:GRANT|REVOKE) .*?;',s,re.S)
+          print('SECURITY_SCHEMA_AUDIT='+json.dumps({'tables':tables,'policies':policies,'grants':grants,'security_definer_function_count':len(re.findall('SECURITY DEFINER',s))}))
+          PY
