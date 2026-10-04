@@ -19,12 +19,13 @@ async function fireboardFetch(path: string) {
       'User-Agent': USER_AGENT,
       Accept: 'application/json',
     },
+    redirect: 'error',
+    signal: AbortSignal.timeout(20000),
   })
 
   const data = await response.json().catch(() => null)
   if (!response.ok) {
-    const detail = data && typeof data === 'object' ? JSON.stringify(data) : response.statusText
-    throw new Error(`FireBoard API ${response.status}: ${detail}`)
+    throw new Error(`FireBoard API request failed (${response.status}).`)
   }
   return data
 }
@@ -118,9 +119,22 @@ function liveDeviceUuids(devices: any[]) {
 }
 
 export default {
-  fetch: withSupabase({ auth: 'user' }, async (req) => {
+  fetch: withSupabase({ auth: 'user' }, async (req, ctx) => {
     if (req.method !== 'GET') {
       return json({ error: 'Method not allowed' }, 405)
+    }
+
+    // RLS exposes only the caller's administrator-approved account. Users cannot
+    // enroll themselves, and errors fail closed before using the FireBoard token.
+    try {
+      const { data, error } = await ctx.supabase.from('fireboard_account_access')
+        .select('user_id').limit(1);
+      if (error) return json({ error: 'FireBoard account authorization is unavailable.' }, 503);
+      if (!Array.isArray(data) || data.length !== 1) {
+        return json({ error: 'This account is not authorized to access FireBoard.' }, 403);
+      }
+    } catch {
+      return json({ error: 'FireBoard account authorization is unavailable.' }, 503);
     }
 
     try {
@@ -154,7 +168,7 @@ export default {
           collected.push(...rows)
           if (page?.next) {
             const next = new URL(page.next, FIREBOARD_BASE + '/')
-            if (next.origin !== 'https://fireboard.io' || !next.pathname.startsWith('/api/v1/sessions')) throw new Error('Unexpected FireBoard archive pagination link.')
+            if (next.origin !== 'https://fireboard.io' || next.pathname !== '/api/v1/sessions.json') throw new Error('Unexpected FireBoard archive pagination link.')
             path = next.pathname.slice('/api/v1'.length) + next.search
           } else path = null
         }
@@ -202,8 +216,7 @@ export default {
         count: completed.length,
       })
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      return json({ error: message }, 502)
+      return json({ error: 'FireBoard data could not be loaded. Please try again.' }, 502)
     }
   }),
 }
