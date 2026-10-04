@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-DArLJHTedMGlNCaqNRcea+p0fMCttUBQDpt3KAsa1ls=' 'sha256-xuwEXl78Ng/HgM/uSgG/ypDskFDJK05bwuu1T0vPmkc=' 'sha256-E6oBCn+SPKKmK8D9/bmfJ4GSuwOiFxomZXPEK5d0MvY=' 'sha256-V8PkbXdrgkO4Jx7LFkTywNE4CSRwqF0FWRWR/mJeqKU=' 'sha256-WtUPIUnG5jTlTbarX0kYDh7/zhdwSNzY0vP5Qc4IwK8=' 'sha256-lWet8fbq3teLB9rra2ZR3JrYh1OB3Mz5e3m7qGPyazk=' 'sha256-JX7/KYSFG/V7rIdY3YlvK7ODCjTWsnfOFybacBUpeZ4=' 'sha256-QyuvNs7WP6rFyocb56/bMkv0ioeN87pYQy9I5bnX2gw=' 'sha256-COeZEBJwtSGRHR91xVZuM1GRR3pbTfdHUneZb0i9XVE=' 'sha256-adPswAxZRCDRShdtZsN/uMa2PjTZbQFvXDouYts2tUk=' 'sha256-GsfI9tYgoixxyB759arLbcVVg/k+1IdI/+pcZg1u/Ig=' 'sha256-KlI7dL5xYPDtxe3Vv+pdq60Jqw66GibX6WnSWkZv9qY=' 'sha256-CAHDlqBX/a76LvllBOwj8liJWr4GS+FWI7aWEgxM+68=' 'sha256-4VpOYOwGzo/rN25BXk9LMrux0WldUWPTY34wxeIjQWw=' 'sha256-22igByfVRG+F58roxoBrbzGRaUAeHCXjI2xSmeUmBDE=' 'sha256-BDos2y159lfNPhkQZ2l8Pweh+TydF0QOogP4j5OkVoQ=' 'sha256-AeCmEo1FApO64+xGlMiZn+YE/SWBsbAmdIMPLCjksgY=' 'sha256-zdf47hV0gsePu9GnCBL5xHfYaP3VT1XxgK2jM3PIhjw=' 'sha256-HQ1aVnVL2uUAqfYeKCX3VYz+lOoMm6woJDi5kxCM6SM=' 'sha256-wHLvl8XlQlK3MGqZy+2qqLxo2LQEolUHiNiYsQRMfcw=' 'sha256-YVgCFQA9TBAvgTZTa1VdgbW8nB1n5AR2yGTEzahlB7E=' 'sha256-XEwIR4htetcC5d0rQfXX7hHMZxi8haSSabeRSD7Xfhc=' 'sha256-LTJ+8FHvAENu9Kh0Qi83iOZWLt/V+19rTMWgx/B7xKM=' 'sha256-aglRNVoBo7Mcm+UaYpCjzyMfCMwTGW0YxE4bDiOZ6sg=' 'sha256-hZD9KAwvNRfweZNoFjlnTf3JIhp5KRfHEgqTipVskTI=' 'sha256-ekXCEibZsfjM34I9/65JxEEdAUNTazgse+VH2P9mKdc=' 'sha256-bT1v6MaiOBc8QcyyMADjPEELRlep7YTQazy8qoB2mxI=' 'sha256-GUOR8Wx1ettSfxeyIy7DglmM9haP3KfD90LOzEHkSNc=' 'sha256-XX8dba2h0kuzSGcB/hANPzM4jFavmFQYiJSTaM4FPiA=' 'sha256-i2iv9VGAHejV/Vh67t87T8P/DW/2gHOGOxRX1GTMzWQ=' 'sha256-bS0YDsvZxFUxbTMeBAiGJRWD0ih/GWeWekVtYGfqw9E='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src https://ogfzgeuavfnuuzcwzwqx.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -104,7 +106,12 @@ $("serveButton").addEventListener("click",()=>withActionLock("serve",()=>{if(!st
 $("finishButton").addEventListener("click",()=>withActionLock("finish",()=>{if(state.finishTime)return;if(!state.start){alert("Start the cook with Meat On before finishing it.");return}if(!ensureCookId())return;if(!confirm("Finish this cook? The main cook timer will stop and the cook will be marked Finished."))return;const now=new Date();state.finishTime=now.toISOString();state.meatOn=false;state.phase="Finished";state.phaseStart=null;state.phaseTarget=null;state.events.push(makeEvent("Cook Finished",`Total cook time ${durString(state.start,state.finishTime)}`,state.finishTime));markCloudCookDirty();save();render();if(loadCloudSession())syncCurrentCookAndEvents()}));
 $("resetCook").addEventListener("click",()=>withActionLock("reset",()=>{if(storageBlocked){alert("Reset is disabled because LDCookLog could not safely read the existing stored data. This protects the stored data from being overwritten.");return}if(!confirm("Reset the current cook and erase this device's local log?"))return;const smoker=$("smoker").value;state=defaultState();state.smoker=smoker;state.cookName="";save();render()}));
 $("copyLog").addEventListener("click",async()=>{const lines=state.events.map(ev=>`${fmtDateTime(new Date(ev.ts))} — ${ev.type}${ev.note?": "+ev.note:""}`);const text=`Cook ID: ${state.cookId||"Not assigned"}\n${state.cookName||"Cook"} | ${state.smoker}\n${setupContext()}\nTarget: ${state.target}°F\n\n`+lines.join("\n");try{await navigator.clipboard.writeText(text);alert("Cook log copied.")}catch(e){alert("Copy failed.")}});
-$("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup","is_test_cook"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??"",state.isTestCook?"true":"false"]));const csv=rows.map(r=>r.map(v=>`"${String(v).replaceAll('"','""')}"`).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
+function csvCell(value) {
+  let text = String(value ?? "");
+  if (typeof value !== "number" && (/^[\s]*[=+@-]/.test(text) || /^[\t\r\n]/.test(text))) text = "'" + text;
+  return '"' + text.replaceAll('"', '""') + '"';
+}
+$("exportCsv").addEventListener("click",()=>{const rows=[["cook_id","timestamp","event","note","target_f","phase","smoker","cook_name","weight_lb","setup","is_test_cook"]];state.events.forEach(ev=>rows.push([ev.cookId||state.cookId||"",ev.ts,ev.type,ev.note||"",ev.target??"",ev.phase??"",ev.smoker??"",ev.cookName??"",ev.weight??"",ev.setup??"",state.isTestCook?"true":"false"]));const csv=rows.map(r=>r.map(csvCell).join(",")).join("\n");const blob=new Blob([csv],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`LDCookLog-${state.cookId||new Date().toISOString().slice(0,10)}.csv`;a.click();URL.revokeObjectURL(a.href)});
 if("serviceWorker" in navigator){window.addEventListener("load",()=>{navigator.serviceWorker.register("./service-worker.js?v=13054",{updateViaCache:"none"}).catch(err=>console.error("Service worker registration failed",err))})}
 load();render();if(storageBlocked)setSaveBadge("STORAGE WARNING",true);setInterval(updateTimers,1000);if(loadCloudSession()){cloudReadCooks();/* V1.30.12: startup reconciliation owns automatic startup sync */}
 </script>
@@ -3608,9 +3615,9 @@ Your cook data is unaffected.`, 'bad');
 
 <script>
 (() => {
-  document.title='LDCookLog Mobile V1.30.54';
-  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.54 Stateful BBQ Control Panel';
-  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.54 compares finished real cooks side by side with elapsed-time temperature graphs.<br><strong>Build 2026-09-22A</strong>';
+  document.title='LDCookLog Mobile V1.30.55';
+  const h=document.querySelector('header .sub');if(h)h.textContent='V1.30.55 Stateful BBQ Control Panel';
+  const footer=document.querySelector('.footer-note');if(footer)footer.innerHTML='V1.30.55 compares finished real cooks side by side with elapsed-time temperature graphs.<br><strong>Build 2026-09-22A</strong>';
 })();
 </script>
 <script>
