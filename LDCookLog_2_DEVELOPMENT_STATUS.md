@@ -6,6 +6,24 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Owner-local private export prepared
+
+After physical isolated recovery acceptance, the owner ran the pinned local
+PostgreSQL converter successfully on the existing verified archive. All 18
+expected public tables were present and the known 30-cook count was retained.
+The output remains private in the owner's iCloud backup folder; neither the
+archive nor relational JSON was supplied to development or GitHub. This is
+source conversion acceptance, not yet on-device checksum/link validation,
+full reconciliation or successful recovery of the private cooking history.
+
+The next guided step is to open the latest tested working Scriptable launcher
+in the existing development namespace and select the private relational JSON
+through the device's Files picker. The import verifies its checksum, required
+tables and cook/session relationships before a transactional commit. The full
+relational source archive remains in recovery snapshots, including preserved
+lookup and configuration rows. Any checksum, orphan or conflicting-ID failure
+stops the import. The original PostgreSQL archive and Supabase stay available.
+
 ## Physical isolated recovery and offline reopening passed
 
 On October 11 the owner confirmed that the separate Restore Fix journal showed
