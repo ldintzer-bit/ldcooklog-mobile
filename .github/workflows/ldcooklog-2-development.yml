@@ -16,6 +16,7 @@ jobs:
           persist-credentials: false
       - run: node --test development/local-poc/tests/*.test.mjs development/native/tests/*.test.mjs development/scriptable/tests/*.test.mjs
       - run: python3 -m unittest discover -s development/local-poc/migration -p 'test_*.py'
+      - run: python3 -m unittest discover -s development/scriptable/mac -p 'test_*.py'
       - run: python3 development/native/bundle_web.py && git diff --exit-code development/native/Web/app.bundle.js
       - run: python3 development/scriptable/build.py && git diff --exit-code development/scriptable/LDCookLog-2-Development.js development/scriptable/LDCookLog-Interface-Check.js development/scriptable/page.html
       - run: node tools/security-check.cjs

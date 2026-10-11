@@ -5,6 +5,27 @@ membership. Paid membership is no longer the proposed installation route.
 This directory experiments with an existing App Store host, Scriptable, while
 retaining the tested migration/recovery format and cooking interface.
 
+## Physical offline reopening and Mac transport check
+
+The owner confirmed Test ribs remained after force-closing Scriptable and
+reopening SaveFix offline on the iPhone. This verifies persisted local cook
+recovery for the synthetic test. Offline event saves/reopening, independent
+cloud delivery and fresh-journal restoration are still pending.
+
+Added `development/scriptable/mac/check_icloud_recovery.py`, a standalone
+standard-library Python checker for the Mac Scriptable iCloud recovery folder.
+It reads all matching device snapshots, hashes the exact UTF-8 payload, checks
+revision/filename/version/timestamp and basic collection structure, rejects
+conflicting revisions or corruption instead of silently selecting older data,
+and reports only counts. It does not write files, contact Supabase/FireBoard,
+print private food names or claim full shared-validator schema acceptance.
+Mac readability/checksum success is a transport gate, not a successful restore.
+
+Four new Python tests pass: Unicode/noncanonical payload hashing and newest
+counts, tamper/revision mismatch, corruption without fallback or file changes,
+and conflicting/empty recovery folders. CI now runs these checks alongside the
+existing four converter tests. Physical Mac retrieval remains untested.
+
 ## Physical save error and return-type correction
 
 Event bridge 1 displayed the journal on the owner's iPhone. Creating Test ribs

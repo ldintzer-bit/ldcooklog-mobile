@@ -13,6 +13,19 @@ the free Scriptable app and open it once; no private migration is requested.
 See [the prototype and its limits](scriptable/README.md). A guided synthetic
 device/backup test is required before this route can be accepted.
 
+## Current device acceptance progress
+
+The owner has installed Scriptable and SaveFix. The full interface and first
+synthetic Test ribs save succeeded; the cook survived force-close and offline
+reopening. Next test an offline Meat On event and reopen again, then reconnect
+and retry iCloud staging. The status still cannot report confirmed uploads.
+
+For guided Mac verification, `scriptable/mac/check_icloud_recovery.py` reads
+Scriptable's iCloud recovery folder and prints counts/checksum results only.
+It does not upload or modify cooking files. A successful check must be followed
+by actual isolated restoration; do not delete the working iPhone journal.
+Do not import private history until this acceptance sequence passes.
+
 ## Earlier native route — retained for reference, not the current instructions
 
 1. On your Mac, open Safari and visit https://developer.apple.com/account/.
