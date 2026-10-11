@@ -21,8 +21,8 @@ about real-data acceptance. The private owner archive has NOT been opened.
 
 `native/` is an isolated iPhone app shell using a bundled local UI and native
 file storage. It has no Supabase dependency, network JavaScript, FireBoard
-credentials, or remotely loaded UI. A Mac Catalyst administration build is
-configured; no iPad interface is targeted.
+credentials, or remotely loaded UI. A separate native macOS administration companion is
+configured with the same recovery format and iCloud container; no iPad target is included.
 
 - Preparation, cooking, resting, keep-warm, finished states and timestamped
   events; food/cooker history filtering; retained historical temperature data.
@@ -167,3 +167,16 @@ local copies, and changed remote copies. An old corrupt snapshot is reported
 without blocking new backups. An uploaded file counts only after its bytes and
 checksum match the original local snapshot. These are simulated file/status
 conditions; actual iCloud transfer still requires the owner's devices.
+
+## Native Mac companion and cross-runtime integrity
+
+A separate macOS SwiftUI/WKWebView target replaces the initial Catalyst
+configuration, keeping the iPhone target independent of iPad support. Both apps
+use the same native recovery package, bundled UI and iCloud container; sharing
+history is through explicit snapshot restoration until safe merging is added.
+
+The cross-format test generates a synthetic Unicode-rich snapshot in JavaScript,
+saves/reopens it through the actual Swift store, and verifies it again in
+JavaScript. CI now compiles both native targets and launches the iPhone app in
+a simulator to exercise the real WKWebView/native bridge. Neither unsigned
+build validates owner signing or live iCloud access.

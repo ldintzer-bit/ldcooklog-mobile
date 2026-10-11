@@ -15,6 +15,7 @@ development/native/.build/
 development/native/*.xcodeproj/
 development/native/App/Info.plist
 development/native/App/LDCookLog.entitlements
+development/native/App/LDCookLogMac.entitlements
 **/__pycache__/
 *.xcuserstate
 xcuserdata/

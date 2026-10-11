@@ -6,23 +6,32 @@ import RecoveryCore
 struct LDCookLogApp: App {
     var body: some Scene { WindowGroup { CookingView().ignoresSafeArea(.container, edges: .bottom) } }
 }
+#if os(macOS)
+struct CookingView: NSViewRepresentable {
+    func makeCoordinator() -> Bridge { Bridge() }
+    func makeNSView(context: Context) -> WKWebView { context.coordinator.makeWebView() }
+    func updateNSView(_ view: WKWebView, context: Context) {}
+}
+#else
 struct CookingView: UIViewRepresentable {
     func makeCoordinator() -> Bridge { Bridge() }
-    func makeUIView(context: Context) -> WKWebView {
+    func makeUIView(context: Context) -> WKWebView { context.coordinator.makeWebView() }
+    func updateUIView(_ view: WKWebView, context: Context) {}
+}
+#endif
+final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
+    var allowedRoot = ""
+    func makeWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
         configuration.websiteDataStore = .nonPersistent()
-        configuration.userContentController.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "recovery")
+        configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "recovery")
         let view = WKWebView(frame: .zero, configuration: configuration)
-        view.navigationDelegate = context.coordinator
+        view.navigationDelegate = self
         let folder = Bundle.main.url(forResource: "Web", withExtension: nil)!
-        context.coordinator.allowedRoot = folder.standardizedFileURL.path + "/"
+        allowedRoot = folder.standardizedFileURL.path + "/"
         view.loadFileURL(folder.appendingPathComponent("index.html"), allowingReadAccessTo: folder)
         return view
     }
-    func updateUIView(_ view: WKWebView, context: Context) {}
-}
-final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
-    var allowedRoot = ""
     private let queue = DispatchQueue(label: "LDCookLog.Recovery")
     private var store: RecoveryStore?
     private var cloud: CloudBackups?

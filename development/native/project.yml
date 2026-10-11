@@ -21,7 +21,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ldintzer.LDCookLogDevelopment
         TARGETED_DEVICE_FAMILY: '1'
-        SUPPORTS_MACCATALYST: YES
         SWIFT_VERSION: '5.0'
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
@@ -63,6 +62,35 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         SWIFT_VERSION: '5.0'
         TEST_TARGET_NAME: LDCookLogDevelopment
+  LDCookLogMacDevelopment:
+    type: application
+    platform: macOS
+    deploymentTarget: '13.0'
+    sources:
+      - App/LDCookLogApp.swift
+      - path: Web
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: RecoveryCore
+        product: RecoveryCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ldintzer.LDCookLogMacDevelopment
+        SWIFT_VERSION: '5.0'
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_ENTITLEMENTS: App/LDCookLogMac.entitlements
+    entitlements:
+      path: App/LDCookLogMac.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.files.user-selected.read-only: true
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.ldintzer.LDCookLogDevelopment
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.com.ldintzer.LDCookLogDevelopment
+        com.apple.developer.icloud-services:
+          - CloudDocuments
 schemes:
   LDCookLogDevelopment:
     build:
@@ -72,3 +100,7 @@ schemes:
     test:
       targets:
         - LDCookLogUITests
+  LDCookLogMacDevelopment:
+    build:
+      targets:
+        LDCookLogMacDevelopment: all
