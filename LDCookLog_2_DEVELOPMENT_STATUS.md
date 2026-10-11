@@ -6,6 +6,26 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## iPhone action and staging observed; independent retrieval next
+
+The owner reopened SaveFix after reconnecting Wi-Fi and observed the synthetic
+cook in Cooking phase with its action controls available. This confirms the
+Meat On transition persisted. The exact timing of the action save while offline
+has not been independently confirmed, so that specific gate remains open.
+
+The owner then reported: 2 copies staged in iCloud Drive; 0 could not be staged;
+2 local snapshots; 0 confirmed uploaded; 2 pending. This is the expected honest
+staging status. It is not evidence of remote delivery. Next run the pinned
+read-only Mac checker and then restore from independently retrieved bytes into
+an isolated fresh development journal without deleting the working journal.
+
+Mac-checker checkpoint `a5cc44d72fc3658990934a591a0e3729386dac72` passed full
+GitHub CI run `38171566077`: 51 JavaScript tests, 8 Python tests (four converter
+and four checker), security/reproducible-bundle checks, both browser regressions,
+8 Swift storage tests, unsigned iPhone/Mac builds and native simulator tests.
+Physical Mac retrieval/restoration and private-history reconciliation remain
+unverified. Production main and private cooking history remain untouched.
+
 ## Physical offline reopening and Mac transport check
 
 The owner confirmed Test ribs remained after force-closing Scriptable and
