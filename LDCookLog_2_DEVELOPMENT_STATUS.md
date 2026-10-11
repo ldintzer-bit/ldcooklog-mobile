@@ -113,7 +113,10 @@ Read [the alternatives, code and remaining gates](development/scriptable/README.
 The first actual Scriptable startup remained spinning without presenting the
 interface. Startup fix 1 addresses a likely blocked-initial-navigation cause
 and adds bounded startup/capability diagnostics. Thirteen Scriptable tests
-now pass locally (43 JavaScript tests total). The actual-device startup issue
+now pass locally and in GitHub regression CI (43 JavaScript tests total).
+The updated generated-launcher browser integration also passed in run
+38167455908. The native job was still running; native sources were unchanged.
+The actual-device startup issue
 is **not yet confirmed resolved**. Code and regression details are recorded in
 `development/scriptable/README.md`; install the reviewed startup fix and
 report the interface or exact diagnostic before any private-data import.
