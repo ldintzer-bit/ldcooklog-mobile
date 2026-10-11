@@ -1,5 +1,6 @@
 import { validateCook, planRestore } from './backup.js';
 import { migrateRelationalExport, RELATIONAL_FORMAT, verifyRelationalExport } from './migration.js';
+import { attachSession } from './fireboard.js';
 
 export const FORMAT = 'ldcooklog-recovery';
 export const emptyState = () => ({ records: [], relationalArchives: [] });
@@ -74,6 +75,17 @@ export class CookStore {
     if (!food.trim() || !cooker.trim()) return Promise.reject(Error('Enter food and cooker'));
     return this.mutate(state => {
       state.records.push({ id: crypto.randomUUID(), food: food.trim(), cooker: cooker.trim(), startedAt: new Date().toISOString(), finishedAt: null, phase: 'Preparation', events: [], temperatures: [], notes: '', source: 'LDCookLog 2.0' });
+      return state;
+    });
+  }
+  importSession(id, value) { return this.mutate(state => attachSession(state, id, value)); }
+  details(id, notes, evaluation) {
+    return this.mutate(state => {
+      const cook = state.records.find(c => c.id === id);
+      if (!cook) throw Error('Cook not found');
+      if (typeof notes !== 'string' || notes.length > 20000 || typeof evaluation !== 'string' || evaluation.length > 20000) throw Error('Notes are too long');
+      cook.notes = notes;
+      cook.evaluation = evaluation;
       return state;
     });
   }

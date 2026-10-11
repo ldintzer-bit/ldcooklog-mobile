@@ -50,3 +50,25 @@ targets:
             NSUbiquitousContainerIsDocumentScopePublic: true
             NSUbiquitousContainerName: LDCookLog Development
             NSUbiquitousContainerSupportedFolderLevels: Any
+  LDCookLogUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: LDCookLogDevelopment
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ldintzer.LDCookLogDevelopment.UITests
+        GENERATE_INFOPLIST_FILE: YES
+        SWIFT_VERSION: '5.0'
+        TEST_TARGET_NAME: LDCookLogDevelopment
+schemes:
+  LDCookLogDevelopment:
+    build:
+      targets:
+        LDCookLogDevelopment: all
+        LDCookLogUITests: [test]
+    test:
+      targets:
+        - LDCookLogUITests

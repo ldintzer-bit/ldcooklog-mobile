@@ -18,6 +18,11 @@ jobs:
       - run: python3 -m unittest discover -s development/local-poc/migration -p 'test_*.py'
       - run: python3 development/native/bundle_web.py && git diff --exit-code development/native/Web/app.bundle.js
       - run: node tools/security-check.cjs
+      - name: Browser UI regression with synthetic native bridge
+        run: |
+          npm install --prefix "$RUNNER_TEMP/ui-tools" playwright@1.62.1
+          "$RUNNER_TEMP/ui-tools/node_modules/.bin/playwright" install --with-deps chromium
+          NODE_PATH="$RUNNER_TEMP/ui-tools/node_modules" node development/native/tests/ui-smoke.cjs
   native:
     runs-on: macos-latest
     steps:
@@ -33,3 +38,8 @@ jobs:
       - name: Compile iPhone app without signing or installation
         working-directory: development/native
         run: xcodebuild -project LDCookLogDevelopment.xcodeproj -scheme LDCookLogDevelopment -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
+      - name: Run actual WKWebView and native storage integration on iPhone simulator
+        working-directory: development/native
+        run: |
+          device_id=$(xcrun simctl list devices available -j | python3 -c 'import sys,json; print(next(d["udid"] for devices in json.load(sys.stdin)["devices"].values() for d in devices if d["name"].startswith("iPhone")))')
+          xcodebuild -project LDCookLogDevelopment.xcodeproj -scheme LDCookLogDevelopment -destination "platform=iOS Simulator,id=$device_id" CODE_SIGNING_ALLOWED=NO test

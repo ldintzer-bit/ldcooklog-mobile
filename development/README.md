@@ -63,9 +63,9 @@ Snapshots have integrity checks, not app-level encryption; protect the Apple
 account/device and avoid sharing the backup folder. SHA-256 detects accidental
 damage, not deliberate modification by someone able to replace file and digest.
 
-The production UI has much more functionality. Evaluation/preparation/equipment
-editing, complete historical comparison charts and standalone completed FireBoard
-session import are still required. Historical imported tables are preserved even
+The production UI has much more functionality. Structured preparation/equipment/evaluation
+editing and full production comparison parity are still required. Free-text reviews,
+two-cook temperature charts and completed-session file import are implemented. Historical imported tables are preserved even
 where the new UI cannot edit/display every field yet. Native WKWebView uses an
 ephemeral web store: primary cook data is outside browser storage.
 
@@ -125,3 +125,35 @@ file APIs, WKScriptMessageHandlerWithReply, and Apple Developer membership docs:
 https://developer.apple.com/documentation/foundation/filemanager/url(forubiquitycontaineridentifier:)
 https://developer.apple.com/documentation/webkit/wkscriptmessagehandlerwithreply
 https://developer.apple.com/help/account/membership/programs-overview
+
+## Completed-session import and comparison milestone
+
+The native UI now accepts a completed-session JSON exported by
+`native/export_completed_fireboard.py`. The local helper fetches one session and
+its chart directly from FireBoard, using a token entered invisibly in memory.
+It does not read Supabase, write credentials, allow redirects with credentials,
+overwrite exports, or permit output inside a Git checkout. This helper has NOT
+been exercised against the owner's live FireBoard account. The API's documented
+17-requests-per-five-minutes limit applies across other simultaneous clients.
+
+The importer preserves the original session/chart, converts seconds or
+milliseconds to timestamps, retains Celsius/Fahrenheit units and device/probe
+identity, refuses incomplete/mismatched/unknown-unit series, and prevents
+duplicate/conflicting attachment. Imported legacy session collisions stop for
+inspection. Null/malformed values stop the whole import instead of silently
+losing readings; the original file remains available for investigation.
+
+Historical two-cook graphs align on cook start and convert Celsius to Fahrenheit
+for display. Choose each probe explicitly; duplicate labels on distinct devices
+remain separate. All readings stay in storage; the plotted curve is sampled
+for rendering (up to 601 points/series) and is not a statistical summary.
+Test cooks remain in history and backups but are excluded from comparison choices.
+Cook notes and free-text evaluation can be saved after finishing; structured
+legacy evaluations stay intact in the relational archive.
+
+Current local results: 28 JavaScript tests and 4 Python tests pass, including
+synthetic full-table recovery and completed-session safety checks. GitHub run
+38159884503 passed the original 23 JavaScript tests, 4 Python tests, 5 native
+storage XCTests and unsigned iPhone simulator compilation. The expanded UI
+integration checks are being run separately and must not be inferred from that
+first compile-only result.
