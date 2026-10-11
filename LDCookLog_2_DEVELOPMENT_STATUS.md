@@ -6,6 +6,25 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Physical isolated recovery and offline reopening passed
+
+On October 11 the owner confirmed that the separate Restore Fix journal showed
+the expected Cooking phase and saved Meat On timeline event after selecting
+the original iCloud recovery copy. The owner then enabled Airplane Mode with
+Wi-Fi off, fully closed Scriptable, reopened Restore Fix and confirmed both
+were still present. This establishes physical restoration into the isolated
+journal and persistence across offline reopening for the synthetic cook/event.
+Together with the earlier independent Mac read/checksum pass, it is evidence
+that the staged synthetic recovery bytes are readable on the Mac and usable
+by the iPhone recovery flow. It does not establish reinstall/new-device recovery,
+complete private-history migration or large-history reliability. The original
+working journal should next be reopened to confirm its cook/event remains.
+
+No private history has been imported. Keep the verified PostgreSQL archive and
+Supabase available; the replacement is not yet cleared for retiring manual
+Supabase backups. All earlier pending physical-restoration statements below
+are historical checkpoints superseded by this result for the isolated test only.
+
 ## Restore selection showed no visible response; visible confirmation candidate
 
 The owner tapped original iCloud revision 2 in Restore Check and reported no
