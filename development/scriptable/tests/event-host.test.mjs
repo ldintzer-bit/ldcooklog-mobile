@@ -1,30 +1,40 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import vm from 'node:vm';
 const source=readFileSync(new URL('../launcher.js',import.meta.url),'utf8');
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('direct presentation stays idle; blocked wake signals drain serialized requests and stop after Close',async()=>{
   const queue=[{id:1,body:{operation:'read'}},{id:2,body:{operation:'backupStatus'}}], replies=[],calls=[];
-  let view,finish,presented=false,complete=false,evaluations=0,active=0;
-  const storage={read:async()=>({revision:0}),backupStatus:async()=>({pending:0}),commit:async(text,revision)=>{assert.equal(++active,1);await tick();calls.push([text,revision]);active--;return 'saved'}};
+  let view,finish,presented=false,complete=false,evaluations=0,active=0,verify;
+  const storage={read:async()=>({revision:0}),backupStatus:async()=>({pending:0}),commit:async(text,revision)=>{assert.equal(++active,1);await tick();assert.equal((await verify(text)).revision,1);calls.push([text,revision]);active--;return 'saved'}};
   class WebView {
     constructor(){view=this}
     async loadHTML(){}
-    async evaluateJavaScript(code){
+    async evaluateJavaScript(code,callback){
       evaluations++;
       if(code.includes('completion({bridge:'))return {bridge:true,validator:true,crypto:true,interface:true};
-      if(code.includes('window.__ldcEnableSignals'))return;
+      if(code.includes('window.__ldcEnableSignals')){assert.match(code,/ldcooklog-enabled/);return 'ldcooklog-enabled';}
+      if(code.includes('window.__ldcVerify')){
+        assert.equal(callback,true);
+        const context=vm.createContext({window:{__ldcVerify:async()=>({revision:1})}});
+        return new Promise((resolve,reject)=>{
+          context.completion=resolve;
+          const immediate=vm.runInContext(code,context);
+          if(typeof immediate!=='string')reject(Error('Scriptable unsupported immediate return type'));
+        });
+      }
       if(code.includes('window.__ldcTakeNow'))return JSON.stringify(queue.shift()||null);
       if(code.includes('document.getElementById'))return JSON.stringify('Journal ready.');
-      if(code.includes('__ldcDeliver')){replies.push(JSON.parse(code.slice(code.indexOf('(')+1,code.lastIndexOf(')'))));return;}
+      if(code.includes('__ldcDeliver')){assert.match(code,/ldcooklog-delivered/);replies.push(JSON.parse(code.slice(code.indexOf('(')+1,code.lastIndexOf(')'))));return;}
       throw Error('Unexpected evaluation');
     }
     present(){presented=true;return new Promise(resolve=>{finish=resolve})}
   }
   const Timer={schedule:(ms,repeats,callback)=>{assert.equal(ms>=15000 || ms===10,true,'Only bounded startup or signal-triggered timers');const t=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(t)}}};
   class Alert {addAction(){}async presentAlert(){throw Error(this.message)}}
-  const running=new AsyncFunction('LDC_HTML','WebView','FileManager','UUID','createStorage','Timer','Alert','Script',source)('',WebView,{local:()=>({}),iCloud:()=>({})},{string:()=>''},()=>storage,Timer,Alert,{complete:()=>{complete=true}});
+  const running=new AsyncFunction('LDC_HTML','WebView','FileManager','UUID','createStorage','Timer','Alert','Script',source)('',WebView,{local:()=>({}),iCloud:()=>({})},{string:()=>''},(options)=>{verify=options.verify;return storage},Timer,Alert,{complete:()=>{complete=true}});
   while(!presented)await tick();
   const idle=evaluations;await tick();await tick();assert.equal(evaluations,idle);
   assert.equal(view.shouldAllowRequest({url:'https://untrusted.invalid/'}),false);

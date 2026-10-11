@@ -43,11 +43,11 @@ function manager(root) {
       }
       present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve})}
       evaluateJavaScript(code,callback) {
-        return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : `(() => (${code.replace(/;\s*$/,'')}))()`);
+        return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : code);
       }
     }
     const Timer={schedule:(ms,repeats,callback)=>{assert.equal(repeats,false);const timer=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(timer)}}};
-    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/event-bridge-1/);return 0} }
+    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/event-bridge-2/);return 0} }
     running=new AsyncFunction('WebView','FileManager','UUID','Script','Timer','Alert',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}},Timer,Alert);
     running.catch(error=>errors.push('Host: '+error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});

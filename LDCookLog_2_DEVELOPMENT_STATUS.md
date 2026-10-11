@@ -6,6 +6,28 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Physical save error and return-type correction
+
+Event bridge 1 displayed the journal on the owner's iPhone. Creating Test ribs
+left history empty and showed: Failed evaluating JavaScript with error:
+JavaScript execution returned a result of an unsupported type. Display is now
+observed, but a successful physical-device save has not been observed.
+
+The asynchronous checksum/reseal evaluation previously ended with a Promise
+expression. Event bridge 2 ends these evaluations with a primitive string,
+while asynchronous completion still carries the validation result. Delivery,
+capability and enable evaluations also end with explicit string acknowledgments.
+This addresses the reported bridge boundary error without altering journal
+files or weakening validation. A failed test save must not be assumed absent
+on disk; reopen the journal and inspect recovered history before retrying.
+
+The host regression now executes the actual checksum evaluation in a JavaScript
+VM that rejects unsupported immediate return types. It verifies serialized
+commits invoke this stricter validator. The browser harness evaluates complete
+statement scripts rather than assuming every native evaluation is a single
+expression. All 51 JavaScript tests pass locally. GitHub browser regression and
+physical iPhone save/reopen tests remain pending for this correction.
+
 ## Event bridge test checkpoint
 
 Code checkpoint: `8dfb1d91df230fc365e038f283504e7764c0b483`.

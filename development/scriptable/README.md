@@ -5,6 +5,28 @@ membership. Paid membership is no longer the proposed installation route.
 This directory experiments with an existing App Store host, Scriptable, while
 retaining the tested migration/recovery format and cooking interface.
 
+## Physical save error and return-type correction
+
+Event bridge 1 displayed the journal on the owner's iPhone. Creating Test ribs
+left history empty and showed: Failed evaluating JavaScript with error:
+JavaScript execution returned a result of an unsupported type. Display is now
+observed, but a successful physical-device save has not been observed.
+
+The asynchronous checksum/reseal evaluation previously ended with a Promise
+expression. Event bridge 2 ends these evaluations with a primitive string,
+while asynchronous completion still carries the validation result. Delivery,
+capability and enable evaluations also end with explicit string acknowledgments.
+This addresses the reported bridge boundary error without altering journal
+files or weakening validation. A failed test save must not be assumed absent
+on disk; reopen the journal and inspect recovered history before retrying.
+
+The host regression now executes the actual checksum evaluation in a JavaScript
+VM that rejects unsupported immediate return types. It verifies serialized
+commits invoke this stricter validator. The browser harness evaluates complete
+statement scripts rather than assuming every native evaluation is a single
+expression. All 51 JavaScript tests pass locally. GitHub browser regression and
+physical iPhone save/reopen tests remain pending for this correction.
+
 ## Event bridge candidate after physical display results
 
 The owner reports A/B/C full-interface checks visible. D displayed the native

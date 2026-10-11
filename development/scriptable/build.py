@@ -22,7 +22,7 @@ html = html.replace("style-src 'self'", 'style-src ' + hash_source(style))
 html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + style + '</style>')
 html = html.replace('<script src="app.bundle.js"></script>', '<script>' + script + '</script>')
 html = html.replace('iCloud uploads need connectivity and a signed app.', 'Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification.')
-html = html.replace('LDCookLog <small>2.0 Dev</small>', 'LDCookLog <small>2.0 Scriptable Dev · event bridge 1</small>')
+html = html.replace('LDCookLog <small>2.0 Dev</small>', 'LDCookLog <small>2.0 Scriptable Dev · event bridge 2</small>')
 storage = (root / 'storage.cjs').read_text().replace('module.exports = {createStorage};', '')
 header = '// LDCookLog 2.0 experimental offline host — synthetic testing only.\n'
 output = header + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';\n' + storage + '\n' + (root / 'launcher.js').read_text()

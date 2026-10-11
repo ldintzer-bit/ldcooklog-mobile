@@ -1,5 +1,5 @@
 // Generated release candidate runs entirely in the Scriptable app, not a widget.
-const LDC_BUILD = '2026-10-11-event-bridge-1';
+const LDC_BUILD = '2026-10-11-event-bridge-2';
 async function bounded(work, label, milliseconds = 15000) {
   let timer;
   const expired = new Promise((_, reject) => {
@@ -22,17 +22,17 @@ web.shouldAllowRequest = request => {
   return request.url === baseURL || request.url === 'about:blank';
 };
 await bounded(() => web.loadHTML(LDC_HTML, baseURL), 'Loading the offline interface');
-const capabilities = await bounded(() => web.evaluateJavaScript(`completion({bridge:typeof window.__ldcTakeNow === 'function', validator:typeof window.__ldcVerify === 'function', crypto:!!globalThis.crypto?.subtle && typeof globalThis.crypto?.randomUUID === 'function', interface:!!document.querySelector('header h1') && !!document.getElementById('new') && !!document.getElementById('status')});`, true), 'Checking the offline interface');
+const capabilities = await bounded(() => web.evaluateJavaScript(`completion({bridge:typeof window.__ldcTakeNow === 'function', validator:typeof window.__ldcVerify === 'function', crypto:!!globalThis.crypto?.subtle && typeof globalThis.crypto?.randomUUID === 'function', interface:!!document.querySelector('header h1') && !!document.getElementById('new') && !!document.getElementById('status')}); 'ldcooklog-capabilities';`, true), 'Checking the offline interface');
 if (!capabilities?.bridge || !capabilities?.validator) throw Error('The offline interface scripts did not initialize.');
 if (!capabilities.crypto) throw Error('This WebView does not provide the required secure checksum and UUID APIs.');
 if (!capabilities.interface) throw Error('The full cooking interface is missing from the document.');
 async function validated(text) {
-  const value = await web.evaluateJavaScript(`window.__ldcVerify(${JSON.stringify(text)}).then(body => completion({revision:body.revision}), e => completion({error:e.message}));`, true);
+  const value = await web.evaluateJavaScript(`window.__ldcVerify(${JSON.stringify(text)}).then(body => completion({revision:body.revision}), e => completion({error:e.message})); 'ldcooklog-verification-started';`, true);
   if (value.error) throw Error(value.error);
   return value;
 }
 async function reseal(text, revision) {
-  const value = await web.evaluateJavaScript(`window.__ldcReseal(${JSON.stringify(text)},${JSON.stringify(revision)}).then(text => completion({text}), e => completion({error:e.message}));`, true);
+  const value = await web.evaluateJavaScript(`window.__ldcReseal(${JSON.stringify(text)},${JSON.stringify(revision)}).then(text => completion({text}), e => completion({error:e.message})); 'ldcooklog-verification-started';`, true);
   if (value.error) throw Error(value.error);
   return value.text;
 }
@@ -57,7 +57,7 @@ async function handle(request) {
       default: throw Error('Unsupported operation');
     }
   } catch(e) { error = e.message || 'Operation failed'; }
-  if (!dismissed) await web.evaluateJavaScript(`window.__ldcDeliver(${JSON.stringify({id,result,error})});`, false);
+  if (!dismissed) await web.evaluateJavaScript(`window.__ldcDeliver(${JSON.stringify({id,result,error})}); 'ldcooklog-delivered';`, false);
 }
 // Finish the first journal read before presenting the native view. A damaged
 // journal is displayed in the existing recovery UI and is never reset.
@@ -99,7 +99,7 @@ function startDrain() {
 }
 // Directly await presentation. No idle polling or native evaluation starts
 // while opening the screen. Only blocked page wake signals trigger work.
-await bounded(() => web.evaluateJavaScript('window.__ldcEnableSignals();', false), 'Enabling interface actions');
+await bounded(() => web.evaluateJavaScript("window.__ldcEnableSignals(); 'ldcooklog-enabled';", false), 'Enabling interface actions');
 acceptingSignals = true;
 try { await web.present(true); }
 finally {
