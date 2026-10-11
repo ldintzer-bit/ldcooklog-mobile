@@ -33,7 +33,13 @@ function manager(root) {
         assert.equal(this.shouldAllowRequest({url:baseURL}),true,'Initial offline navigation must be allowed');
         assert.equal(this.shouldAllowRequest({url:'https://untrusted.invalid/'}),false);
         assert.equal(html,fs.readFileSync(path.join(__dirname,'../page.html'),'utf8'));
+        await page.exposeFunction('__testWake', () => this.shouldAllowRequest({url:'ldcooklog-bridge://wake'}));
         await page.goto(pathToFileURL(path.resolve(__dirname,'../page.html')).href);
+        await page.evaluate(() => {
+          // Native request interception is simulated; no custom-scheme network
+          // navigation is attempted by Chromium in this integration test.
+          window.__ldcWake = () => { window.__testWake(); };
+        });
       }
       present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve})}
       evaluateJavaScript(code,callback) {
@@ -41,7 +47,7 @@ function manager(root) {
       }
     }
     const Timer={schedule:(ms,repeats,callback)=>{assert.equal(repeats,false);const timer=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(timer)}}};
-    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/startup-2/);return 0} }
+    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/event-bridge-1/);return 0} }
     running=new AsyncFunction('WebView','FileManager','UUID','Script','Timer','Alert',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}},Timer,Alert);
     running.catch(error=>errors.push('Host: '+error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});
@@ -74,7 +80,7 @@ function manager(root) {
     await page.locator('#snapshots button').filter({hasText:'This iPhone · revision 1'}).click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     assert.equal(fs.readdirSync(journal).length,3);
-    console.log('PASS: generated Scriptable launcher, queued WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, explicit damaged-journal restoration. Host APIs simulated.');
+    console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, explicit damaged-journal restoration. Host APIs simulated.');
     await close();
   } finally {await browser.close();fs.rmSync(root,{recursive:true,force:true})}
 })().catch(error=>{console.error(error);process.exitCode=1});

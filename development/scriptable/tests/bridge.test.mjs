@@ -25,3 +25,13 @@ test('bridge bounds pending requests and recovers capacity after replies',async(
   const next=window.ldcooklogHost.postMessage({operation:'read'}),request=window.__ldcTakeNow();
   window.__ldcDeliver({id:request.id,result:'ready'});assert.equal(await next,'ready');
 });
+test('wake navigation carries no cooking payload; rejected capacity emits no signal',async()=>{
+  const location={href:''},window={location};vm.runInNewContext(source,{window});
+  const pending=window.ldcooklogHost.postMessage({operation:'commit',text:'PRIVATE TEST CONTENT'});
+  assert.equal(location.href,'ldcooklog-bridge://wake');assert.equal(location.href.includes('PRIVATE'),false);
+  const request=window.__ldcTakeNow();window.__ldcDeliver({id:request.id,result:true});assert.equal(await pending,true);
+  let wakes=0;window.__ldcWake=()=>wakes++;
+  const all=Array.from({length:64},()=>window.ldcooklogHost.postMessage({operation:'read'}));
+  await assert.rejects(window.ldcooklogHost.postMessage({operation:'read'}),/Too many/);assert.equal(wakes,64);
+  for(let i=0;i<64;i++){const r=window.__ldcTakeNow();window.__ldcDeliver({id:r.id,result:null})}await Promise.all(all);
+});

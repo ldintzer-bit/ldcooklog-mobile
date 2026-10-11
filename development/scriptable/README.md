@@ -5,6 +5,31 @@ membership. Paid membership is no longer the proposed installation route.
 This directory experiments with an existing App Store host, Scriptable, while
 retaining the tested migration/recovery format and cooking interface.
 
+## Event bridge candidate after physical display results
+
+The owner reports A/B/C full-interface checks visible. D displayed the native
+LDCookLog heading but no list rows; native UITable fallback is not accepted.
+These results establish that the styled full HTML, bundled scripts and content
+policy can display when no live bridge runs. They do not establish the exact
+cause of the running journal's blank presentation.
+
+The event-bridge candidate removes idle quarter-second evaluation and directly
+awaits WebView presentation, without the intermediate startup alert. Browser
+operations emit a fixed `ldcooklog-bridge://wake` navigation; the native request
+policy blocks it and drains the existing bounded request queue serially. No
+cooking payload or credential is placed in a URL. External navigation remains
+blocked and the original content policy remains enforced. Startup read and
+backup-status requests complete before display. Dismissal stops accepting
+signals and waits for any in-flight work; file integrity rules are unchanged.
+
+New tests prove no idle evaluation/timer, serialized wake-driven writes,
+blocked external/signal navigation, ignored signals after dismissal, payload
+exclusion and queue capacity. All 51 JavaScript tests, 4 Python migration tests
+and the security check pass locally. The Chromium integration explicitly mocks
+Scriptable's custom-scheme interception; real callback delivery, display and
+saving still require the physical iPhone test. Independent iCloud retrieval,
+restoration and private-history reconciliation remain release gates.
+
 ## Current physical-device blocker and next check
 
 The owner saw all three simple HTML display tests A/B/C. Startup 2 then

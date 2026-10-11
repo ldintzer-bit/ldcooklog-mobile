@@ -1,5 +1,5 @@
 // Generated release candidate runs entirely in the Scriptable app, not a widget.
-const LDC_BUILD = '2026-10-11-startup-2';
+const LDC_BUILD = '2026-10-11-event-bridge-1';
 async function bounded(work, label, milliseconds = 15000) {
   let timer;
   const expired = new Promise((_, reject) => {
@@ -13,7 +13,14 @@ const web = new WebView();
 // loadHTML may issue a navigation request for its base URL. Blocking that
 // request can leave its native load promise unresolved before presentation.
 const baseURL = 'https://ldcooklog.invalid/';
-web.shouldAllowRequest = request => request.url === baseURL || request.url === 'about:blank';
+let acceptingSignals = false, dismissed = false, draining = null, bridgeFailure = null, signals = 0, observed = 0;
+web.shouldAllowRequest = request => {
+  if (request.url === 'ldcooklog-bridge://wake') {
+    if (acceptingSignals && !dismissed) wake();
+    return false; // Local wake signal is never loaded or sent to a server.
+  }
+  return request.url === baseURL || request.url === 'about:blank';
+};
 await bounded(() => web.loadHTML(LDC_HTML, baseURL), 'Loading the offline interface');
 const capabilities = await bounded(() => web.evaluateJavaScript(`completion({bridge:typeof window.__ldcTakeNow === 'function', validator:typeof window.__ldcVerify === 'function', crypto:!!globalThis.crypto?.subtle && typeof globalThis.crypto?.randomUUID === 'function', interface:!!document.querySelector('header h1') && !!document.getElementById('new') && !!document.getElementById('status')});`, true), 'Checking the offline interface');
 if (!capabilities?.bridge || !capabilities?.validator) throw Error('The offline interface scripts did not initialize.');
@@ -30,7 +37,6 @@ async function reseal(text, revision) {
   return value.text;
 }
 const storage = createStorage({local:FileManager.local(), cloud:FileManager.iCloud(), verify:validated, uuid:() => UUID.string()});
-let dismissed = false;
 async function take() {
   const result = await web.evaluateJavaScript('JSON.stringify(window.__ldcTakeNow());', false);
   if (typeof result !== 'string') throw Error('The interface bridge returned an unsupported value');
@@ -60,29 +66,43 @@ if (!initial || initial.body?.operation !== 'read') throw Error('The cooking int
 await bounded(() => handle(initial), 'Opening the journal', 120000);
 const initialStatus = JSON.parse(await web.evaluateJavaScript('JSON.stringify(document.getElementById("status").textContent);', false));
 if (!/^Journal ready|^Journal could not open/.test(initialStatus)) throw Error('The cooking interface did not finish its initial read');
-const check = new Alert();
-check.title = 'LDCookLog development check';
-check.message = LDC_BUILD + '\nFull interface loaded. ' + (/^Journal ready/.test(initialStatus) ? 'Journal ready.' : 'Journal needs recovery.') + '\nTap Open journal. Use synthetic test cooks only.';
-check.addAction('Open journal');
-await check.presentAlert();
-const presentation = web.present(true).then(() => { dismissed = true; });
-async function pump() {
-  while (!dismissed) {
-    const request = await take();
-    if (dismissed) return;
-    if (request) await handle(request);
-    else {
-      let timer;
-      try {
-        await Promise.race([presentation, new Promise(resolve => {
-          timer = Timer.schedule(250, false, resolve);
-        })]);
-      } finally { if (timer) timer.invalidate(); }
-    }
-  }
+// Complete startup backup status before presentation, with signals still off.
+for (let count = 0; count < 64; count++) {
+  const request = await bounded(take, 'Reading startup operations');
+  if (!request) break;
+  await bounded(() => handle(request), 'Completing startup operations', 120000);
+  if (count === 63) throw Error('Too many startup operations');
 }
-// Dismissal ends the script; no timer or indefinite background job is promised.
-await Promise.race([presentation, pump().catch(error => { if (!dismissed) throw error; })]);
+function wake() {
+  signals++;
+  startDrain();
+}
+function startDrain() {
+  if (draining || dismissed || bridgeFailure) return;
+  draining = (async () => {
+    while (!dismissed) {
+      observed = signals;
+      const request = await take();
+      if (!request || dismissed) return;
+      await handle(request);
+    }
+  })().catch(error => { if (!dismissed) bridgeFailure = error; })
+    .finally(() => {
+      draining = null;
+      if (!dismissed && signals !== observed) startDrain();
+    });
+}
+// Directly await presentation. No idle polling or native evaluation starts
+// while opening the screen. Only blocked page wake signals trigger work.
+acceptingSignals = true;
+try { await web.present(true); }
+finally {
+  dismissed = true;
+  acceptingSignals = false;
+  if (draining) await draining;
+}
+if (bridgeFailure) throw bridgeFailure;
+
 }
 try { await runJournal(); }
 catch(error) {
