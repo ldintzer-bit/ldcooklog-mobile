@@ -6,6 +6,37 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Independent Mac recovery bytes verified; isolated restore candidate
+
+The owner's Mac checker reported MAC READ/CHECKSUM PASS with 2 snapshots,
+latest revision 2, 1 cook, 1 event, 0 readings and 0 source archives. This is
+observed independent Mac readability/checksum verification of the synthetic
+iPhone recovery copies. The application still reports uploads unconfirmed;
+no unsupported completed-upload API claim is introduced.
+
+`LDCookLog-2-Restore-Check.js` now opens a separate local journal folder and
+separate iCloud backup destination. It starts empty on first launch and reads
+original development iCloud snapshots only for explicit restore selection.
+It never reads the working development local journal or writes to the source
+cloud folder. Namespaces are a fixed allowlist, not user-provided paths. The
+existing shared schema/checksum validator and confirmation apply to restoration.
+No source or working journal is deleted/reset. A repeated launch preserves the
+trial, rather than silently recreating an empty journal.
+
+Three additional storage tests pass: isolated cloud restoration/reopen with
+exact state and original bytes retained, corrupt cloud refusal with the working
+journal intact, and rejection of unrecognized namespaces. All 54 JavaScript
+and 8 Python tests pass locally with the security check. The generated-launcher
+browser test now covers the empty trial, source revision 2 selection, Cooking
+phase and Meat On timeline, relaunch, unchanged original bytes and the existing
+corrupt-journal repair. CI browser result is pending for this candidate.
+
+Physical isolated restoration is next. This is a fresh local journal in the
+same Scriptable installation, not proof of reinstall/new-device recovery. Real
+30-cook/18-table reconciliation, completed FireBoard import, remaining feature
+parity, large-history/quota/retention and operational backup acceptance remain
+release gates. Keep the Supabase application and existing verified archive.
+
 ## iPhone action and staging observed; independent retrieval next
 
 The owner reopened SaveFix after reconnecting Wi-Fi and observed the synthetic

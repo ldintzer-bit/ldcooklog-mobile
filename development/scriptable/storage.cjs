@@ -1,7 +1,11 @@
 // Scriptable FileManager APIs only. No database, credentials or network requests.
 // Injectable validator runs the shared recovery/migration checks in WebView.
-function createStorage({local, cloud, verify, uuid}) {
-  const root = local.joinPath(local.documentsDirectory(), 'LDCookLog-2-Development');
+function createStorage({local, cloud, verify, uuid, namespace = 'development'}) {
+  if (!['development','restore-check'].includes(namespace)) throw Error('Unsupported journal namespace');
+  const isolated = namespace === 'restore-check';
+  const localName = isolated ? 'LDCookLog-2-Restore-Check' : 'LDCookLog-2-Development';
+  const cloudName = isolated ? 'LDCookLog-2-Restore-Check-Recovery' : 'LDCookLog-2-Development-Recovery';
+  const root = local.joinPath(local.documentsDirectory(), localName);
   local.createDirectory(root, true);
   const journal = local.joinPath(root, 'journal');
   local.createDirectory(journal, true);
@@ -67,7 +71,7 @@ function createStorage({local, cloud, verify, uuid}) {
     return true;
   }
   function cloudRoot() {
-    const base = cloud.joinPath(cloud.documentsDirectory(), 'LDCookLog-2-Development-Recovery');
+    const base = cloud.joinPath(cloud.documentsDirectory(), cloudName);
     cloud.createDirectory(base, true);
     return base;
   }
@@ -103,13 +107,19 @@ function createStorage({local, cloud, verify, uuid}) {
     }
     for (const name of entries()) add(local, local.joinPath(journal, name), `This iPhone · revision ${rev(name)}`);
     try {
-      const base = cloudRoot();
+      const bases = [cloudRoot()];
+      // Read original iCloud snapshots for the isolated trial. No original
+      // local journal is read and no file is written to the source cloud root.
+      if (isolated) bases.push(cloud.joinPath(cloud.documentsDirectory(), 'LDCookLog-2-Development-Recovery'));
+      for (const base of bases) {
+      if (!cloud.fileExists(base)) continue;
       for (const id of cloud.listContents(base).filter(validID)) {
         const dir = cloud.joinPath(base, id);
         if (!cloud.isDirectory(dir)) continue;
         for (const name of cloud.listContents(dir).filter(n => pattern.test(n)).sort().reverse()) {
           add(cloud, cloud.joinPath(dir, name), `iCloud copy (upload unconfirmed) · revision ${rev(name)} · device ${id.slice(0,8)}`);
         }
+      }
       }
     } catch { /* Local recovery remains available when iCloud is unavailable. */ }
     return found;

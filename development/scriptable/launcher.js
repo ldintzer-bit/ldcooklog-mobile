@@ -1,4 +1,5 @@
 // Generated release candidate runs entirely in the Scriptable app, not a widget.
+const LDC_NAMESPACE = 'development';
 const LDC_BUILD = '2026-10-11-event-bridge-2';
 async function bounded(work, label, milliseconds = 15000) {
   let timer;
@@ -36,7 +37,7 @@ async function reseal(text, revision) {
   if (value.error) throw Error(value.error);
   return value.text;
 }
-const storage = createStorage({local:FileManager.local(), cloud:FileManager.iCloud(), verify:validated, uuid:() => UUID.string()});
+const storage = createStorage({local:FileManager.local(), cloud:FileManager.iCloud(), verify:validated, uuid:() => UUID.string(), namespace:LDC_NAMESPACE});
 async function take() {
   const result = await web.evaluateJavaScript('JSON.stringify(window.__ldcTakeNow());', false);
   if (typeof result !== 'string') throw Error('The interface bridge returned an unsupported value');

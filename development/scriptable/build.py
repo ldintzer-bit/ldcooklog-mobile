@@ -33,3 +33,10 @@ output = header + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';
     '// Read-only interface diagnostic — no cooking storage.\n'
     + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';\n'
     + (root / 'interface-check.js').read_text())
+
+# A separate local/cloud destination; source recovery copies are read-only.
+trial_html = html.replace('2.0 Scriptable Dev · event bridge 2', '2.0 Restore Check')
+trial_html = trial_html.replace('Development build — keep using your current app for real cooks.', 'Separate restore-test journal. Your working development journal stays in its own folder.')
+trial_launcher = (root / 'launcher.js').read_text().replace("const LDC_NAMESPACE = 'development';", "const LDC_NAMESPACE = 'restore-check';")
+(root / 'LDCookLog-2-Restore-Check.js').write_text(header + 'const LDC_HTML = ' + json.dumps(trial_html, ensure_ascii=True) + ';\n' + storage + '\n' + trial_launcher)
+(root / 'restore-check.html').write_text(trial_html)

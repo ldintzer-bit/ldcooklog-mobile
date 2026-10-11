@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {createStorage} from '../storage.cjs';
-import {seal, unseal, emptyState} from '../../native/Web/recovery.js';
+import {seal, unseal, emptyState, CookStore} from '../../native/Web/recovery.js';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -108,4 +108,40 @@ test('cloud corruption is reported without overwriting recovery evidence',async 
   assert.equal(fs.readFileSync(file,'utf8'),'broken');
   const choice=(await store.listSnapshots()).find(s=>s.label.startsWith('iCloud'));
   await assert.rejects(store.readSnapshot(choice.token));
+});
+
+test('isolated empty journal restores original cloud state without changing original journals or backup bytes',async t=>{
+  const {store,config,root}=setup(t),working=new CookStore(store);
+  await working.add('Synthetic cloud ribs','Test cooker');
+  const id=(await working.read()).state.records[0].id;
+  await working.event(id,'Meat On','Synthetic only');
+  await store.backupStatus();
+  const original=await store.read(),before=(await working.read()).state;
+  const sourceDir=path.join(root,'cloud/LDCookLog-2-Development-Recovery');
+  const sourceFiles=fs.readdirSync(sourceDir,{recursive:true}).filter(n=>n.endsWith('.json'));
+  const sourceBytes=sourceFiles.map(n=>fs.readFileSync(path.join(sourceDir,n),'utf8'));
+  const trial=createStorage({...config,namespace:'restore-check'}),restored=new CookStore(trial);
+  assert.equal(await trial.read(),null);
+  const snapshots=await trial.listSnapshots();
+  assert.equal(snapshots.some(s=>s.label.startsWith('This iPhone')),false);
+  const selected=snapshots.find(s=>s.label.includes('revision 2'));
+  await restored.restore(JSON.parse(await trial.readSnapshot(selected.token)));
+  assert.deepEqual((await restored.read()).state,before);
+  assert.equal((await restored.read()).revision,1);
+  await trial.backupStatus();
+  assert.equal(await store.read(),original);
+  assert.deepEqual(sourceFiles.map(n=>fs.readFileSync(path.join(sourceDir,n),'utf8')),sourceBytes);
+  assert.deepEqual((await new CookStore(createStorage({...config,namespace:'restore-check'})).read()).state,before);
+});
+test('isolated cloud corruption refuses restoration and leaves working journal intact',async t=>{
+  const {store,config,root}=setup(t);
+  await store.commit(await snapshot(1),0);await store.backupStatus();
+  const original=await store.read(),base=path.join(root,'cloud/LDCookLog-2-Development-Recovery');
+  const file=fs.readdirSync(base,{recursive:true}).find(n=>n.endsWith('.json'));fs.writeFileSync(path.join(base,file),'broken');
+  const trial=createStorage({...config,namespace:'restore-check'}),list=await trial.listSnapshots();
+  await assert.rejects(trial.readSnapshot(list[0].token));
+  assert.equal(await trial.read(),null);assert.equal(await store.read(),original);
+});
+test('unrecognized journal namespace cannot select an arbitrary storage folder',async t=>{
+  const {config}=setup(t);assert.throws(()=>createStorage({...config,namespace:'../other'}),/Unsupported/);
 });

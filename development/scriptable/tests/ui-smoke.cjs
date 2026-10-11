@@ -16,14 +16,15 @@ function manager(root) {
 (async()=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'ldcooklog-ui-synthetic-'));
   const local=manager(path.join(root,'local')),cloud=manager(path.join(root,'cloud'));
-  const source=fs.readFileSync(path.join(__dirname,'../LDCookLog-2-Development.js'),'utf8');
+  const sources={working:fs.readFileSync(path.join(__dirname,'../LDCookLog-2-Development.js'),'utf8'),trial:fs.readFileSync(path.join(__dirname,'../LDCookLog-2-Restore-Check.js'),'utf8')};
   const browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:390,height:844}});
   let page,closeView,running;
   let cloudAvailable=false;
   const createCloud=cloud.createDirectory;
   cloud.createDirectory=p=>{if(!cloudAvailable)throw Error('synthetic offline');return createCloud(p)};
-  async function open(damaged=false) {
+  async function open(damaged=false,trial=false) {
+    const document=trial?'restore-check.html':'page.html',source=trial?sources.trial:sources.working;
     page=await context.newPage();
     page.on('dialog',d=>d.accept());
     const errors=[];
@@ -32,9 +33,9 @@ function manager(root) {
       async loadHTML(html,baseURL) {
         assert.equal(this.shouldAllowRequest({url:baseURL}),true,'Initial offline navigation must be allowed');
         assert.equal(this.shouldAllowRequest({url:'https://untrusted.invalid/'}),false);
-        assert.equal(html,fs.readFileSync(path.join(__dirname,'../page.html'),'utf8'));
+        assert.equal(html,fs.readFileSync(path.join(__dirname,'../'+document),'utf8'));
         await page.exposeFunction('__testWake', () => this.shouldAllowRequest({url:'ldcooklog-bridge://wake'}));
-        await page.goto(pathToFileURL(path.resolve(__dirname,'../page.html')).href);
+        await page.goto(pathToFileURL(path.resolve(__dirname,'../'+document)).href);
         await page.evaluate(() => {
           // Native request interception is simulated; no custom-scheme network
           // navigation is attempted by Chromium in this integration test.
@@ -73,6 +74,23 @@ function manager(root) {
     cloudAvailable=true;await page.locator('#retry').click();
     await page.locator('#protection').filter({hasText:'2 copies staged'}).waitFor();
     assert.match(await page.locator('#protection').innerText(),/0 confirmed uploaded/);
+    // Restore into a physically separate local folder, using only staged
+    // cloud source copies. Preserve the working journal and all source bytes.
+    const originalJournal=path.join(root,'local/LDCookLog-2-Development/journal');
+    const originalBytes=fs.readdirSync(originalJournal).sort().map(n=>fs.readFileSync(path.join(originalJournal,n),'utf8'));
+    await close();await open(false,true);
+    await page.locator('#count').filter({hasText:'0 of 0'}).waitFor();
+    await page.locator('#browse').click();
+    await page.locator('#snapshots button').filter({hasText:'iCloud copy (upload unconfirmed) · revision 2'}).click();
+    await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
+    await page.locator('#history button').click();
+    await page.locator('#phase').filter({hasText:'Cooking'}).waitFor();
+    await page.locator('#timeline').filter({hasText:'Meat On'}).waitFor();
+    assert.deepEqual(fs.readdirSync(originalJournal).sort().map(n=>fs.readFileSync(path.join(originalJournal,n),'utf8')),originalBytes);
+    await close();await open(false,true);
+    await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
+    await close();await open();
+    await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     const journal=path.join(root,'local/LDCookLog-2-Development/journal');
     fs.writeFileSync(path.join(journal,fs.readdirSync(journal).sort().at(-1)),'broken');
     await close();await open(true);
@@ -80,7 +98,7 @@ function manager(root) {
     await page.locator('#snapshots button').filter({hasText:'This iPhone · revision 1'}).click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     assert.equal(fs.readdirSync(journal).length,3);
-    console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, explicit damaged-journal restoration. Host APIs simulated.');
+    console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration. Host APIs simulated.');
     await close();
   } finally {await browser.close();fs.rmSync(root,{recursive:true,force:true})}
 })().catch(error=>{console.error(error);process.exitCode=1});

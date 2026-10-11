@@ -20,6 +20,14 @@ synthetic Test ribs save succeeded; the cook survived force-close and offline
 reopening. Next test an offline Meat On event and reopen again, then reconnect
 and retry iCloud staging. The status still cannot report confirmed uploads.
 
+Mac verification succeeded: two snapshots were readable and checksum-valid,
+with latest revision 2 containing one synthetic cook and one event. Next open
+`LDCookLog-2-Restore-Check.js`, verify first-launch history is empty, browse
+recovery copies and explicitly restore source iCloud revision 2. Confirm the
+restored cook, Cooking phase and Meat On event, then reopen the trial offline.
+The working SaveFix journal stays in a separate folder. Never delete it or
+uninstall Scriptable as part of this test.
+
 For guided Mac verification, `scriptable/mac/check_icloud_recovery.py` reads
 Scriptable's iCloud recovery folder and prints counts/checksum results only.
 It does not upload or modify cooking files. A successful check must be followed
