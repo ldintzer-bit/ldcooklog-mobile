@@ -6,6 +6,20 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Physical iPhone save observed
+
+October 11, 2026: the owner confirmed event bridge 2 / SaveFix displayed the
+journal and successfully created the synthetic Test ribs cook. The Food box
+cleared, Cooking history showed the cook with Open cook, and the status said
+Saved on this device. This resolves the observed first-save return-type error
+for this test. No private migration or completed-session data was imported.
+
+Next acceptance gate: force-close Scriptable and reopen offline to verify the
+saved cook persists; then verify offline action saves and another relaunch.
+Independent Mac retrieval of an iCloud recovery file and restoration into an
+isolated fresh journal are still required. A visible successful save does not
+establish off-device recoverability or readiness to stop Supabase backups.
+
 ## Physical save error and return-type correction
 
 Event bridge 1 displayed the journal on the owner's iPhone. Creating Test ribs
