@@ -17,8 +17,10 @@ journal and persistence across offline reopening for the synthetic cook/event.
 Together with the earlier independent Mac read/checksum pass, it is evidence
 that the staged synthetic recovery bytes are readable on the Mac and usable
 by the iPhone recovery flow. It does not establish reinstall/new-device recovery,
-complete private-history migration or large-history reliability. The original
-working journal should next be reopened to confirm its cook/event remains.
+complete private-history migration or large-history reliability. The owner also reopened the original working journal and confirmed its
+cook/event remains. Physical acceptance now covers both journals. The next
+controlled step is local-only conversion of the existing PostgreSQL archive
+and review of table counts before any private iPhone import.
 
 No private history has been imported. Keep the verified PostgreSQL archive and
 Supabase available; the replacement is not yet cleared for retiring manual
