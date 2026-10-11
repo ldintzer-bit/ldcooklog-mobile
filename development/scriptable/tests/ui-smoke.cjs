@@ -31,6 +31,9 @@ function manager(root) {
   async function open(damaged=false,trial=false) {
     progress('open '+(trial?'restore trial':'working journal')+(damaged?' damaged':''));
     const document=trial?'restore-check.html':'page.html',source=trial?sources.trial:sources.working;
+    closeView=null;
+    let announcePresentation;
+    const presentationReady=new Promise(resolve=>{announcePresentation=resolve});
     page=await context.newPage();
     page.on('dialog',d=>{d.dismiss();throw Error('Scriptable restoration must use an in-page confirmation')});
     const errors=[];
@@ -48,7 +51,7 @@ function manager(root) {
           window.__ldcWake = () => { window.__testWake(); };
         });
       }
-      present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve})}
+      present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve;announcePresentation()})}
       evaluateJavaScript(code,callback) {
         return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : code);
       }
@@ -60,10 +63,11 @@ function manager(root) {
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});
     try { await page.locator('#status').filter({hasText:damaged?'no data was reset':'Journal ready'}).waitFor(); }
     catch(error) { console.error({errors,status:await page.locator('#status').innerText()});throw error; }
+    await presentationReady;
     if(damaged) assert.equal(await page.locator('#new button').isDisabled(),true);
     assert.deepEqual(errors,[]);
   }
-  async function close(){closeView();await running;await page.close()}
+  async function close(){assert.equal(typeof closeView,'function','Wait for native presentation before dismissal');closeView();await running;await page.close()}
   try {
     await open();
     await context.setOffline(true);
