@@ -23,7 +23,15 @@ sampling status immediately after delivery. No files, namespaces or validation
 rules are changed. Late callback ownership and primitive evaluation return
 values remain enforced. The regression simulates delayed page readiness and
 the browser integration deliberately delays checksum work on every reopening.
-This is a candidate fix pending GitHub browser and physical iPhone verification.
+GitHub regression run `38176459388` passed at checkpoint
+`b8d1efb2a2d1dc162ad3cfa9a319b4703bda9d80`: 60 JavaScript tests, 8 Python
+tests, security checks, reproducible bundles and both browser integrations.
+The generated Scriptable launcher opened and reopened a complete synthetic
+30-cook/18,000-reading relational journal under deliberately delayed checksum
+validation without changing its stored bytes. Native sources are unchanged;
+the redundant native job was still running. Physical private-history reopening
+is next; install the candidate under LDCookLog-2-Migration-Fix.js without
+reimporting, replacing or deleting cooking files.
 
 ## Owner-local private export prepared
 

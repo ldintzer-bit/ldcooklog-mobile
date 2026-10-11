@@ -15,24 +15,29 @@ device/backup test is required before this route can be accepted.
 
 ## Current device acceptance progress
 
-The owner has installed Scriptable and SaveFix. The full interface and first
-synthetic Test ribs save succeeded; the cook survived force-close and offline
-reopening. Next test an offline Meat On event and reopen again, then reconnect
-and retry iCloud staging. The status still cannot report confirmed uploads.
+The working Scriptable journal retained its synthetic cook offline. Automatic
+iCloud staging produced two snapshots independently read and checksum-verified
+on the owner's Mac. The separate Restore Fix journal restored the cook and
+saved Meat On event, retained both after force-close/offline reopening, and
+left the working journal available. This is an isolated journal in the same
+installation, not a completed reinstall/new-device test.
 
-Mac verification succeeded: two snapshots were readable and checksum-valid,
-with latest revision 2 containing one synthetic cook and one event. Next open
-`LDCookLog-2-Restore-Check.js`, verify first-launch history is empty, browse
-recovery copies and explicitly restore source iCloud revision 2. Confirm the
-restored cook, Cooking phase and Meat On event, then reopen the trial offline.
-The working SaveFix journal stays in a separate folder. Never delete it or
-uninstall Scriptable as part of this test.
+The owner converted the existing PostgreSQL archive privately on the Mac;
+all 18 tables and the known 30 cooks were retained. The on-device migration
+then displayed 31 cooks including the synthetic test and one preserved export.
+Reopening exposed an asynchronous startup readiness race; no data was reset.
+The latest startup fix waits for page validation/render completion. GitHub
+regression run 38176459388 passes including a delayed-checksum reopen of a
+30-cook/18,000-reading synthetic relational journal. The next owner step is to
+install the working candidate under LDCookLog-2-Migration-Fix.js and reopen the
+existing journal. Do not repeat import, delete files or uninstall Scriptable.
 
-For guided Mac verification, `scriptable/mac/check_icloud_recovery.py` reads
-Scriptable's iCloud recovery folder and prints counts/checksum results only.
-It does not upload or modify cooking files. A successful check must be followed
-by actual isolated restoration; do not delete the working iPhone journal.
-Do not import private history until this acceptance sequence passes.
+After successful reopening, inspect historical cooks, events and readings,
+retry iCloud staging, independently verify full-history copies on the Mac,
+and restore that full history into the isolated trial. Compare all source
+records/tables with the restored data before cutover. The original PostgreSQL
+archive and Supabase remain available throughout. Private files never belong
+in GitHub or chat attachments.
 
 ## Earlier native route — retained for reference, not the current instructions
 
