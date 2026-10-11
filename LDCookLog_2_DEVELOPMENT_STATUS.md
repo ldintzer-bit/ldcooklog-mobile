@@ -110,6 +110,15 @@ Read [the alternatives, code and remaining gates](development/scriptable/README.
 
 ## Owner's next step
 
+Physical-device display probe: the owner confirmed all A/B/C green test pages
+were visible. The full app remains unresolved. Startup fix 2 now checks the
+full interface, completes the initial journal read before presentation, and
+replaces indefinite bridge callbacks with immediate JSON polling/idle timers.
+A temporary native startup-2 confirmation identifies the installed version.
+Seventeen Scriptable tests pass locally (47 JavaScript tests total). Confirm
+the native startup message and full journal display on the actual iPhone before
+any real-data import or backup acceptance.
+
 The startup-fix retry presented a blank page and returned to the editor on
 Close without an error. A separate read-only three-page display diagnostic
 now distinguishes baseline HTML, blocked-after-load navigation and retained

@@ -63,6 +63,19 @@ opens cooking files or sends requests. Two simulated tests validate the probe's
 decisions, summary and bounded failure behavior. Actual results are pending;
 no cause or physical-device remedy is yet confirmed.
 
+Owner confirmed all three green diagnostic pages were visible. Basic HTML
+rendering, base-URL loading, pre-presentation inspection and the two navigation
+policies therefore work for those small pages on the actual device. That does
+not validate the full interface or bridge. Startup fix 2 checks the full
+interface's known DOM elements, completes its initial journal read before
+presentation, and uses synchronous JSON request polling with a 250 ms idle
+timer instead of leaving a native callback pending indefinitely. The initial
+URL allowance remains restricted throughout presentation. A temporary native
+`startup-2` confirmation identifies the running build and initial journal
+state before display. Two bridge tests cover idle returns, FIFO replies,
+error propagation, duplicate rejection and queue capacity. Real full-interface
+display/save on the owner device still requires confirmation.
+
 Ten filesystem tests cover reopening, immutable history, stale writers,
 checksum failure, partial writes, corruption/repair, missing files, competing
 revisions, cloud outage/retry, damaged older snapshots and cloud corruption.

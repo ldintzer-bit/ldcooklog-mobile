@@ -21,7 +21,7 @@ test('initial offline navigation permitted, other navigation denied, hung load s
   assert.match(await launch(WebView),/Loading the offline interface timed out/);
 });
 test('hung capability check shows bounded diagnostic before storage initialization',async()=>{
-  class WebView {async loadHTML(){}evaluateJavaScript(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),false);return new Promise(()=>{})}}
+  class WebView {async loadHTML(){}evaluateJavaScript(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(()=>{})}}
   assert.match(await launch(WebView),/Checking the offline interface timed out/);
 });
 test('missing bundled script or unavailable checksum API stops before storage initialization',async()=>{

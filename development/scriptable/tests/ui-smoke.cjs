@@ -35,13 +35,13 @@ function manager(root) {
         assert.equal(html,fs.readFileSync(path.join(__dirname,'../page.html'),'utf8'));
         await page.goto(pathToFileURL(path.resolve(__dirname,'../page.html')).href);
       }
-      present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),false);return new Promise(resolve=>{closeView=resolve})}
+      present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve})}
       evaluateJavaScript(code,callback) {
-        return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : `(() => { ${code} })()`);
+        return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : `(() => (${code.replace(/;\s*$/,'')}))()`);
       }
     }
     const Timer={schedule:(ms,repeats,callback)=>{assert.equal(repeats,false);const timer=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(timer)}}};
-    class Alert { addAction(){} async presentAlert(){throw Error(this.message)} }
+    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/startup-2/);return 0} }
     running=new AsyncFunction('WebView','FileManager','UUID','Script','Timer','Alert',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}},Timer,Alert);
     running.catch(error=>errors.push('Host: '+error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});
