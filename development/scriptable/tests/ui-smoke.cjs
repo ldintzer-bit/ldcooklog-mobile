@@ -39,8 +39,10 @@ function manager(root) {
       }
     }
     running=new AsyncFunction('WebView','FileManager','UUID','Script',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}});
-    running.catch(()=>{});
-    await page.locator('#status').filter({hasText:damaged?'no data was reset':'Journal ready'}).waitFor();
+    running.catch(error=>errors.push('Host: '+error.message));
+    page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});
+    try { await page.locator('#status').filter({hasText:damaged?'no data was reset':'Journal ready'}).waitFor(); }
+    catch(error) { console.error({errors,status:await page.locator('#status').innerText()});throw error; }
     if(damaged) assert.equal(await page.locator('#new button').isDisabled(),true);
     assert.deepEqual(errors,[]);
   }
