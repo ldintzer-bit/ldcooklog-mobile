@@ -28,13 +28,25 @@ cannot answer a newer verification. A timed-out download can complete its
 cache hydration later, but cannot proceed to journal restoration after the
 rejected operation. No data is reset on error.
 
+A browser repeat stalled because the mock dismissed a new view before its
+presentation promise had started, using the preceding view's stale close
+callback. The harness now waits for presentation on every open. A two-minute
+integration watchdog and five-minute dependency/browser step cap prevent future
+unbounded hangs and report the current test phase. The corrected full regression
+passed; application code is unchanged by the harness fix.
+
 Four new tests pass for visible explicit confirmation and focus/inert behavior,
 Cancel/Escape/concurrent dialogs, downloaded-file skip and failed-download queue
 release without writes, and independent late verifier callbacks. All 59
 JavaScript and 8 Python tests plus security checks pass locally. The browser
 regression now rejects native dialogs and checks Cancel leaves the isolated
-journal empty before explicitly accepting restoration. CI and physical results
-are pending. Install the new candidate under LDCookLog-2-Restore-Fix.js; its
+journal empty before explicitly accepting restoration. GitHub regression run `38174134157` passed for tested checkpoint
+`c9f574b09198e2e3325f7b928428ea11270ca2ec`: 59 JavaScript tests, 8 Python tests,
+security checks, reproducible bundles and both browser regressions. The browser
+check explicitly canceled without writing, accepted the in-page restore,
+verified the cook/event, reopened the isolated and working journals and repaired
+a corrupt synthetic journal. Native builds were still running; native sources
+were unchanged. Physical restore remains pending. Install the new candidate under LDCookLog-2-Restore-Fix.js; its
 restore-test journal namespace is unchanged and any prior trial data is kept.
 
 ## Independent Mac recovery bytes verified; isolated restore candidate
