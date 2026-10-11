@@ -25,8 +25,13 @@ The host regression now executes the actual checksum evaluation in a JavaScript
 VM that rejects unsupported immediate return types. It verifies serialized
 commits invoke this stricter validator. The browser harness evaluates complete
 statement scripts rather than assuming every native evaluation is a single
-expression. All 51 JavaScript tests pass locally. GitHub browser regression and
-physical iPhone save/reopen tests remain pending for this correction.
+expression. All 51 JavaScript tests and 4 Python migration tests pass locally. GitHub
+regression run `38170984537` passed for code checkpoint
+`265f85a8a7f0dfd23c7ae244af24cf1a119ab966`: the same suites, security,
+reproducible bundles and both browser regressions including generated
+Scriptable save/reopen/cloud retry/corrupt-journal restoration. Native builds
+were still running; native application sources were unchanged. Physical iPhone
+save/reopen tests remain pending for this correction.
 
 ## Event bridge test checkpoint
 
