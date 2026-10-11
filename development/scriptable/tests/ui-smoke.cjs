@@ -49,6 +49,10 @@ function manager(root) {
           // Native request interception is simulated; no custom-scheme network
           // navigation is attempted by Chromium in this integration test.
           window.__ldcWake = () => { window.__testWake(); };
+          // Force asynchronous startup checksum work to outlive read delivery.
+          // The prior status check raced this delay and refused presentation.
+          const digest=crypto.subtle.digest.bind(crypto.subtle);
+          crypto.subtle.digest=async (...args)=>{await new Promise(resolve=>setTimeout(resolve,100));return digest(...args)};
         });
       }
       present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve;announcePresentation()})}
@@ -57,7 +61,7 @@ function manager(root) {
       }
     }
     const Timer={schedule:(ms,repeats,callback)=>{assert.equal(repeats,false);const timer=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(timer)}}};
-    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/restore-confirm-1/);return 0} }
+    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/startup-ready-1/);return 0} }
     running=new AsyncFunction('WebView','FileManager','UUID','Script','Timer','Alert',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}},Timer,Alert);
     running.catch(error=>errors.push('Host: '+error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});
@@ -121,7 +125,37 @@ function manager(root) {
     await page.locator('#ldc-confirm-yes').click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     assert.equal(fs.readdirSync(journal).length,3);
-    console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration. Host APIs simulated.');
+    await close();
+    progress('seed full synthetic relational history');
+    const migration=await import(pathToFileURL(path.resolve(__dirname,'../../native/Web/migration.js')).href);
+    const recovery=await import(pathToFileURL(path.resolve(__dirname,'../../native/Web/recovery.js')).href);
+    const tables=Object.fromEntries([...migration.REQUIRED_TABLES].sort().map(name=>[name,{columns:['id'],rows:[]}]));
+    tables.cooks={columns:['id','food','start_time'],rows:[]};
+    tables.events={columns:['id','cook_id','event_type','event_time','note'],rows:[]};
+    tables.cook_fireboard_sessions={columns:['id','cook_id'],rows:[]};
+    tables.fireboard_temperature_samples={columns:['id','cook_fireboard_session_id','temperature_value','observed_at','degree_type','channel_label','channel_index'],rows:[]};
+    for(let i=0;i<30;i++){
+      const id='synthetic-large-'+i,session='synthetic-session-'+i;
+      tables.cooks.rows.push({id,food:'Synthetic large history '+i,start_time:'2026-10-11T00:00:00Z'});
+      tables.events.rows.push({id:'synthetic-event-'+i,cook_id:id,event_type:'Meat On',event_time:'2026-10-11T00:00:00Z',note:''});
+      tables.cook_fireboard_sessions.rows.push({id:session,cook_id:id});
+      for(let n=0;n<600;n++)tables.fireboard_temperature_samples.rows.push({id:id+'-'+n,cook_fireboard_session_id:session,temperature_value:'225',observed_at:new Date(Date.UTC(2026,9,11,0,n)).toISOString(),degree_type:'2',channel_label:'Pit',channel_index:'1'});
+    }
+    const body={format:migration.RELATIONAL_FORMAT,version:1,createdAt:'2026-10-11T00:00:00Z',tables};
+    const archive={...body,sha256:require('node:crypto').createHash('sha256').update(JSON.stringify(body)).digest('hex')};
+    const migrated=await recovery.importArchive(recovery.emptyState(),archive);
+    const envelope=await recovery.seal(migrated.state,4);
+    const snapshot=path.join(journal,'0000000000000004-'+randomUUID()+'.recovery.json');
+    const originalLarge=JSON.stringify(envelope);fs.writeFileSync(snapshot,originalLarge);
+    await open();
+    await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor();
+    await page.locator('#history button').first().click();
+    await page.locator('#temperatures').filter({hasText:'600 retained readings'}).waitFor();
+    await page.locator('#timeline').filter({hasText:'Meat On'}).waitFor();
+    await close();await open();
+    await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor();
+    assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Opening large history never rewrites the journal');
+    console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration, delayed startup checksum and 30-cook/18,000-reading relational-history reopening. Host APIs simulated.');
     await close();
   } finally {clearTimeout(watchdog);await browser.close();fs.rmSync(root,{recursive:true,force:true})}
 })().catch(error=>{console.error(error);process.exitCode=1});

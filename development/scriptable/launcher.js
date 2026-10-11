@@ -1,6 +1,6 @@
 // Generated release candidate runs entirely in the Scriptable app, not a widget.
 const LDC_NAMESPACE = 'development';
-const LDC_BUILD = '2026-10-11-restore-confirm-1';
+const LDC_BUILD = '2026-10-11-startup-ready-1';
 async function bounded(work, label, milliseconds = 15000) {
   let timer;
   const expired = new Promise((_, reject) => {
@@ -65,7 +65,7 @@ async function handle(request) {
 const initial = await bounded(take, 'Reading the startup request');
 if (!initial || initial.body?.operation !== 'read') throw Error('The cooking interface did not request its journal');
 await bounded(() => handle(initial), 'Opening the journal', 120000);
-const initialStatus = JSON.parse(await web.evaluateJavaScript('JSON.stringify(document.getElementById("status").textContent);', false));
+const initialStatus = await bounded(() => web.evaluateJavaScript(`{ const done = completion; window.__ldcStartupReady.then(text => done(text), e => done('Startup failed: ' + e.message)); } 'ldcooklog-startup-waiting';`, true), 'Validating and rendering the saved journal', 120000);
 if (!/^Journal ready|^Journal could not open/.test(initialStatus)) throw Error('The cooking interface did not finish its initial read');
 // Complete startup backup status before presentation, with signals still off.
 for (let count = 0; count < 64; count++) {

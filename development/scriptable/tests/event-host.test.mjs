@@ -26,7 +26,13 @@ test('direct presentation stays idle; blocked wake signals drain serialized requ
         });
       }
       if(code.includes('window.__ldcTakeNow'))return JSON.stringify(queue.shift()||null);
-      if(code.includes('document.getElementById'))return JSON.stringify('Journal ready.');
+      if(code.includes('window.__ldcStartupReady')){
+        assert.equal(callback,true);
+        assert.equal(presented,false,'Wait until asynchronous startup rendering completes');
+        await tick();await tick();await tick();
+        assert.equal(presented,false);
+        return 'Journal ready.';
+      }
       if(code.includes('__ldcDeliver')){assert.match(code,/ldcooklog-delivered/);replies.push(JSON.parse(code.slice(code.indexOf('(')+1,code.lastIndexOf(')'))));return;}
       throw Error('Unexpected evaluation');
     }
@@ -59,4 +65,17 @@ test('late checksum completion retains its own callback rather than replying to 
   context.completion=value=>second.push(value);vm.runInContext(code,context);
   resolves[1]({revision:2});resolves[0]({revision:1});await tick();
   assert.equal(first[0].revision,1);assert.equal(second[0].revision,2);
+});
+
+
+test('startup handshake waits for delayed page validation and returns a supported immediate type',async()=>{
+  const begin=source.indexOf('`{ const done = completion; window.__ldcStartupReady');
+  assert.ok(begin>=0);
+  const end=source.indexOf('`, true)',begin);
+  const code=source.slice(begin+1,end);
+  let ready,answer;
+  const context=vm.createContext({window:{__ldcStartupReady:new Promise(resolve=>{ready=resolve})},completion:value=>{answer=value}});
+  assert.equal(vm.runInContext(code,context),'ldcooklog-startup-waiting');
+  await tick();assert.equal(answer,undefined,'Read delivery alone does not prove the journal has rendered');
+  ready('Journal ready.');await tick();assert.equal(answer,'Journal ready.');
 });

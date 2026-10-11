@@ -6,6 +6,25 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Imported history exposed an asynchronous startup race
+
+The owner confirmed the expected combined cook count and one preserved database
+export after private on-device migration, then reported refusal to reopen:
+"The cooking interface did not finish its initial read." No data was reset.
+The host delivered the journal, then synchronously checked a page status that
+is updated only after asynchronous checksum and schema validation. Small
+synthetic journals hid that race. This diagnostic does not prove deletion or
+corruption; reopening the larger journal remains physically unverified.
+
+The Scriptable page now resolves an explicit startup readiness promise after
+render or the existing recovery error status, before requesting startup backup
+status. The host awaits that signal with a bounded two-minute wait instead of
+sampling status immediately after delivery. No files, namespaces or validation
+rules are changed. Late callback ownership and primitive evaluation return
+values remain enforced. The regression simulates delayed page readiness and
+the browser integration deliberately delays checksum work on every reopening.
+This is a candidate fix pending GitHub browser and physical iPhone verification.
+
 ## Owner-local private export prepared
 
 After physical isolated recovery acceptance, the owner ran the pinned local
