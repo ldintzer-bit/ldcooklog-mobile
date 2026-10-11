@@ -21,7 +21,7 @@ test('direct presentation stays idle; blocked wake signals drain serialized requ
     }
     present(){presented=true;return new Promise(resolve=>{finish=resolve})}
   }
-  const Timer={schedule:(ms,repeats,callback)=>{assert.equal(ms>=15000,true,'No idle timer');const t=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(t)}}};
+  const Timer={schedule:(ms,repeats,callback)=>{assert.equal(ms>=15000 || ms===10,true,'Only bounded startup or signal-triggered timers');const t=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(t)}}};
   class Alert {addAction(){}async presentAlert(){throw Error(this.message)}}
   const running=new AsyncFunction('LDC_HTML','WebView','FileManager','UUID','createStorage','Timer','Alert','Script',source)('',WebView,{local:()=>({}),iCloud:()=>({})},{string:()=>''},()=>storage,Timer,Alert,{complete:()=>{complete=true}});
   while(!presented)await tick();

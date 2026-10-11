@@ -150,7 +150,7 @@ const web = new WebView();
 // loadHTML may issue a navigation request for its base URL. Blocking that
 // request can leave its native load promise unresolved before presentation.
 const baseURL = 'https://ldcooklog.invalid/';
-let acceptingSignals = false, dismissed = false, draining = null, bridgeFailure = null, signals = 0, observed = 0;
+let acceptingSignals = false, dismissed = false, draining = null, bridgeFailure = null, signals = 0, observed = 0, wakeTimer = null;
 web.shouldAllowRequest = request => {
   if (request.url === 'ldcooklog-bridge://wake') {
     if (acceptingSignals && !dismissed) wake();
@@ -212,7 +212,12 @@ for (let count = 0; count < 64; count++) {
 }
 function wake() {
   signals++;
-  startDrain();
+  scheduleDrain();
+}
+function scheduleDrain() {
+  if (draining || dismissed || bridgeFailure || wakeTimer) return;
+  // Return the navigation policy decision before calling back into WebView.
+  wakeTimer = Timer.schedule(10, false, () => { wakeTimer = null; startDrain(); });
 }
 function startDrain() {
   if (draining || dismissed || bridgeFailure) return;
@@ -226,7 +231,7 @@ function startDrain() {
   })().catch(error => { if (!dismissed) bridgeFailure = error; })
     .finally(() => {
       draining = null;
-      if (!dismissed && signals !== observed) startDrain();
+      if (!dismissed && signals !== observed) scheduleDrain();
     });
 }
 // Directly await presentation. No idle polling or native evaluation starts
@@ -236,6 +241,7 @@ try { await web.present(true); }
 finally {
   dismissed = true;
   acceptingSignals = false;
+  if (wakeTimer) { wakeTimer.invalidate(); wakeTimer = null; }
   if (draining) await draining;
 }
 if (bridgeFailure) throw bridgeFailure;
