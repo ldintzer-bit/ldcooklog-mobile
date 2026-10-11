@@ -21,6 +21,7 @@ jobs:
       - run: python3 development/scriptable/build.py && git diff --exit-code development/scriptable/LDCookLog-2-Development.js development/scriptable/LDCookLog-Interface-Check.js development/scriptable/LDCookLog-2-Restore-Check.js development/scriptable/restore-check.html development/scriptable/page.html
       - run: node tools/security-check.cjs
       - name: Browser UI regression with synthetic native bridge
+        timeout-minutes: 5
         run: |
           npm install --prefix "$RUNNER_TEMP/ui-tools" playwright@1.62.1
           "$RUNNER_TEMP/ui-tools/node_modules/.bin/playwright" install --with-deps chromium

@@ -5,6 +5,10 @@ const {pathToFileURL}=require('node:url');
 const {randomUUID}=require('node:crypto');
 const assert=require('node:assert/strict');
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
+let stage='initialization';
+const watchdog=setTimeout(()=>{console.error('FAIL: Scriptable browser integration timed out at '+stage);process.exit(1)},120000);
+watchdog.unref();
+function progress(value){stage=value;console.log('CHECK: '+stage)}
 function manager(root) {
   fs.mkdirSync(root,{recursive:true});
   return {documentsDirectory:()=>root,joinPath:path.join,
@@ -17,6 +21,7 @@ function manager(root) {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'ldcooklog-ui-synthetic-'));
   const local=manager(path.join(root,'local')),cloud=manager(path.join(root,'cloud'));
   const sources={working:fs.readFileSync(path.join(__dirname,'../LDCookLog-2-Development.js'),'utf8'),trial:fs.readFileSync(path.join(__dirname,'../LDCookLog-2-Restore-Check.js'),'utf8')};
+  progress('launch browser');
   const browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:390,height:844}});
   let page,closeView,running;
@@ -24,6 +29,7 @@ function manager(root) {
   const createCloud=cloud.createDirectory;
   cloud.createDirectory=p=>{if(!cloudAvailable)throw Error('synthetic offline');return createCloud(p)};
   async function open(damaged=false,trial=false) {
+    progress('open '+(trial?'restore trial':'working journal')+(damaged?' damaged':''));
     const document=trial?'restore-check.html':'page.html',source=trial?sources.trial:sources.working;
     page=await context.newPage();
     page.on('dialog',d=>{d.dismiss();throw Error('Scriptable restoration must use an in-page confirmation')});
@@ -62,15 +68,18 @@ function manager(root) {
     await open();
     await context.setOffline(true);
     await page.locator('#food').fill('Synthetic Scriptable ribs');
+    progress('save initial cook');
     await page.locator('#new button').click();
     await page.locator('#count').filter({hasText:'1 of 1'}).waitFor();
     await page.locator('#history button').click();
     await page.locator('#type').selectOption('Meat On');
+    progress('save Meat On');
     await page.locator('#event button').click();
     await page.locator('#phase').filter({hasText:'Cooking'}).waitFor();
     await page.locator('#protection').filter({hasText:'2 pending'}).waitFor();
     await close();await open();
     await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
+    progress('stage original cloud copies');
     cloudAvailable=true;await page.locator('#retry').click();
     await page.locator('#protection').filter({hasText:'2 copies staged'}).waitFor();
     assert.match(await page.locator('#protection').innerText(),/0 confirmed uploaded/);
@@ -83,10 +92,12 @@ function manager(root) {
     await page.locator('#browse').click();
     await page.locator('#snapshots button').filter({hasText:'iCloud copy (upload unconfirmed) · revision 2'}).click();
     await page.locator('#ldc-confirm-yes').waitFor();
+    progress('cancel isolated restore');
     await page.locator('#ldc-confirm-no').click();
     await page.locator('#status').filter({hasText:'Cancelled'}).waitFor();
     assert.equal(fs.readdirSync(path.join(root,'local/LDCookLog-2-Restore-Check/journal')).length,0);
     await page.locator('#snapshots button').filter({hasText:'iCloud copy (upload unconfirmed) · revision 2'}).click();
+    progress('accept restore');
     await page.locator('#ldc-confirm-yes').click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     await page.locator('#history button').click();
@@ -102,10 +113,11 @@ function manager(root) {
     await close();await open(true);
     await page.locator('#browse').click();
     await page.locator('#snapshots button').filter({hasText:'This iPhone · revision 1'}).click();
+    progress('accept restore');
     await page.locator('#ldc-confirm-yes').click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     assert.equal(fs.readdirSync(journal).length,3);
     console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration. Host APIs simulated.');
     await close();
-  } finally {await browser.close();fs.rmSync(root,{recursive:true,force:true})}
+  } finally {clearTimeout(watchdog);await browser.close();fs.rmSync(root,{recursive:true,force:true})}
 })().catch(error=>{console.error(error);process.exitCode=1});
