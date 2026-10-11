@@ -26,7 +26,7 @@ function manager(root) {
   async function open(damaged=false,trial=false) {
     const document=trial?'restore-check.html':'page.html',source=trial?sources.trial:sources.working;
     page=await context.newPage();
-    page.on('dialog',d=>d.accept());
+    page.on('dialog',d=>{d.dismiss();throw Error('Scriptable restoration must use an in-page confirmation')});
     const errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     class WebView {
@@ -48,7 +48,7 @@ function manager(root) {
       }
     }
     const Timer={schedule:(ms,repeats,callback)=>{assert.equal(repeats,false);const timer=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(timer)}}};
-    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/event-bridge-2/);return 0} }
+    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/restore-confirm-1/);return 0} }
     running=new AsyncFunction('WebView','FileManager','UUID','Script','Timer','Alert',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}},Timer,Alert);
     running.catch(error=>errors.push('Host: '+error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});
@@ -82,6 +82,12 @@ function manager(root) {
     await page.locator('#count').filter({hasText:'0 of 0'}).waitFor();
     await page.locator('#browse').click();
     await page.locator('#snapshots button').filter({hasText:'iCloud copy (upload unconfirmed) · revision 2'}).click();
+    await page.locator('#ldc-confirm-yes').waitFor();
+    await page.locator('#ldc-confirm-no').click();
+    await page.locator('#status').filter({hasText:'Cancelled'}).waitFor();
+    assert.equal(fs.readdirSync(path.join(root,'local/LDCookLog-2-Restore-Check/journal')).length,0);
+    await page.locator('#snapshots button').filter({hasText:'iCloud copy (upload unconfirmed) · revision 2'}).click();
+    await page.locator('#ldc-confirm-yes').click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     await page.locator('#history button').click();
     await page.locator('#phase').filter({hasText:'Cooking'}).waitFor();
@@ -96,6 +102,7 @@ function manager(root) {
     await close();await open(true);
     await page.locator('#browse').click();
     await page.locator('#snapshots button').filter({hasText:'This iPhone · revision 1'}).click();
+    await page.locator('#ldc-confirm-yes').click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     assert.equal(fs.readdirSync(journal).length,3);
     console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration. Host APIs simulated.');

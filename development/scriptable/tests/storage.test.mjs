@@ -156,3 +156,14 @@ test('a valid cloud payload under the wrong revision filename cannot masquerade 
   await assert.rejects(trial.readSnapshot(list[0].token),/revision mismatch/);
   assert.equal(await trial.read(),null);
 });
+test('downloaded recovery needs no download; a bounded download failure releases the queue without journal writes',async t=>{
+  const {store,config,cloud}=setup(t);await store.commit(await snapshot(1),0);await store.backupStatus();
+  const original=await store.read();let downloads=0;
+  cloud.downloadFileFromiCloud=async()=>{downloads++;return new Promise(()=>{})};
+  const ready=createStorage({...config,namespace:'restore-check'}),list=await ready.listSnapshots();
+  assert.equal(await ready.readSnapshot(list[0].token),original);assert.equal(downloads,0);
+  cloud.isFileDownloaded=()=>false;
+  const waiting=createStorage({...config,namespace:'restore-check',waitForDownload:async work=>{work();throw Error('Downloading selected iCloud recovery copy timed out.')}});
+  const pending=await waiting.listSnapshots();await assert.rejects(waiting.readSnapshot(pending[0].token),/timed out/);
+  assert.equal(downloads,1);assert.equal(await waiting.read(),null);assert.equal(await store.read(),original);
+});

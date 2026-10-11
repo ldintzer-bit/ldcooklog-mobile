@@ -47,3 +47,16 @@ test('direct presentation stays idle; blocked wake signals drain serialized requ
   finish();await running;assert.equal(complete,true);
   view.shouldAllowRequest({url:'ldcooklog-bridge://wake'});await tick();assert.equal(evaluations,drained);
 });
+
+test('late checksum completion retains its own callback rather than replying to a newer verification',async()=>{
+  const begin=source.indexOf('`{ const done = completion; window.__ldcVerify');
+  assert.ok(begin>=0);
+  const end=source.indexOf('`, true)',begin);
+  const code=source.slice(begin+1,end).replace('${JSON.stringify(text)}','"synthetic"');
+  const resolves=[],first=[],second=[];
+  const context=vm.createContext({window:{__ldcVerify:()=>new Promise(resolve=>resolves.push(resolve))}});
+  context.completion=value=>first.push(value);assert.equal(vm.runInContext(code,context),'ldcooklog-verification-started');
+  context.completion=value=>second.push(value);vm.runInContext(code,context);
+  resolves[1]({revision:2});resolves[0]({revision:1});await tick();
+  assert.equal(first[0].revision,1);assert.equal(second[0].revision,2);
+});

@@ -6,6 +6,37 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Restore selection showed no visible response; visible confirmation candidate
+
+The owner tapped original iCloud revision 2 in Restore Check and reported no
+response. Physical isolated restoration is not accepted. The exact cause is
+not yet established: reading/downloading the copy or the browser-native
+confirmation may have stalled/failed. Earlier Chromium tests automatically
+accepted native dialogs and did not establish Scriptable dialog compatibility.
+
+The Scriptable-only bundle now uses an accessible in-page confirmation with
+Restore recovery copy and Cancel controls. It marks reading of the selected
+copy visibly before requesting it. The native shared application is unchanged.
+Modal text is inserted as text, siblings are inert while confirming, Cancel or
+Escape leaves journal data unchanged, and focus/inert states are restored.
+Generated substitutions assert the expected upstream confirmation count.
+
+Recovery reading skips redundant downloading for files already downloaded;
+otherwise it uses a 30-second bounded download. Validation/reseal evaluations
+are also bounded and capture their own completion callback so late results
+cannot answer a newer verification. A timed-out download can complete its
+cache hydration later, but cannot proceed to journal restoration after the
+rejected operation. No data is reset on error.
+
+Four new tests pass for visible explicit confirmation and focus/inert behavior,
+Cancel/Escape/concurrent dialogs, downloaded-file skip and failed-download queue
+release without writes, and independent late verifier callbacks. All 59
+JavaScript and 8 Python tests plus security checks pass locally. The browser
+regression now rejects native dialogs and checks Cancel leaves the isolated
+journal empty before explicitly accepting restoration. CI and physical results
+are pending. Install the new candidate under LDCookLog-2-Restore-Fix.js; its
+restore-test journal namespace is unchanged and any prior trial data is kept.
+
 ## Independent Mac recovery bytes verified; isolated restore candidate
 
 The owner's Mac checker reported MAC READ/CHECKSUM PASS with 2 snapshots,

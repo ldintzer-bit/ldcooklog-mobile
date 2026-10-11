@@ -1,6 +1,6 @@
 // Generated release candidate runs entirely in the Scriptable app, not a widget.
 const LDC_NAMESPACE = 'development';
-const LDC_BUILD = '2026-10-11-event-bridge-2';
+const LDC_BUILD = '2026-10-11-restore-confirm-1';
 async function bounded(work, label, milliseconds = 15000) {
   let timer;
   const expired = new Promise((_, reject) => {
@@ -28,16 +28,16 @@ if (!capabilities?.bridge || !capabilities?.validator) throw Error('The offline 
 if (!capabilities.crypto) throw Error('This WebView does not provide the required secure checksum and UUID APIs.');
 if (!capabilities.interface) throw Error('The full cooking interface is missing from the document.');
 async function validated(text) {
-  const value = await web.evaluateJavaScript(`window.__ldcVerify(${JSON.stringify(text)}).then(body => completion({revision:body.revision}), e => completion({error:e.message})); 'ldcooklog-verification-started';`, true);
+  const value = await bounded(() => web.evaluateJavaScript(`{ const done = completion; window.__ldcVerify(${JSON.stringify(text)}).then(body => done({revision:body.revision}), e => done({error:e.message})); } 'ldcooklog-verification-started';`, true), 'Validating recovery data', 30000);
   if (value.error) throw Error(value.error);
   return value;
 }
 async function reseal(text, revision) {
-  const value = await web.evaluateJavaScript(`window.__ldcReseal(${JSON.stringify(text)},${JSON.stringify(revision)}).then(text => completion({text}), e => completion({error:e.message})); 'ldcooklog-verification-started';`, true);
+  const value = await bounded(() => web.evaluateJavaScript(`{ const done = completion; window.__ldcReseal(${JSON.stringify(text)},${JSON.stringify(revision)}).then(text => done({text}), e => done({error:e.message})); } 'ldcooklog-verification-started';`, true), 'Validating recovery data', 30000);
   if (value.error) throw Error(value.error);
   return value.text;
 }
-const storage = createStorage({local:FileManager.local(), cloud:FileManager.iCloud(), verify:validated, uuid:() => UUID.string(), namespace:LDC_NAMESPACE});
+const storage = createStorage({local:FileManager.local(), cloud:FileManager.iCloud(), verify:validated, uuid:() => UUID.string(), namespace:LDC_NAMESPACE, waitForDownload:work => bounded(work, 'Downloading selected iCloud recovery copy', 30000)});
 async function take() {
   const result = await web.evaluateJavaScript('JSON.stringify(window.__ldcTakeNow());', false);
   if (typeof result !== 'string') throw Error('The interface bridge returned an unsupported value');

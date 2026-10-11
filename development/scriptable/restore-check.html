@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-YFlx1nnYDSKi6Qr0SZRDvhh21TL6Wf1f2hcE/w+tpg0='; style-src 'sha256-Dmy5PDcBBK7DTtzRJsbCEgGOAH5Rb82rexIxJAF2wfU='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-ll4z31en0KqcdzAUzcsS2FaE9tc0CSC3eNWBHjZ9QWY='; style-src 'sha256-x1MgXzINgD0FPWC4/TgWSwdSMXhl/kRPx/cM6UPONqw='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+
+#ldc-confirm{position:fixed;inset:0;z-index:1000;margin:0;border:0;border-radius:0;padding:24px 18px;overflow:auto;background:#15201cf5;display:flex;align-items:flex-start;justify-content:center}#ldc-confirm .ldc-confirm-card{max-width:680px;width:100%;margin:24px 0;padding:22px;background:#213029;border:2px solid #daba7c;border-radius:14px}#ldc-confirm p{white-space:pre-wrap}#ldc-confirm button{display:block;width:100%;margin-top:14px}
 </style></head><body>
 <header><p class="eyebrow">OFFLINE COOKING JOURNAL</p><h1>LDCookLog <small>2.0 Restore Check</small></h1><p>Separate restore-test journal. Your working development journal stays in its own folder.</p></header>
 <p id="status" role="status">Opening your journal…</p>
@@ -32,6 +34,42 @@
     if (!task) throw Error('Unknown host reply');
     pending.delete(id);
     if (error) task.reject(Error(error)); else task.resolve(result);
+  };
+})();
+
+// Visible in-page confirmation; no dependency on native WebView dialogs.
+(() => {
+  let active = false;
+  window.__ldcConfirm = message => {
+    if (active) return Promise.reject(Error('A confirmation is already open'));
+    active = true;
+    return new Promise(resolve => {
+      const previous = document.activeElement;
+      const siblings = [...document.body.children].map(node => ({node, inert:node.inert}));
+      for (const {node} of siblings) node.inert = true;
+      const panel = document.createElement('section');
+      panel.id = 'ldc-confirm';
+      panel.setAttribute('role','dialog'); panel.setAttribute('aria-modal','true');
+      panel.setAttribute('aria-labelledby','ldc-confirm-title');
+      const card = document.createElement('div'), title = document.createElement('h2'), text = document.createElement('p');
+      card.className = 'ldc-confirm-card'; title.id = 'ldc-confirm-title'; title.textContent = 'Confirm journal change';
+      text.textContent = message;
+      const yes = document.createElement('button'), no = document.createElement('button');
+      yes.id = 'ldc-confirm-yes'; no.id = 'ldc-confirm-no';
+      yes.textContent = message.startsWith('Restore ') ? 'Restore recovery copy' : 'Import database export';
+      no.textContent = 'Cancel';
+      function finish(answer) {
+        panel.remove(); active = false; document.removeEventListener('keydown',escape);
+        for (const {node,inert} of siblings) node.inert = inert;
+        if (previous?.isConnected) previous.focus();
+        resolve(answer);
+      }
+      function escape(event) { if (event.key === 'Escape') { event.preventDefault(); finish(false); } }
+      yes.onclick = () => finish(true); no.onclick = () => finish(false);
+      document.addEventListener('keydown',escape);
+      card.append(title,text,yes,no); panel.append(card); document.body.append(panel);
+      no.focus();
+    });
   };
 })();
 
@@ -485,7 +523,7 @@ async function action(work) {
 }
 async function restore(envelope) {
   const body = await unseal(envelope);
-  if (!confirm(`Restore ${body.state.records.length} cooks from ${fmt(body.createdAt)}? This replaces the current journal. Existing recovery snapshots are kept. Use only synthetic data until iPhone acceptance testing is complete.`)) return false;
+  if (!await window.__ldcConfirm(`Restore ${body.state.records.length} cooks from ${fmt(body.createdAt)}? This replaces the current journal. Existing recovery snapshots are kept. Use only synthetic data until iPhone acceptance testing is complete.`)) return false;
   if (damaged) await call('repair', {text:JSON.stringify(envelope)}); else await store.restore(envelope);
   current = null;
 }
@@ -500,7 +538,7 @@ $('browse').onclick = async () => {
     if (!snapshots.length) { $('snapshots').textContent = 'No snapshots found yet.'; return; }
     for (const snapshot of snapshots) {
       const button = document.createElement('button'); button.textContent = snapshot.label;
-      button.onclick = () => action(async () => restore(JSON.parse(await call('readSnapshot',{token:snapshot.token}))));
+      button.onclick = () => action(async () => { status('Reading selected recovery copy…'); $('status').scrollIntoView({behavior:'smooth'}); return restore(JSON.parse(await call('readSnapshot',{token:snapshot.token}))); });
       $('snapshots').append(button);
     }
   } catch (e) { status('Cannot list snapshots: '+e.message,true); }
@@ -513,7 +551,7 @@ $('import').onchange = e => {
       const value = JSON.parse(await file.text());
       if (value.format === RELATIONAL_FORMAT) {
         if (damaged) throw Error('Recover the damaged journal before importing a migration.');
-        if (!confirm('Import the complete database export? Conflicting cook IDs stop the import. Keep the original PostgreSQL backup.')) return false;
+        if (!await window.__ldcConfirm('Import the complete database export? Conflicting cook IDs stop the import. Keep the original PostgreSQL backup.')) return false;
         const report = await store.migrate(value);
         alert(`Migration preserved ${report.audit.cooks} cooks, ${report.audit.events} events, ${report.audit.temperatureSamples} readings and all ${Object.keys(report.counts).length} source tables.`);
       } else return await restore(value);

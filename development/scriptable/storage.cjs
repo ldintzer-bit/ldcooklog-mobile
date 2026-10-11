@@ -1,6 +1,6 @@
 // Scriptable FileManager APIs only. No database, credentials or network requests.
 // Injectable validator runs the shared recovery/migration checks in WebView.
-function createStorage({local, cloud, verify, uuid, namespace = 'development'}) {
+function createStorage({local, cloud, verify, uuid, namespace = 'development', waitForDownload = work => work()}) {
   if (!['development','restore-check'].includes(namespace)) throw Error('Unsupported journal namespace');
   const isolated = namespace === 'restore-check';
   const localName = isolated ? 'LDCookLog-2-Restore-Check' : 'LDCookLog-2-Development';
@@ -127,7 +127,7 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development'}) 
   async function readSnapshot(token) {
     const source = tokens.get(token);
     if (!source) throw Error('Unknown recovery selection; browse again');
-    if (source.manager === cloud) await cloud.downloadFileFromiCloud(source.path);
+    if (source.manager === cloud && !cloud.isFileDownloaded(source.path)) await waitForDownload(() => cloud.downloadFileFromiCloud(source.path));
     const text = source.manager.readString(source.path);
     const body = await verify(text);
     if (body.revision !== source.revision) throw Error('Recovery snapshot revision mismatch');
