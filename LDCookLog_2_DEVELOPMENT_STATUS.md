@@ -110,6 +110,14 @@ Read [the alternatives, code and remaining gates](development/scriptable/README.
 
 ## Owner's next step
 
+The startup-fix retry presented a blank page and returned to the editor on
+Close without an error. A separate read-only three-page display diagnostic
+now distinguishes baseline HTML, blocked-after-load navigation and retained
+restricted navigation. It reports owner-observed visibility plus DOM metrics
+without reading cooking files. Two new diagnostic tests pass; 45 JavaScript
+tests pass locally. Await the actual A/B/C results before another full-app
+installation. Scriptable physical-device compatibility remains unresolved.
+
 The first actual Scriptable startup remained spinning without presenting the
 interface. Startup fix 1 addresses a likely blocked-initial-navigation cause
 and adds bounded startup/capability diagnostics. Thirteen Scriptable tests

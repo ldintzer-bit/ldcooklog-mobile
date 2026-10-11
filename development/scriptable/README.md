@@ -53,6 +53,16 @@ The cause and remedy still require confirmation on the actual device.
 Three startup regression tests cover blocked/hung load, hung capability check,
 and absent scripts/crypto. The browser mock now checks navigation decisions.
 
+The physical-device retry displayed a blank page with Close and no diagnostic.
+`LDCookLog-Display-Check.js` is a separate, read-only rendering probe. It opens
+three green pages: A is the documented plain HTML baseline; B reproduces the
+base URL/pre-presentation JavaScript and subsequent all-navigation block; C
+retains the restricted initial URL allowance through presentation. The user
+reports visible/blank for each, with pre-presentation DOM size for B/C. It never
+opens cooking files or sends requests. Two simulated tests validate the probe's
+decisions, summary and bounded failure behavior. Actual results are pending;
+no cause or physical-device remedy is yet confirmed.
+
 Ten filesystem tests cover reopening, immutable history, stale writers,
 checksum failure, partial writes, corruption/repair, missing files, competing
 revisions, cloud outage/retry, damaged older snapshots and cloud corruption.
