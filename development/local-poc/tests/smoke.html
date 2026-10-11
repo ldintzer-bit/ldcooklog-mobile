@@ -1,0 +1,27 @@
+<!doctype html><html><head><title>Storage test</title></head><body><pre id="result">RUNNING</pre><script type="module">
+import {makeCook,addCook,listCooks,appendEvent,createBackup,verifyBackup,restoreBackup} from '../db.js';
+const out=document.getElementById('result');
+const check=(x,msg)=>{if(!x)throw Error(msg)};
+try{
+ const id=crypto.randomUUID(), c=makeCook('Brisket','Weber');c.id=id;
+ await addCook(c);
+ await appendEvent(id,{at:new Date().toISOString(),type:'Meat On',note:'test'});
+ const first=await listCooks();check(first.some(x=>x.id===id&&x.events.length===1),'did not persist event');
+ const backup=await createBackup();check(backup.count>=1,'empty backup');await verifyBackup(backup);
+ const dup=await restoreBackup(backup);check(dup.added===0,'exact duplicate imported');
+ const tampered=structuredClone(backup);tampered.records[0].food+=' malicious';
+ let denied=false;try{await verifyBackup(tampered)}catch(e){denied=/checksum/.test(e.message)}check(denied,'tamper not detected');
+ const conflict=await createBackup();const collide=structuredClone(conflict);collide.records.find(x=>x.id===id).food='Changed';
+ const txt=JSON.stringify({format:collide.format,version:collide.version,createdAt:collide.createdAt,count:collide.count,records:collide.records});
+ // Browser digest creates a valid checksum to verify that conflicts (not checksum) prevent overwrite.
+ const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(txt));collide.sha256=[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('');
+ denied=false;try{await restoreBackup(collide)}catch(e){denied=/conflict/.test(e.message)}check(denied,'conflict not rejected');
+ check((await listCooks()).find(x=>x.id===id).food==='Brisket','conflict modified local data');
+ // Import new cook with a valid checksum from a separate, temporary store-independent JSON payload.
+ const incoming=structuredClone(conflict);const newCook=makeCook('Ribs','Traeger');incoming.records.push(newCook);incoming.count++;
+ const body=JSON.stringify({format:incoming.format,version:incoming.version,createdAt:incoming.createdAt,count:incoming.count,records:incoming.records});const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(body));incoming.sha256=[...new Uint8Array(hash)].map(n=>n.toString(16).padStart(2,'0')).join('');
+ const result=await restoreBackup(incoming);check(result.added===1,'new cook not imported');check((await listCooks()).some(x=>x.id===newCook.id),'imported record not persisted');
+ const duplicate=makeCook('Repeated ID','Traeger');duplicate.id=id;let rejected=false;try{await addCook(duplicate)}catch(e){rejected=true}check(rejected,'duplicate add permitted');
+ out.textContent='PASS: IndexedDB CRUD; event persistence; backup checksum; duplicate skip; atomic conflict rejection; merge import; duplicate add guard.';
+}catch(e){out.textContent='FAIL: '+e.message;console.error(e)}
+</script></body></html>

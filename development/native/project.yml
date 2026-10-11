@@ -1,0 +1,52 @@
+name: LDCookLogDevelopment
+options:
+  deploymentTarget:
+    iOS: '16.0'
+packages:
+  RecoveryCore:
+    path: .
+targets:
+  LDCookLogDevelopment:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - path: Web
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: RecoveryCore
+        product: RecoveryCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ldintzer.LDCookLogDevelopment
+        TARGETED_DEVICE_FAMILY: '1'
+        SUPPORTS_MACCATALYST: YES
+        SWIFT_VERSION: '5.0'
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_CFBundleDisplayName: LDCookLog Dev
+        CODE_SIGN_ENTITLEMENTS: App/LDCookLog.entitlements
+    entitlements:
+      path: App/LDCookLog.entitlements
+      properties:
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.ldintzer.LDCookLogDevelopment
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.com.ldintzer.LDCookLogDevelopment
+        com.apple.developer.icloud-services:
+          - CloudDocuments
+    info:
+      path: App/Info.plist
+      properties:
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        LSSupportsOpeningDocumentsInPlace: true
+        NSUbiquitousContainers:
+          iCloud.com.ldintzer.LDCookLogDevelopment:
+            NSUbiquitousContainerIsDocumentScopePublic: true
+            NSUbiquitousContainerName: LDCookLog Development
+            NSUbiquitousContainerSupportedFolderLevels: Any

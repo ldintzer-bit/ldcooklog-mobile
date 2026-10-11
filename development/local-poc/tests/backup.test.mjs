@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { webcrypto } from 'node:crypto';
+import { validateCook, createBackupForRecords, verifyBackup, planRestore } from '../backup.js';
+globalThis.crypto ||= webcrypto;
+const cook = id => ({id,food:'Pork butt',cooker:'Traeger',startedAt:'2026-10-11T04:00:00Z',finishedAt:null,events:[{at:'2026-10-11T04:00:01Z',type:'Meat On',note:''}],temperatures:[],notes:'',source:'test'});
+test('valid cook accepts events and temperature samples', () => { const c=cook('a');c.temperatures=[{at:'2026-10-11T04:05:01Z',value:220,channel:'Pit'}];assert.equal(validateCook(c),c); });
+test('rejects invalid payload', () => {assert.throws(()=>validateCook({id:'bad'}),/labels/);const c=cook('a');c.temperatures=[{at:'invalid',value:Infinity,channel:'Pit'}];assert.throws(()=>validateCook(c),/temperature/);});
+test('backup round trip preserves every record and detects tampering', async () => {const b=await createBackupForRecords([cook('b'),cook('a')],'2026-10-11T08:00:00Z');assert.deepEqual((await verifyBackup(b)).map(x=>x.id),['a','b']);const tampered=structuredClone(b);tampered.records[0].food='Changed';await assert.rejects(()=>verifyBackup(tampered),/checksum/);});
+test('rejects truncated or duplicated files', async () => {const b=await createBackupForRecords([cook('b'),cook('a')]);b.count=999;await assert.rejects(()=>verifyBackup(b),/format/);const duplicate=await createBackupForRecords([cook('a'),cook('a')]);await assert.rejects(()=>verifyBackup(duplicate),/duplicate/);});
+test('atomic restore plan adds only missing cooks',()=>{const existing=[cook('a')],incoming=[cook('a'),cook('b')];assert.deepEqual(planRestore(existing,incoming),{additions:[incoming[1]],added:1,unchanged:1});});
+test('conflicting cook IDs must never be overwritten',()=>{const incoming=cook('a');incoming.food='Brisket';assert.throws(()=>planRestore([cook('a')],[incoming]),/conflict/);});

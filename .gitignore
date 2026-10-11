@@ -4,3 +4,17 @@ supabase/.env
 .env
 .env.*
 !.env.example
+
+# Private migration / recovery data must never enter this public repository.
+*.dump
+*.backup
+*.relational.json
+*.recovery.json
+LDCookLog Backups/
+development/native/.build/
+development/native/*.xcodeproj/
+development/native/App/Info.plist
+development/native/App/LDCookLog.entitlements
+**/__pycache__/
+*.xcuserstate
+xcuserdata/

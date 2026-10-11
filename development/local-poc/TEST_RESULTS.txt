@@ -1,0 +1,17 @@
+LDCookLog 2.0 isolated migration prototype — verification log
+Date: 2026-10-11
+
+Command: npm test
+Result: 18 tests passed; 0 failed
+
+Command: python3 -m unittest discover -s migration -p 'test*.py' -v
+Result: 4 tests passed; 0 failed
+
+Added tests cover:
+- Orphaned child cook events trigger a hard stop before any IndexedDB changes.
+- Orphaned FireBoard temperature readings trigger a hard stop before any IndexedDB changes.
+- The importer audits parent-child references and accounts for event and temperature counts.
+- Duplicate historical cook identifiers trigger a hard stop.
+- 30 synthetic cooks, 18,000 synthetic temperature samples, all 18 expected table names survive migration with exact counts.
+
+IMPORTANT: No production data was accessed; no live iPhone acceptance test or unattended iCloud recovery test has been performed.

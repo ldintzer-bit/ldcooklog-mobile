@@ -1,0 +1,35 @@
+name: LDCookLog 2 development checks
+on:
+  push:
+    branches: ['development/2.0-offline-recovery']
+    paths: ['development/**', '.github/workflows/ldcooklog-2-development.yml']
+  pull_request:
+    paths: ['development/**', '.github/workflows/ldcooklog-2-development.yml']
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - run: node --test development/local-poc/tests/*.test.mjs development/native/tests/*.test.mjs
+      - run: python3 -m unittest discover -s development/local-poc/migration -p 'test_*.py'
+      - run: python3 development/native/bundle_web.py && git diff --exit-code development/native/Web/app.bundle.js
+      - run: node tools/security-check.cjs
+  native:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Test real native file storage
+        working-directory: development/native
+        run: swift test
+      - name: Generate development Xcode project
+        working-directory: development/native
+        run: brew install xcodegen && xcodegen generate
+      - name: Compile iPhone app without signing or installation
+        working-directory: development/native
+        run: xcodebuild -project LDCookLogDevelopment.xcodeproj -scheme LDCookLogDevelopment -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
