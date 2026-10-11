@@ -97,7 +97,9 @@ Corrected browser harness: `c11b5f315d36adeaaeba1a5954b12ae1e5a3a4a6`.
 Regression job SUCCESS (40 JavaScript tests, 4 Python tests, security checks,
 reproducible bundles and both browser tests):
 https://github.com/ldintzer-bit/ldcooklog-mobile/actions/runs/38164795325
-The native build/simulator job for this run was still running at this update.
+The native build/simulator job also completed successfully: eight Swift tests,
+both unsigned application builds and actual iPhone simulator save/relaunch.
+These results do not validate the actual Scriptable app or real iCloud transfer.
 
 This route stages snapshots in Scriptable's iCloud folder without an owner
 developer membership. It cannot confirm completed uploads through the
