@@ -80,11 +80,27 @@ No implicit cloud merge is implemented. Synthetic development cooks must not
 be mixed into the reviewed release journal; use a clean reviewed restoration
 as part of the guided cutover.
 
-## Owner information now needed
+## No-fee route update — October 11
 
-Determine whether an Apple Developer Program membership/team is already
-available. This determines a viable native iCloud installation route. Do not
-purchase a membership or disclose credentials. Follow
+The owner declined US$99/year Apple Developer membership. Paid enrollment is
+no longer proposed. A Scriptable-hosted offline prototype now reuses the
+cooking/migration interface and portable verified snapshots. Ten additional
+storage tests pass locally (40 JavaScript tests total), alongside the four
+Python converter tests and existing security checks. A generated-launcher
+browser check is added to development CI; its host APIs are simulated.
+
+This route stages snapshots in Scriptable's iCloud folder without an owner
+developer membership. It cannot confirm completed uploads through the
+documented APIs; independent Mac retrieval and recovery remain mandatory.
+Actual Scriptable/iPhone runtime compatibility is not tested. The previous
+native test results above apply to their stated checkpoint, not this new host.
+Read [the alternatives, code and remaining gates](development/scriptable/README.md).
+
+## Owner's next step
+
+Install the free Scriptable app on the iPhone and open it once. Do not buy a
+developer membership or import private migration files. Then we will guide
+a synthetic offline/reopening/iCloud recovery test. Follow
 [`development/OWNER_NEXT_STEPS.md`](development/OWNER_NEXT_STEPS.md).
 
 Implementation, tests, decisions and limitations are detailed in

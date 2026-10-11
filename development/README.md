@@ -180,3 +180,11 @@ saves/reopens it through the actual Swift store, and verifies it again in
 JavaScript. CI now compiles both native targets and launches the iPhone app in
 a simulator to exercise the real WKWebView/native bridge. Neither unsigned
 build validates owner signing or live iCloud access.
+# Current installation decision
+
+The owner declined annual Apple Developer fees on October 11, 2026. Native
+targets remain useful tested development work, but are not the proposed
+installation route. The [Scriptable prototype](scriptable/README.md) tests an
+offline host with local snapshots and iCloud copies without owner developer
+membership. This host has separate acceptance gates and cannot confirm upload
+completion; native build/simulator passes do not validate it.

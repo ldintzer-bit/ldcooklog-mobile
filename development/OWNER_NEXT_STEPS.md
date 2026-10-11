@@ -5,7 +5,15 @@ Keep the verified archive already in iCloud Drive. If you add real cooks to the
 old application, those new records are not included in that old snapshot.
 The replacement is not yet approved for real cooks or Supabase retirement.
 
-## First: identify the installation route
+## Current route: no annual developer fee
+
+The owner declined Apple Developer membership on October 11. Do not enroll or
+purchase it. We are testing Scriptable as the offline iPhone host. First install
+the free Scriptable app and open it once; no private migration is requested.
+See [the prototype and its limits](scriptable/README.md). A guided synthetic
+device/backup test is required before this route can be accepted.
+
+## Earlier native route — retained for reference, not the current instructions
 
 1. On your Mac, open Safari and visit https://developer.apple.com/account/.
 2. Sign in directly with your Apple Account if asked. Do not send the password,
@@ -19,7 +27,7 @@ capabilities. A free Xcode Personal Team is intended for temporary device
 testing and its provisioning profile expires after seven days. We need a
 practical installation route before asking you to install anything.
 
-## After the route is decided
+## Earlier native acceptance sequence — adapt after Scriptable feasibility
 
 We will guide these steps individually; do not attempt private migration yet:
 

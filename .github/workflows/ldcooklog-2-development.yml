@@ -14,15 +14,17 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - run: node --test development/local-poc/tests/*.test.mjs development/native/tests/*.test.mjs
+      - run: node --test development/local-poc/tests/*.test.mjs development/native/tests/*.test.mjs development/scriptable/tests/*.test.mjs
       - run: python3 -m unittest discover -s development/local-poc/migration -p 'test_*.py'
       - run: python3 development/native/bundle_web.py && git diff --exit-code development/native/Web/app.bundle.js
+      - run: python3 development/scriptable/build.py && git diff --exit-code development/scriptable/LDCookLog-2-Development.js development/scriptable/page.html
       - run: node tools/security-check.cjs
       - name: Browser UI regression with synthetic native bridge
         run: |
           npm install --prefix "$RUNNER_TEMP/ui-tools" playwright@1.62.1
           "$RUNNER_TEMP/ui-tools/node_modules/.bin/playwright" install --with-deps chromium
           NODE_PATH="$RUNNER_TEMP/ui-tools/node_modules" node development/native/tests/ui-smoke.cjs
+          NODE_PATH="$RUNNER_TEMP/ui-tools/node_modules" node development/scriptable/tests/ui-smoke.cjs
   native:
     runs-on: macos-latest
     timeout-minutes: 20

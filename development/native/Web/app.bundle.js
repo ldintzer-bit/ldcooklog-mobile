@@ -358,7 +358,7 @@ class CookStore {
 
 
 const $ = id => document.getElementById(id);
-const call = (operation, args = {}) => window.webkit.messageHandlers.recovery.postMessage({operation, ...args});
+const call = (operation, args = {}) => (window.ldcooklogHost || window.webkit.messageHandlers.recovery).postMessage({operation, ...args});
 const store = new CookStore({ read: () => call('read'), commit: (text, expectedRevision) => call('commit', {text, expectedRevision}) });
 let current = null, busy = false, damaged = false, journal = [];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
@@ -484,7 +484,7 @@ $('import').onchange = e => {
   });
 };
 (async () => {
-  if (!window.webkit?.messageHandlers?.recovery) { status('Open this development app through its native iPhone build. Browser storage cannot provide automatic iCloud backups.',true); document.querySelectorAll('button,input,select').forEach(e => e.disabled = true); return; }
+  if (!window.ldcooklogHost && !window.webkit?.messageHandlers?.recovery) { status('Open this development app through its iPhone host. Browser storage cannot provide automatic iCloud backups.',true); document.querySelectorAll('button,input,select').forEach(e => e.disabled = true); return; }
   try { await render(); status('Journal ready. Development build — use synthetic test cooks.'); }
   catch (e) { damaged = true; $('new').querySelector('button').disabled = true; status('Journal could not open. Choose a recovery snapshot; no data was reset. '+e.message,true); }
   await protection();
