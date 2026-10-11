@@ -157,3 +157,13 @@ synthetic full-table recovery and completed-session safety checks. GitHub run
 storage XCTests and unsigned iPhone simulator compilation. The expanded UI
 integration checks are being run separately and must not be inferred from that
 first compile-only result.
+
+## Backup failure hardening
+
+The native iCloud transport is independently testable with injected cloud
+availability/upload status. Tests simulate offline queueing, pending versus
+confirmed uploads, immutable versions, invalid snapshot tokens, damaged old
+local copies, and changed remote copies. An old corrupt snapshot is reported
+without blocking new backups. An uploaded file counts only after its bytes and
+checksum match the original local snapshot. These are simulated file/status
+conditions; actual iCloud transfer still requires the owner's devices.
