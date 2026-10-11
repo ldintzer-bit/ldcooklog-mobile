@@ -99,6 +99,7 @@ function startDrain() {
 }
 // Directly await presentation. No idle polling or native evaluation starts
 // while opening the screen. Only blocked page wake signals trigger work.
+await bounded(() => web.evaluateJavaScript('window.__ldcEnableSignals();', false), 'Enabling interface actions');
 acceptingSignals = true;
 try { await web.present(true); }
 finally {

@@ -14,6 +14,7 @@ test('direct presentation stays idle; blocked wake signals drain serialized requ
     async evaluateJavaScript(code){
       evaluations++;
       if(code.includes('completion({bridge:'))return {bridge:true,validator:true,crypto:true,interface:true};
+      if(code.includes('window.__ldcEnableSignals'))return;
       if(code.includes('window.__ldcTakeNow'))return JSON.stringify(queue.shift()||null);
       if(code.includes('document.getElementById'))return JSON.stringify('Journal ready.');
       if(code.includes('__ldcDeliver')){replies.push(JSON.parse(code.slice(code.indexOf('(')+1,code.lastIndexOf(')'))));return;}

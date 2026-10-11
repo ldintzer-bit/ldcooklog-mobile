@@ -27,6 +27,11 @@ test('bridge bounds pending requests and recovers capacity after replies',async(
 });
 test('wake navigation carries no cooking payload; rejected capacity emits no signal',async()=>{
   const location={href:''},window={location};vm.runInNewContext(source,{window});
+  assert.equal(location.href,'');
+  const startup=window.ldcooklogHost.postMessage({operation:'read'});
+  assert.equal(location.href,'','Startup must not navigate while HTML is loading');
+  const initial=window.__ldcTakeNow();window.__ldcDeliver({id:initial.id,result:null});await startup;
+  window.__ldcEnableSignals();
   const pending=window.ldcooklogHost.postMessage({operation:'commit',text:'PRIVATE TEST CONTENT'});
   assert.equal(location.href,'ldcooklog-bridge://wake');assert.equal(location.href.includes('PRIVATE'),false);
   const request=window.__ldcTakeNow();window.__ldcDeliver({id:request.id,result:true});assert.equal(await pending,true);

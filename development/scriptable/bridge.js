@@ -1,8 +1,9 @@
 // Embedded before the app; no native credentials or private files in the page.
 (() => {
   const queue = [], pending = new Map();
-  let next = 1;
-  window.__ldcWake = () => { if (window.location) window.location.href = "ldcooklog-bridge://wake"; };
+  let next = 1, signalsEnabled = false;
+  window.__ldcEnableSignals = () => { signalsEnabled = true; };
+  window.__ldcWake = () => { if (signalsEnabled && window.location) window.location.href = "ldcooklog-bridge://wake"; };
   window.ldcooklogHost = {postMessage(body) {
     if (pending.size >= 64) return Promise.reject(Error('Too many queued operations'));
     return new Promise((resolve,reject) => {
