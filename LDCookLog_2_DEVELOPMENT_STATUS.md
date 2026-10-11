@@ -110,6 +110,14 @@ Read [the alternatives, code and remaining gates](development/scriptable/README.
 
 ## Owner's next step
 
+The first actual Scriptable startup remained spinning without presenting the
+interface. Startup fix 1 addresses a likely blocked-initial-navigation cause
+and adds bounded startup/capability diagnostics. Thirteen Scriptable tests
+now pass locally (43 JavaScript tests total). The actual-device startup issue
+is **not yet confirmed resolved**. Code and regression details are recorded in
+`development/scriptable/README.md`; install the reviewed startup fix and
+report the interface or exact diagnostic before any private-data import.
+
 Install the free Scriptable app on the iPhone and open it once. Do not buy a
 developer membership or import private migration files. Then we will guide
 a synthetic offline/reopening/iCloud recovery test. Follow

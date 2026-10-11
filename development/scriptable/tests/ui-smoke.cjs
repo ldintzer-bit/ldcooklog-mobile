@@ -29,16 +29,20 @@ function manager(root) {
     const errors=[];
     page.on('pageerror',e=>errors.push(e.message));
     class WebView {
-      async loadHTML(html) {
+      async loadHTML(html,baseURL) {
+        assert.equal(this.shouldAllowRequest({url:baseURL}),true,'Initial offline navigation must be allowed');
+        assert.equal(this.shouldAllowRequest({url:'https://untrusted.invalid/'}),false);
         assert.equal(html,fs.readFileSync(path.join(__dirname,'../page.html'),'utf8'));
         await page.goto(pathToFileURL(path.resolve(__dirname,'../page.html')).href);
       }
-      present(){return new Promise(resolve=>{closeView=resolve})}
+      present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),false);return new Promise(resolve=>{closeView=resolve})}
       evaluateJavaScript(code,callback) {
         return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : `(() => { ${code} })()`);
       }
     }
-    running=new AsyncFunction('WebView','FileManager','UUID','Script',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}});
+    const Timer={schedule:(ms,repeats,callback)=>{assert.equal(repeats,false);const timer=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(timer)}}};
+    class Alert { addAction(){} async presentAlert(){throw Error(this.message)} }
+    running=new AsyncFunction('WebView','FileManager','UUID','Script','Timer','Alert',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}},Timer,Alert);
     running.catch(error=>errors.push('Host: '+error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});
     try { await page.locator('#status').filter({hasText:damaged?'no data was reset':'Journal ready'}).waitFor(); }

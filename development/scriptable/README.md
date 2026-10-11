@@ -42,6 +42,17 @@ OS compatibility and runtime behavior are outside this project's control.
 
 ## Verification and limits
 
+Physical-device attempt on October 11: the initial script remained spinning
+before showing an interface. The original launcher rejected every navigation
+before `loadHTML`, a likely cause of an unresolved load promise. Startup fix 1
+allows only its initial offline base/about:blank navigation, then blocks all
+navigation after load. It adds 15-second load/bridge startup deadlines and
+checks for required bundled scripts and secure checksum/UUID APIs. Failure
+shows the build ID and stage in an alert before journal storage initializes.
+The cause and remedy still require confirmation on the actual device.
+Three startup regression tests cover blocked/hung load, hung capability check,
+and absent scripts/crypto. The browser mock now checks navigation decisions.
+
 Ten filesystem tests cover reopening, immutable history, stale writers,
 checksum failure, partial writes, corruption/repair, missing files, competing
 revisions, cloud outage/retry, damaged older snapshots and cloud corruption.
