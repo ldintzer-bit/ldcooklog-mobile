@@ -86,8 +86,18 @@ The owner declined US$99/year Apple Developer membership. Paid enrollment is
 no longer proposed. A Scriptable-hosted offline prototype now reuses the
 cooking/migration interface and portable verified snapshots. Ten additional
 storage tests pass locally (40 JavaScript tests total), alongside the four
-Python converter tests and existing security checks. A generated-launcher
-browser check is added to development CI; its host APIs are simulated.
+Python converter tests and existing security checks. The generated-launcher
+browser integration test now passes in GitHub CI, including offline save,
+reopening, cloud retry and explicit damaged-journal repair. Its Scriptable
+host APIs are simulated. The corrected test invokes each evaluated function;
+the first attempts failed in the browser harness before operating the journal.
+
+No-fee prototype implementation: `00ce68567ddc4f179e190e4b85007f909e4fa795`.
+Corrected browser harness: `c11b5f315d36adeaaeba1a5954b12ae1e5a3a4a6`.
+Regression job SUCCESS (40 JavaScript tests, 4 Python tests, security checks,
+reproducible bundles and both browser tests):
+https://github.com/ldintzer-bit/ldcooklog-mobile/actions/runs/38164795325
+The native build/simulator job for this run was still running at this update.
 
 This route stages snapshots in Scriptable's iCloud folder without an owner
 developer membership. It cannot confirm completed uploads through the
