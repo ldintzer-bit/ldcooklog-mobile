@@ -25,7 +25,8 @@ trial, rather than silently recreating an empty journal.
 
 Three additional storage tests pass: isolated cloud restoration/reopen with
 exact state and original bytes retained, corrupt cloud refusal with the working
-journal intact, and rejection of unrecognized namespaces. All 54 JavaScript
+journal intact, and rejection of unrecognized namespaces. An additional test refuses checksum-valid cloud payloads whose embedded revision
+disagrees with the selected filename. All 55 JavaScript
 and 8 Python tests pass locally with the security check. The generated-launcher
 browser test now covers the empty trial, source revision 2 selection, Cooking
 phase and Meat On timeline, relaunch, unchanged original bytes and the existing

@@ -145,3 +145,14 @@ test('isolated cloud corruption refuses restoration and leaves working journal i
 test('unrecognized journal namespace cannot select an arbitrary storage folder',async t=>{
   const {config}=setup(t);assert.throws(()=>createStorage({...config,namespace:'../other'}),/Unsupported/);
 });
+
+test('a valid cloud payload under the wrong revision filename cannot masquerade as a newer recovery',async t=>{
+  const {store,config,root}=setup(t);
+  await store.commit(await snapshot(1),0);await store.backupStatus();
+  const base=path.join(root,'cloud/LDCookLog-2-Development-Recovery');
+  const file=fs.readdirSync(base,{recursive:true}).find(n=>n.endsWith('.json'));
+  fs.writeFileSync(path.join(base,file),await snapshot(2));
+  const trial=createStorage({...config,namespace:'restore-check'}),list=await trial.listSnapshots();
+  await assert.rejects(trial.readSnapshot(list[0].token),/revision mismatch/);
+  assert.equal(await trial.read(),null);
+});

@@ -100,12 +100,12 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development'}) 
   async function listSnapshots() {
     tokens.clear();
     const found = [];
-    function add(manager, path, label) {
+    function add(manager, path, label, revision) {
       const token = String(found.length);
-      tokens.set(token, {manager, path});
+      tokens.set(token, {manager, path, revision});
       found.push({token, label});
     }
-    for (const name of entries()) add(local, local.joinPath(journal, name), `This iPhone · revision ${rev(name)}`);
+    for (const name of entries()) add(local, local.joinPath(journal, name), `This iPhone · revision ${rev(name)}`, rev(name));
     try {
       const bases = [cloudRoot()];
       // Read original iCloud snapshots for the isolated trial. No original
@@ -117,7 +117,7 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development'}) 
         const dir = cloud.joinPath(base, id);
         if (!cloud.isDirectory(dir)) continue;
         for (const name of cloud.listContents(dir).filter(n => pattern.test(n)).sort().reverse()) {
-          add(cloud, cloud.joinPath(dir, name), `iCloud copy (upload unconfirmed) · revision ${rev(name)} · device ${id.slice(0,8)}`);
+          add(cloud, cloud.joinPath(dir, name), `iCloud copy (upload unconfirmed) · revision ${rev(name)} · device ${id.slice(0,8)}`, rev(name));
         }
       }
       }
@@ -129,7 +129,8 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development'}) 
     if (!source) throw Error('Unknown recovery selection; browse again');
     if (source.manager === cloud) await cloud.downloadFileFromiCloud(source.path);
     const text = source.manager.readString(source.path);
-    await verify(text);
+    const body = await verify(text);
+    if (body.revision !== source.revision) throw Error('Recovery snapshot revision mismatch');
     return text;
   }
   return {
