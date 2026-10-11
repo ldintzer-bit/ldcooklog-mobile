@@ -115,7 +115,10 @@ were visible. The full app remains unresolved. Startup fix 2 now checks the
 full interface, completes the initial journal read before presentation, and
 replaces indefinite bridge callbacks with immediate JSON polling/idle timers.
 A temporary native startup-2 confirmation identifies the installed version.
-Seventeen Scriptable tests pass locally (47 JavaScript tests total). Confirm
+Seventeen Scriptable tests pass locally and in GitHub regression CI
+(47 JavaScript tests total). The generated-launcher lifecycle/offline/recovery
+browser check also passes with startup fix 2 in run 38168958484. The native
+job was still running; native sources were unchanged. Confirm
 the native startup message and full journal display on the actual iPhone before
 any real-data import or backup acceptance.
 
