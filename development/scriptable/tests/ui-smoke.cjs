@@ -35,7 +35,7 @@ function manager(root) {
       }
       present(){return new Promise(resolve=>{closeView=resolve})}
       evaluateJavaScript(code,callback) {
-        return page.evaluate(callback ? `() => new Promise(resolve => { window.completion = resolve; ${code} })` : `() => { ${code} }`);
+        return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : `(() => { ${code} })()`);
       }
     }
     running=new AsyncFunction('WebView','FileManager','UUID','Script',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}});
