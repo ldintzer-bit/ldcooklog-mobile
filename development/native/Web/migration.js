@@ -113,7 +113,8 @@ export function buildLocalCooks(tables) {
       if (!Number.isFinite(value) || t.temperature_value === null) throw Error(`Invalid temperature in sample ${t.id || '(unknown)'}`);
       return {at:asISO(t.observed_at, 'sample time'), value, channel:t.channel_label || `Channel ${t.channel_index || '?'}`,
         unit: t.degree_type === '1' || t.degree_type === 'C' ? 'C' : t.degree_type === '2' || t.degree_type === 'F' ? 'F' : 'unknown',
-        legacyId: t.id || null, sessionId:t.cook_fireboard_session_id};
+        legacyId: t.id || null, sessionId:t.cook_fireboard_session_id,
+        deviceUUID:t.device_uuid || null, channelId:String(t.channel_index || t.channel_id || '?')};
     }).sort((a,b)=>a.at.localeCompare(b.at));
     const cookerFromNotes = String(row.notes || '').match(/Smoker: (Traeger Ironwood 885|Traeger Pro|Weber 22" Kettle)/);
     const cook = {
@@ -122,6 +123,7 @@ export function buildLocalCooks(tables) {
       cooker: row.smoker || row.cooker || cookerFromNotes?.[1] || 'Not recorded',
       startedAt: asISO(row.start_time || row.created_at, 'cook start time'),
       finishedAt: row.finish_time ? asISO(row.finish_time, 'finish time') : null,
+      phase: row.finish_time || row.phase === 'Finished' ? 'Finished' : ({Setup:'Preparation',Cooking:'Cooking',Rest:'Resting','Keep Warm':'Keeping Warm'}[row.phase] || 'Cooking'),
       events,
       temperatures,
       notes: row.notes || '',

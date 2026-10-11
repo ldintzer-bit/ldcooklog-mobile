@@ -90,17 +90,18 @@ export class CookStore {
     });
   }
   event(id, type, note = '') {
-    const transitions = { 'Meat On': ['Preparation', 'Cooking'], 'Rest Start': ['Cooking', 'Resting'], 'Keep Warm': ['Resting', 'Keeping Warm'], 'Cook Finished': [null, 'Finished'] };
+    const transitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
       if (phase === 'Finished') throw Error('This cook is finished');
       const transition = transitions[type];
-      if (transition && transition[0] && phase !== transition[0]) throw Error(`Cannot ${type.toLowerCase()} during ${phase.toLowerCase()}`);
+      if (transition && !transition[0].includes(phase)) throw Error(`Cannot ${type.toLowerCase()} during ${phase.toLowerCase()}`);
       const at = new Date().toISOString();
       cook.events.push({ id: crypto.randomUUID(), at, type, note });
       if (transition) cook.phase = transition[1];
+      if (type === 'Meat On') cook.startedAt = at;
       if (type === 'Cook Finished') cook.finishedAt = at;
       return state;
     });

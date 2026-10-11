@@ -22,6 +22,11 @@ final class CloudBackupTests: XCTestCase {
         XCTAssertEqual(try FileManager.default.contentsOfDirectory(at: cloud.appendingPathComponent(store.deviceID), includingPropertiesForKeys: nil).count, 2)
         let choices = try backups.list()
         XCTAssertEqual(choices.count, 4)
+        let token = choices.first { $0["label"]?.hasPrefix("iCloud") == true }!["token"]!
+        let retrieved = try backups.read(token: token)
+        let clean = try RecoveryStore(root: root.appendingPathComponent("clean-device"))
+        try clean.repair(Data(retrieved.utf8))
+        XCTAssertEqual(try clean.read(), Data(retrieved.utf8))
         XCTAssertThrowsError(try backups.read(token: "../../current.recovery.json"))
     }
     func testCorruptOldSnapshotDoesNotPreventNewBackupAndTamperedRemoteDoesNotCount() throws {

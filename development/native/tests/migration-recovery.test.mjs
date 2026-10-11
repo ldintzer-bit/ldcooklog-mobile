@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {webcrypto, createHash} from 'node:crypto';
 import {REQUIRED_TABLES, RELATIONAL_FORMAT} from '../Web/migration.js';
 import {importArchive, emptyState, seal, unseal} from '../Web/recovery.js';
+import {seriesKey,comparisonSeries} from '../Web/fireboard.js';
 globalThis.crypto ||= webcrypto;
 function archive() {
   const tables = Object.fromEntries(REQUIRED_TABLES.map(name => [name, {columns:['id'], rows:[]}]));
@@ -30,4 +31,14 @@ test('conflicting reimport and missing migrated records are refused', async () =
   first.state.records[0].food = 'Edited test';
   await assert.rejects(importArchive(first.state,source), /conflict/);
   await assert.rejects(seal({records:[],relationalArchives:[source]},1),/omits/);
+});
+test('migrated probes with the same label preserve distinct device identities', async () => {
+  const source=archive();
+  source.tables.cook_fireboard_sessions={columns:['id','cook_id'],rows:[{id:'session',cook_id:'synthetic'}]};
+  source.tables.fireboard_temperature_samples={columns:['id','cook_fireboard_session_id','temperature_value','observed_at','degree_type','channel_label','channel_index','device_uuid'],rows:['a','b'].map(device=>({id:device,cook_fireboard_session_id:'session',temperature_value:'225',observed_at:'2026-10-11T00:00:00Z',degree_type:'2',channel_label:'Pit',channel_index:'1',device_uuid:device}))};
+  const body={format:source.format,version:source.version,createdAt:source.createdAt,tables:source.tables};
+  source.sha256=createHash('sha256').update(JSON.stringify(body)).digest('hex');
+  const result=await importArchive(emptyState(),source),cook=result.state.records[0];
+  assert.notEqual(seriesKey(cook.temperatures[0]),seriesKey(cook.temperatures[1]));
+  assert.equal(comparisonSeries(cook,seriesKey(cook.temperatures[0])).length,1);
 });

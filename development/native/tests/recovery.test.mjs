@@ -59,3 +59,12 @@ test('payload digest survives Unicode without JSON recanonicalization', async ()
   const state = emptyState(); state.extra = 'café 🍖 日本語';
   assert.deepEqual((await unseal(await seal(state, 1))).state, state);
 });
+test('preparation cannot be finished and hold-before-rest workflow retains both transitions', async () => {
+  const adapter=disk(),store=new CookStore(adapter);await store.add('Synthetic brisket','Traeger');
+  const id=(await store.read()).state.records[0].id;
+  await assert.rejects(store.event(id,'Cook Finished'),/preparation/);
+  await store.event(id,'Meat On');await store.event(id,'Keep Warm');await store.event(id,'Rest Start');await store.event(id,'Cook Finished');
+  const cook=(await store.read()).state.records[0];
+  assert.deepEqual(cook.events.map(e=>e.type),['Meat On','Keep Warm','Rest Start','Cook Finished']);
+  assert.equal(cook.startedAt,cook.events[0].at);
+});

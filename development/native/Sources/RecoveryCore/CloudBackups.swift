@@ -60,7 +60,9 @@ public final class CloudBackups {
         func add(_ url: URL, _ source: String) {
             let token = UUID().uuidString
             choices[token] = url
-            result.append(["token": token, "label": "\(source): \(url.lastPathComponent)"])
+            let date = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            let label = date.map { DateFormatter.localizedString(from: $0, dateStyle: .medium, timeStyle: .short) } ?? "Snapshot date unavailable"
+            result.append(["token": token, "label": "\(source): \(label)"])
         }
         for url in try store.files() { add(url, "This device") }
         if let root = cloudRoot(), let enumerator = manager.enumerator(at: root, includingPropertiesForKeys: nil) {

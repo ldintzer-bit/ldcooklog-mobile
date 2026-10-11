@@ -151,7 +151,7 @@ Test cooks remain in history and backups but are excluded from comparison choice
 Cook notes and free-text evaluation can be saved after finishing; structured
 legacy evaluations stay intact in the relational archive.
 
-Current local results: 28 JavaScript tests and 4 Python tests pass, including
+Current local results: 30 JavaScript tests and 4 Python tests pass, including
 synthetic full-table recovery and completed-session safety checks. GitHub run
 38159884503 passed the original 23 JavaScript tests, 4 Python tests, 5 native
 storage XCTests and unsigned iPhone simulator compilation. The expanded UI
