@@ -5,6 +5,28 @@ membership. Paid membership is no longer the proposed installation route.
 This directory experiments with an existing App Store host, Scriptable, while
 retaining the tested migration/recovery format and cooking interface.
 
+## Current physical-device blocker and next check
+
+The owner saw all three simple HTML display tests A/B/C. Startup 2 then
+showed its native Open journal alert: the full DOM, scripts, checksum APIs
+and first journal read passed before presentation. Tapping Open journal
+still presented a blank screen with Close. The actual app remains blocked;
+no private-history import or backup acceptance is authorized by these results.
+
+`LDCookLog-Interface-Check.js` now isolates four displays without native
+storage access: A full styled page without scripts, B the same page with
+scripts and policy but no live native bridge, C scripts without the content
+policy, and D a native Scriptable UITable. Inputs are disabled. Each screen
+asks Visible/Blank, and a final summary records the owner's observations.
+No concurrent evaluation/polling runs while presenting these screens. The
+policy removal is diagnostic only, not a proposed app security change.
+
+Two probe tests cover the distinct page variants, disabled controls, no file
+access, native list fallback and bounded loading. All 49 JavaScript tests,
+4 Python tests and the security check pass locally. The full physical-device
+probe results and independent iCloud recovery remain outstanding. Basic HTML
+visibility and successful mocked browser tests do not prove live app display.
+
 ## Alternatives considered
 
 | Route | Costs and maintenance | Backup suitability |

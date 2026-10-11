@@ -29,3 +29,7 @@ output = header + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';
 (root / 'LDCookLog-2-Development.js').write_text(output)
 # Test harness renders exactly the generated page, never private journal data.
 (root / 'page.html').write_text(html)
+(root / 'LDCookLog-Interface-Check.js').write_text(
+    '// Read-only interface diagnostic — no cooking storage.\n'
+    + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';\n'
+    + (root / 'interface-check.js').read_text())
