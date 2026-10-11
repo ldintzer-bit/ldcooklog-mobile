@@ -30,7 +30,12 @@ disagrees with the selected filename. All 55 JavaScript
 and 8 Python tests pass locally with the security check. The generated-launcher
 browser test now covers the empty trial, source revision 2 selection, Cooking
 phase and Meat On timeline, relaunch, unchanged original bytes and the existing
-corrupt-journal repair. CI browser result is pending for this candidate.
+corrupt-journal repair. GitHub regression run `38172740063` passed for candidate
+`fc4450e007ffd92bdb096eb7f8e9aa55168ea097`: all 55 JavaScript and 8 Python tests,
+security checks, reproducible development/trial bundles and both browser tests.
+The generated launcher check passed isolated cloud restore/reopen and original
+byte preservation. Native builds were still running at this report; native
+application sources were unchanged. Physical trial restore is still pending.
 
 Physical isolated restoration is next. This is a fresh local journal in the
 same Scriptable installation, not proof of reinstall/new-device recovery. Real
