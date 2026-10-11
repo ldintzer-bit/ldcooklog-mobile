@@ -6,6 +6,23 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## Event bridge test checkpoint
+
+Code checkpoint: `8dfb1d91df230fc365e038f283504e7764c0b483`.
+GitHub regression run `38170521120` passed: 51 JavaScript tests, 4 Python tests,
+security checks, reproducible generated files, native mocked browser regression
+and the generated Scriptable launcher browser lifecycle/reopen/cloud retry/
+corrupt-journal recovery test. Native builds were still running at this report;
+native application sources were unchanged by the Scriptable bridge work.
+
+The first event-bridge browser run exposed an initial navigation during HTML
+loading. Wake signals are now disabled until startup finishes. Native wake
+evaluation is deferred until after the request-policy callback returns; queued
+signals are coalesced and scheduled work is canceled on Close. Physical iPhone
+presentation and action/save/relaunch behavior are still unverified for this
+candidate. Install under the new `LDCookLog-2-EventBridge.js` name to distinguish
+it from earlier retries. Do not import private files until device tests pass.
+
 ## Event bridge candidate after physical display results
 
 The owner reports A/B/C full-interface checks visible. D displayed the native
