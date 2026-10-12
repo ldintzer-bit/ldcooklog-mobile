@@ -6,6 +6,48 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: owner-private source reconciliation passed; Mac automation candidate
+
+The owner ran the independent source comparison locally and reported SOURCE
+MATCH PASS for both working revision 3 and restored-trial revision 4, followed
+by FULL SOURCE RECONCILIATION PASS. All 18 source tables were exact and source
+cook/event/session/reading identities, values and relationships reconciled.
+The extra synthetic cook was permitted separately. Private files remained on
+the owner's devices; no cooking records or credentials were published.
+This completes the controlled initial-history reconciliation gate, not future
+editing/feature acceptance or reinstall/new-device recovery.
+
+A new generated standalone Mac helper, `mac/LDCookLog-Mac-Recovery.py`, is ready
+for controlled installation. It independently validates the latest working
+recovery snapshot, including all cook/event/reading structures and preserved
+source-archive checksums/IDs, then copies its exact bytes into private local
+Application Support storage outside iCloud. Copies are immutable, verified
+by readback/checksum, restricted to the owner and idempotent. Source cooking
+files are never changed. A corrupt/missing/conflicting source or damaged
+existing copy stops without replacing evidence or silently choosing an older
+source. The last successful receipt and current attempt status are separate.
+No credential or record contents are printed in diagnostics.
+
+`--install` first proves a real independent copy, then installs a versioned
+helper and a per-user LaunchAgent with RunAtLoad and a five-minute interval.
+It refuses unrelated agent configurations; failed registration keeps verified
+copies and removes only a newly created agent or restores its earlier managed
+configuration. `--remove` stops the agent while retaining all backup copies.
+The scheduled worker only runs while the Mac is awake and the owner signed in;
+it needs newly staged iCloud bytes to reach that Mac. No Supabase connection
+or recurring database export is performed. A 1 GB cap stops new copies rather
+than deleting backups; automatic retention and proactive failure alerts are
+still needed before an unconditional backup-operational acceptance claim.
+
+Seven worker tests pass for exact independent copies/private permissions,
+idempotency, corrupt-newest/missing-source refusal, collisions/quota, symlinks/
+path overlap, structured scheduling/unrelated-agent refusal, standalone safe
+success/failure receipts and failed-install rollback. Existing 60 JavaScript
+and now 22 Python tests remain the regression set. Security checks pass.
+Generated Mac artifact reproducibility is now a required CI step. Actual
+Mac installation and scheduled execution are untested and require the owner.
+The production branch and iPhone application code are unchanged.
+
 ## October 12: full-history isolated restore and offline reopening passed
 
 The owner explicitly restored the original development iCloud revision 3 into

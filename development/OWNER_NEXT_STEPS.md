@@ -31,19 +31,20 @@ regression run 38176459388 passes including a delayed-checksum reopen of a
 30-cook/18,000-reading synthetic relational journal. The owner now confirmed private journal reopening offline, a historical cook
 smoke check, independent Mac readability/checksum verification of the complete
 recovery copy, and physical full-history restoration/offline reopening in the
-separate Restore Fix journal. The next step is source reconciliation on the Mac.
+separate Restore Fix journal. The owner then completed exact source reconciliation for both working and
+restored-trial Mac recovery bytes against the private export. Full source
+reconciliation passed locally; no private files were supplied to development.
 
-Reconnect Wi-Fi, open Restore Fix and tap Check / retry iCloud so the trial's
-own recovery folder reaches the Mac. Run the standalone
-`scriptable/mac/reconcile_private_history.py` helper with --source-export pointing
-to the existing private relational JSON. It compares both working and restored
-trial recovery folders without writing or uploading anything. Report only its
-counts/pass/fail output; never attach private files or credentials.
+The next controlled step is the generated Mac helper's --install command.
+It first creates/verifies an independent private Mac copy, then schedules
+five-minute checks while the Mac is awake and you are signed in. This does
+not back up newly added Supabase rows; it protects recovery snapshots produced
+by the replacement. Do not retire Supabase yet. Actual scheduled operation,
+retention/quota and failure visibility, remaining cooking features and
+reinstall/new-device recovery still require acceptance.
 
-A complete source comparison must pass before cutover. Reinstall/new-device
-recovery, completed FireBoard import/device feature acceptance, retention/quota
-and ongoing recoverability still require work. Do not repeat migration, delete
-journals or uninstall Scriptable. Keep the original archive and Supabase.
+See [Mac automatic recovery copies](scriptable/mac/README.md) for installation,
+status and removal details. Keep the original PostgreSQL archive.
 
 ## Earlier native route — retained for reference, not the current instructions
 
