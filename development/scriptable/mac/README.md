@@ -47,3 +47,18 @@ registration failure. Standalone artifact generation is reproducible:
 
 Apple's per-user job/interval reference:
 https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingLaunchdJobs.html
+
+## Transient iCloud read handling
+
+The worker recognizes platform errno constants EDEADLK/EAGAIN/EWOULDBLOCK.
+On macOS errno 11 is EDEADLK; it must not be interpreted using Linux numbers.
+For these source read/stat failures it requests local bytes through Foundation's
+startDownloadingUbiquitousItemAtURL:error: using the built-in Objective-C bridge,
+then retries within a shared 45-second budget. The native request has an
+eight-second cap. No Finder/app UI is opened. Materialization only retrieves
+local bytes; original contents are unchanged. A request is not proof of a
+backup. Checksums/schema and independent copy readback must still pass.
+Permanent permissions, damaged contents and other errors do not get retries
+that could hide them. On failure older verified copies are retained and the
+next periodic attempt can try again. Diagnostics include symbolic errno and
+safe numeric Foundation codes, without paths, record contents or credentials.

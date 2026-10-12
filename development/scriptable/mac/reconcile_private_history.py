@@ -41,9 +41,15 @@ def distinct(pairs):
     return result
 
 
-def load(path):
-    require(path.stat().st_size <= 250 * 1024 * 1024, 'File exceeds the audit size limit.')
-    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=distinct)
+def load(path, reader=None):
+    if reader:
+        # Injected cloud readers enforce the same limit while also handling
+        # transient stat/read failures and native materialization requests.
+        raw = reader(path)
+    else:
+        require(path.stat().st_size <= 250 * 1024 * 1024, 'File exceeds the audit size limit.')
+        raw = path.read_text(encoding='utf-8')
+    return json.loads(raw, object_pairs_hook=distinct)
 
 
 def canonical(value):
@@ -65,10 +71,10 @@ def source_archive(value):
     return value
 
 
-def snapshot(path):
+def snapshot(path, reader=None):
     match = NAME.fullmatch(path.name)
     require(match is not None, 'Invalid recovery filename.')
-    envelope = load(path)
+    envelope = load(path, reader)
     require(envelope.get('format') == 'ldcooklog-recovery' and type(envelope.get('version')) is int and envelope['version'] == 1, 'Unsupported recovery envelope.')
     payload = envelope.get('payload')
     require(isinstance(payload, str) and hashlib.sha256(payload.encode()).hexdigest() == envelope.get('sha256'), 'Recovery checksum mismatch.')
@@ -80,7 +86,7 @@ def snapshot(path):
     return body
 
 
-def latest_journals(root):
+def latest_journals(root, reader=None):
     require(root.is_dir(), 'Recovery folder has not reached this Mac.')
     latest = []
     for device in sorted(root.iterdir()):
@@ -92,7 +98,7 @@ def latest_journals(root):
         revisions = [int(NAME.fullmatch(p.name)[1]) for p in files]
         require(len(set(revisions)) == len(revisions), 'Conflicting recovery revisions; comparison stopped.')
         # Check every retained copy. Never silently select an older healthy copy.
-        checked = [snapshot(p) for p in files]
+        checked = [snapshot(p, reader) for p in files]
         latest.append(checked[-1])
     require(bool(latest), 'No recovery journal is readable on this Mac yet.')
     return latest

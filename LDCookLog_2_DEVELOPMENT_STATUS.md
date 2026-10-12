@@ -6,6 +6,45 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: fresh-snapshot macOS EDEADLK; bounded materialization candidate
+
+The fresh-action unattended test reported a failed scheduled iCloud read:
+OSError errno 11. On Darwin this is EDEADLK (Resource deadlock avoided), not
+Linux's errno-11 EAGAIN meaning. The initial explanation used the wrong
+platform meaning; this was corrected after checking Apple's errno definitions.
+The new code uses symbolic errno constants, including EDEADLK, rather than
+hard-coded numbers; diagnostics now retain the platform's symbolic name.
+An iCloud/FileProvider materialization issue is consistent with Terminal reads
+succeeding and fresh-file background reads failing, but actual recovery is
+still unaccepted and no specific privacy setting is assumed.
+
+The worker now requests local materialization of the specific unavailable
+file through Foundation startDownloadingUbiquitousItemAtURL:error:, using
+macOS's built-in osascript Objective-C bridge. Paths are separate arguments;
+there is no shell interpolation, Finder launch, inter-app messaging or
+credential/API call. Only safe numeric Foundation codes are retained.
+The native request has an eight-second timeout; transient source read/stat
+retries share a 45-second job budget with bounded backoff. A request does not
+count as a backup: successful byte retrieval, checksum/schema validation and
+independent-copy readback are still mandatory. Permission, corruption and
+other persistent failures stop; no old-source fallback or source deletion.
+Timed-out work can be retried by the next scheduled run.
+
+Injected readers preserve the auditor's file-size limits. Tests cover delayed
+availability, exact byte copying, exhausted budgets/old-copy preservation,
+permission non-retry, corruption after materialization, argument/privacy/
+timeout handling and EDEADLK recovery across platform numbering. An actual
+macOS Foundation bridge test is added to native CI, using only a synthetic
+local non-iCloud file. Local Python regression: 31 passed, one macOS-only test
+skipped; existing 60 JavaScript tests and security checks are unchanged.
+Generated standalone helper is rebuilt. Actual native bridge CI and private
+fresh-snapshot unattended capture remain acceptance gates for this candidate.
+
+Apple references:
+https://github.com/apple/darwin-xnu/blob/main/bsd/sys/errno.h
+https://developer.apple.com/documentation/foundation/filemanager/startdownloadingubiquitousitem(at:)?language=objc
+https://developer.apple.com/library/archive/releasenotes/InterapplicationCommunication/RN-JavaScriptForAutomation/Articles/OSX10-10.html
+
 ## October 12: revision-4 independent and scheduled copying passed after update
 
 The owner updated the managed helper to the safe-diagnostic checkpoint.

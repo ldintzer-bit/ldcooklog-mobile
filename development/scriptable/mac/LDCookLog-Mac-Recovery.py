@@ -43,9 +43,15 @@ def distinct(pairs):
     return result
 
 
-def load(path):
-    require(path.stat().st_size <= 250 * 1024 * 1024, 'File exceeds the audit size limit.')
-    return json.loads(path.read_text(encoding='utf-8'), object_pairs_hook=distinct)
+def load(path, reader=None):
+    if reader:
+        # Injected cloud readers enforce the same limit while also handling
+        # transient stat/read failures and native materialization requests.
+        raw = reader(path)
+    else:
+        require(path.stat().st_size <= 250 * 1024 * 1024, 'File exceeds the audit size limit.')
+        raw = path.read_text(encoding='utf-8')
+    return json.loads(raw, object_pairs_hook=distinct)
 
 
 def canonical(value):
@@ -67,10 +73,10 @@ def source_archive(value):
     return value
 
 
-def snapshot(path):
+def snapshot(path, reader=None):
     match = NAME.fullmatch(path.name)
     require(match is not None, 'Invalid recovery filename.')
-    envelope = load(path)
+    envelope = load(path, reader)
     require(envelope.get('format') == 'ldcooklog-recovery' and type(envelope.get('version')) is int and envelope['version'] == 1, 'Unsupported recovery envelope.')
     payload = envelope.get('payload')
     require(isinstance(payload, str) and hashlib.sha256(payload.encode()).hexdigest() == envelope.get('sha256'), 'Recovery checksum mismatch.')
@@ -82,7 +88,7 @@ def snapshot(path):
     return body
 
 
-def latest_journals(root):
+def latest_journals(root, reader=None):
     require(root.is_dir(), 'Recovery folder has not reached this Mac.')
     latest = []
     for device in sorted(root.iterdir()):
@@ -94,7 +100,7 @@ def latest_journals(root):
         revisions = [int(NAME.fullmatch(p.name)[1]) for p in files]
         require(len(set(revisions)) == len(revisions), 'Conflicting recovery revisions; comparison stopped.')
         # Check every retained copy. Never silently select an older healthy copy.
-        checked = [snapshot(p) for p in files]
+        checked = [snapshot(p, reader) for p in files]
         latest.append(checked[-1])
     require(bool(latest), 'No recovery journal is readable on this Mac yet.')
     return latest
@@ -203,6 +209,7 @@ def main():
 
 """Copy verified iCloud recovery bytes to private Mac storage; optional user LaunchAgent."""
 import argparse
+import errno
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -213,6 +220,7 @@ import plistlib
 import subprocess
 import sys
 import tempfile
+import time
 
 LABEL = 'com.ldcooklog.verified-recovery'
 MAC_HOME = Path.home() / 'Library/Application Support/LDCookLog'
@@ -222,6 +230,7 @@ MAX_BYTES = 1024 * 1024 * 1024
 STAGES = {
     'starting': 'starting the recovery check',
     'read_icloud': 'reading iCloud recovery snapshots',
+    'download_icloud': 'requesting local iCloud recovery bytes',
     'validate_state': 'validating current cooking data',
     'read_source_bytes': 'retrieving selected snapshot bytes',
     'prepare_destination': 'preparing independent Mac storage',
@@ -234,6 +243,21 @@ STAGES = {
     'read_status': 'reading scheduled backup status',
 }
 CURRENT_STAGE = 'starting'
+READ_DEADLINE = None
+DOWNLOAD_DETAILS = None
+DOWNLOAD_REQUESTED = set()
+CLOUD_RETRY_ERRNOS = {errno.EAGAIN, errno.EWOULDBLOCK, errno.EDEADLK}
+DOWNLOAD_SCRIPT = """function run(argv) {
+  ObjC.import('Foundation');
+  try {
+    var error = $();
+    var url = $.NSURL.fileURLWithPath(argv[0]);
+    var ok = $.NSFileManager.defaultManager.startDownloadingUbiquitousItemAtURLError(url, error);
+    return JSON.stringify({requested: Boolean(ok), code: error.isNil() ? null : Number(error.code)});
+  } catch (e) {
+    return JSON.stringify({requested: false, bridgeFailure: true});
+  }
+}"""
 ERROR_TYPES = {'AuditFailure', 'PermissionError', 'FileNotFoundError', 'NotADirectoryError',
                'IsADirectoryError', 'BlockingIOError', 'OSError', 'JSONDecodeError',
                'UnicodeDecodeError', 'UnicodeEncodeError', 'ValueError', 'TypeError',
@@ -252,6 +276,9 @@ def error_details(error):
     result = dict(stage=CURRENT_STAGE, errorType=name if name in ERROR_TYPES else 'Error')
     if isinstance(error, OSError) and type(error.errno) is int:
         result['errno'] = error.errno
+        result['errnoName'] = 'EDEADLK' if error.errno == errno.EDEADLK else 'EAGAIN' if error.errno == errno.EAGAIN else errno.errorcode.get(error.errno, 'UNKNOWN')
+    if DOWNLOAD_DETAILS is not None:
+        result['download'] = DOWNLOAD_DETAILS
     return result
 
 
@@ -261,8 +288,84 @@ def format_details(value):
     operation = STAGES.get(value.get('stage'), 'unknown operation')
     name = value.get('errorType')
     name = name if name in ERROR_TYPES else 'Error'
-    errno = value.get('errno')
-    return operation + ' / ' + name + (f' / errno {errno}' if type(errno) is int else '')
+    error_number = value.get('errno')
+    text = operation + ' / ' + name + (f' / errno {error_number}' if type(error_number) is int else '')
+    symbolic = value.get('errnoName')
+    if isinstance(symbolic, str) and symbolic in (set(errno.errorcode.values()) | {'EDEADLK', 'EAGAIN', 'EWOULDBLOCK'}):
+        text += ' (' + symbolic + ')'
+    download = value.get('download')
+    if isinstance(download, dict):
+        if type(download.get('code')) is int:
+            text += f' / Foundation download code {download["code"]}'
+        if download.get('bridgeFailure') is True:
+            text += ' / native download bridge failed'
+        if download.get('timeout') is True:
+            text += ' / native download request timed out'
+    return text
+
+
+def request_icloud_download(path):
+    if sys.platform != 'darwin':
+        return dict(requested=False, unsupportedPlatform=True)
+    try:
+        # The pathname is an argument, never interpolated into code or a shell.
+        # Foundation starts local materialization; no Finder/app UI is opened.
+        result = subprocess.run(['/usr/bin/osascript', '-l', 'JavaScript', '-e', DOWNLOAD_SCRIPT, str(path)], capture_output=True, text=True, timeout=8)
+    except subprocess.TimeoutExpired:
+        return dict(requested=False, timeout=True)
+    if result.returncode:
+        return dict(requested=False, bridgeFailure=True)
+    try:
+        value = json.loads(result.stdout)
+        safe = dict(requested=value.get('requested') is True)
+        if type(value.get('code')) is int:
+            safe['code'] = value['code']
+        if value.get('bridgeFailure') is True:
+            safe['bridgeFailure'] = True
+        return safe
+    except (ValueError, AttributeError):
+        return dict(requested=False, bridgeFailure=True)
+
+
+def read_icloud_bytes(path):
+    global DOWNLOAD_DETAILS
+    deadline = READ_DEADLINE if READ_DEADLINE is not None else time.monotonic() + 45
+    delay = 0.5
+    while True:
+        try:
+            require(path.stat().st_size <= 250 * 1024 * 1024, 'File exceeds the audit size limit.')
+            raw = path.read_bytes()
+            require(len(raw) <= 250 * 1024 * 1024, 'File exceeds the audit size limit.')
+            return raw
+        except OSError as error:
+            if error.errno not in CLOUD_RETRY_ERRNOS:
+                raise
+            if time.monotonic() >= deadline:
+                raise
+            if path not in DOWNLOAD_REQUESTED:
+                DOWNLOAD_REQUESTED.add(path)
+                saved_stage = CURRENT_STAGE
+                stage('download_icloud')
+                try:
+                    DOWNLOAD_DETAILS = request_icloud_download(path)
+                finally:
+                    stage(saved_stage)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise
+            time.sleep(min(delay, remaining))
+            delay = min(delay * 2, 4)
+
+
+def read_icloud_text(path):
+    return read_icloud_bytes(path).decode('utf-8')
+
+
+def begin_cloud_read():
+    global READ_DEADLINE, DOWNLOAD_DETAILS
+    READ_DEADLINE = time.monotonic() + 45
+    DOWNLOAD_DETAILS = None
+    DOWNLOAD_REQUESTED.clear()
 
 
 def private_directory(path):
@@ -319,7 +422,8 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
     # Validate all retained source snapshots and reject a bad newest copy.
     # A source failure occurs before destination creation or copying.
     stage('read_icloud')
-    latest_journals(source)
+    begin_cloud_read()
+    latest_journals(source, read_icloud_text)
     stage('prepare_destination')
     require(source.resolve() != destination.resolve() and source.resolve() not in destination.resolve().parents and destination.resolve() not in source.resolve().parents, 'Source and destination must be separate folders.')
     for cloud_folder in (Path.home() / 'Library/Mobile Documents', Path.home() / 'Library/CloudStorage'):
@@ -337,11 +441,11 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
             continue
         selected = files[-1]
         stage('read_icloud')
-        body = snapshot(selected)
+        body = snapshot(selected, read_icloud_text)
         stage('validate_state')
         counts = validate_current(body)
         stage('read_source_bytes')
-        raw = selected.read_bytes()
+        raw = read_icloud_bytes(selected)
         # Reject a source changed between validation and retrieval.
         parsed = json.loads(raw)
         require(json.loads(parsed['payload']) == body and hashlib.sha256(parsed['payload'].encode()).hexdigest() == parsed['sha256'], 'Source changed during independent copying.')
@@ -492,7 +596,8 @@ def main():
             return 0
         if args.diagnose:
             stage('read_icloud')
-            journals = latest_journals(args.icloud_root)
+            begin_cloud_read()
+            journals = latest_journals(args.icloud_root, read_icloud_text)
             stage('validate_state')
             for body in journals:
                 validate_current(body)

@@ -1,4 +1,5 @@
 import json
+import errno
 from pathlib import Path
 import plistlib
 import stat
@@ -146,7 +147,7 @@ class VerifiedMacCopyTests(unittest.TestCase):
         self.assertNotIn('PRIVATE COOK', text)
         self.assertNotIn('/private/secret-data', text)
         attempt = json.loads((self.destination / 'last-attempt.json').read_text())
-        self.assertEqual(attempt['details'], dict(stage='read_icloud', errorType='PermissionError', errno=1))
+        self.assertEqual(attempt['details'], dict(stage='read_icloud', errorType='PermissionError', errno=1, errnoName=errno.errorcode[1]))
         self.assertNotIn('PASSWORD', json.dumps(attempt))
         with self.assertRaisesRegex(AuditFailure, 'PermissionError / errno 1'): worker.show_status(self.destination)
 
@@ -159,6 +160,93 @@ class VerifiedMacCopyTests(unittest.TestCase):
         self.assertIn('TERMINAL ICLOUD READ PASS', result.stdout)
         self.assertFalse(self.destination.exists())
         self.assertEqual(self.file.read_bytes(), before)
+
+    def test_temporary_unavailable_file_requests_download_and_then_copies_verified_bytes(self):
+        original = Path.read_bytes
+        attempts = [0]
+        def read(path):
+            if path == self.file:
+                attempts[0] += 1
+                if attempts[0] <= 2:
+                    raise OSError(errno.EAGAIN, 'Private pathname must not be logged')
+            return original(path)
+        with patch.object(Path, 'read_bytes', read), patch.object(worker, 'request_icloud_download', return_value=dict(requested=True)) as request, patch.object(worker.time, 'sleep'):
+            report = protect(self.source, self.destination)
+        request.assert_called_once_with(self.file)
+        self.assertEqual(report['copies'][0]['revision'], 3)
+        self.assertEqual((self.destination / report['copies'][0]['snapshot']).read_bytes(), self.file.read_bytes())
+
+    def test_transient_retry_budget_expires_without_fallback_or_backup_changes(self):
+        report = protect(self.source, self.destination)
+        target = self.destination / report['copies'][0]['snapshot']
+        before = target.read_bytes()
+        original = Path.read_bytes
+        clock = [0]
+        def read(path):
+            if path == self.file:
+                raise OSError(errno.EAGAIN, 'Private error text')
+            return original(path)
+        def advance(seconds): clock[0] += seconds
+        with patch.object(Path, 'read_bytes', read), patch.object(worker.time, 'monotonic', side_effect=lambda: clock[0]), patch.object(worker.time, 'sleep', side_effect=advance), patch.object(worker, 'request_icloud_download', return_value=dict(requested=True)) as request:
+            with self.assertRaises(OSError) as raised: protect(self.source, self.destination)
+        self.assertEqual(raised.exception.errno, errno.EAGAIN)
+        self.assertEqual(clock[0], 45)
+        request.assert_called_once()
+        self.assertEqual(target.read_bytes(), before)
+
+    def test_permission_error_is_not_retried_or_treated_as_download_pending(self):
+        original = Path.read_bytes
+        def read(path):
+            if path == self.file: raise PermissionError(1, 'Private path')
+            return original(path)
+        with patch.object(Path, 'read_bytes', read), patch.object(worker, 'request_icloud_download') as request, patch.object(worker.time, 'sleep') as sleep:
+            with self.assertRaises(PermissionError): protect(self.source, self.destination)
+        request.assert_not_called()
+        sleep.assert_not_called()
+        self.assertFalse(self.destination.exists())
+
+    def test_materialized_corruption_still_stops_before_any_copy(self):
+        original = Path.read_bytes
+        bad = dict(self.envelope, payload=self.envelope['payload'] + ' ')
+        attempts = [0]
+        def read(path):
+            if path == self.file:
+                attempts[0] += 1
+                if attempts[0] == 1: raise OSError(errno.EAGAIN, 'unavailable')
+                return json.dumps(bad).encode()
+            return original(path)
+        with patch.object(Path, 'read_bytes', read), patch.object(worker, 'request_icloud_download', return_value=dict(requested=True)), patch.object(worker.time, 'sleep'):
+            with self.assertRaisesRegex(AuditFailure, 'checksum'): protect(self.source, self.destination)
+        self.assertFalse(self.destination.exists())
+
+    def test_native_request_arguments_and_diagnostics_are_safe_and_bounded(self):
+        path = self.root / "quotes ' and $(private command)"
+        result = subprocess.CompletedProcess([], 0, stdout=json.dumps(dict(requested=False, code=260, secret='DO NOT PRINT')), stderr='Private path')
+        with patch.object(worker.sys, 'platform', 'darwin'), patch.object(worker.subprocess, 'run', return_value=result) as run:
+            self.assertEqual(worker.request_icloud_download(path), dict(requested=False, code=260))
+        args = run.call_args.args[0]
+        self.assertEqual(args[-1], str(path))
+        self.assertNotIn(str(path), args[-2])
+        self.assertEqual(run.call_args.kwargs['timeout'], 8)
+        with patch.object(worker.sys, 'platform', 'darwin'), patch.object(worker.subprocess, 'run', side_effect=subprocess.TimeoutExpired([], 8)):
+            self.assertEqual(worker.request_icloud_download(path), dict(requested=False, timeout=True))
+
+    def test_darwin_cloud_deadlock_errno_uses_platform_symbol_and_recovers(self):
+        original = Path.read_bytes
+        calls = [0]
+        def read(path):
+            if path == self.file:
+                calls[0] += 1
+                if calls[0] == 1: raise OSError(errno.EDEADLK, 'Private path')
+            return original(path)
+        with patch.object(Path, 'read_bytes', read), patch.object(worker, 'request_icloud_download', return_value=dict(requested=True)) as request, patch.object(worker.time, 'sleep'):
+            report = protect(self.source, self.destination)
+        request.assert_called_once()
+        self.assertEqual(report['copies'][0]['revision'], 3)
+        worker.stage('read_icloud')
+        details = worker.error_details(OSError(errno.EDEADLK, 'PRIVATE DATA'))
+        self.assertEqual(details['errnoName'], 'EDEADLK')
+        self.assertIn('EDEADLK', worker.format_details(details))
 
 
 if __name__ == '__main__': unittest.main()
