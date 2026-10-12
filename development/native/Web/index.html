@@ -10,9 +10,9 @@
 <label>Food / cut<input id="editFood" required maxlength="300"></label><label>Cooker<input id="editCooker" required maxlength="300"></label>
 <label>Start date and time<input id="editStart" type="datetime-local" required></label><label>Finish date and time (optional)<input id="editFinish" type="datetime-local"></label>
 <label><input id="editTest" type="checkbox"> Test cook — exclude from comparisons</label>
-<label>Method<input id="editMethod" maxlength="300" placeholder="Smoked, foil boat, sous vide…"></label>
+<label>Method<select id="methodChoice"><option value="">Not recorded</option><option>Smoked</option><option>No wrap</option><option>Foil boat</option><option>Butcher paper wrap</option><option>Foil wrap</option><option>Grilled — direct heat</option><option>Grilled — indirect heat</option><option>Sous vide, then smoked</option><option>Smoked, then sous vide</option><option value="__custom__">Other / custom</option></select></label><label id="methodCustom" hidden>Custom method<input id="editMethod" maxlength="300" placeholder="Describe your method"></label>
 <label>Meat weight / pieces<input id="editWeight" maxlength="100" placeholder="Two 8 lb pork butts"></label>
-<label>Equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Slow ’N Sear, lump charcoal, FireBoard probes"></label>
+<label>Equipment / fuel<select id="equipmentChoice"><option value="">Not recorded</option><option>Weber kettle, lump charcoal</option><option>Weber kettle, charcoal briquettes</option><option>Weber kettle, Slow ’N Sear, lump charcoal</option><option>Weber kettle, Slow ’N Sear, charcoal briquettes</option><option>Traeger Ironwood 885, wood pellets</option><option value="__custom__">Other / custom combination</option></select></label><label id="equipmentCustom" hidden>Custom equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Include accessories, fuel and probes"></label>
 <label>Preparation<textarea id="editPreparation" maxlength="4000"></textarea></label>
 <label>Rubs<input id="editRubs" maxlength="1000"></label><label>Sauces<input id="editSauces" maxlength="1000"></label>
 <label>Overall rating<select id="editRating"><option value="">Not rated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>

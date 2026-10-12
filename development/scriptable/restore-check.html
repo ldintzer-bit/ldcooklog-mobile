@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mIQ9LhdFXDC2WU2pa0u5KjPNGFuG+Qion1Pfr1FMFAo='; style-src 'sha256-qgUUyG2gK/eqyaJPP7A3hx3gUEPIIXxsAtm6DuXF3mI='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-tFPbNU5eD2/pEUoS1OumrQ/LsZpGxXDXMxz8JIEti9o='; style-src 'sha256-qgUUyG2gK/eqyaJPP7A3hx3gUEPIIXxsAtm6DuXF3mI='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
 
 input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-align:middle;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}summary{padding:12px 0;cursor:pointer}
 
@@ -15,9 +15,9 @@ input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-al
 <label>Food / cut<input id="editFood" required maxlength="300"></label><label>Cooker<input id="editCooker" required maxlength="300"></label>
 <label>Start date and time<input id="editStart" type="datetime-local" required></label><label>Finish date and time (optional)<input id="editFinish" type="datetime-local"></label>
 <label><input id="editTest" type="checkbox"> Test cook — exclude from comparisons</label>
-<label>Method<input id="editMethod" maxlength="300" placeholder="Smoked, foil boat, sous vide…"></label>
+<label>Method<select id="methodChoice"><option value="">Not recorded</option><option>Smoked</option><option>No wrap</option><option>Foil boat</option><option>Butcher paper wrap</option><option>Foil wrap</option><option>Grilled — direct heat</option><option>Grilled — indirect heat</option><option>Sous vide, then smoked</option><option>Smoked, then sous vide</option><option value="__custom__">Other / custom</option></select></label><label id="methodCustom" hidden>Custom method<input id="editMethod" maxlength="300" placeholder="Describe your method"></label>
 <label>Meat weight / pieces<input id="editWeight" maxlength="100" placeholder="Two 8 lb pork butts"></label>
-<label>Equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Slow ’N Sear, lump charcoal, FireBoard probes"></label>
+<label>Equipment / fuel<select id="equipmentChoice"><option value="">Not recorded</option><option>Weber kettle, lump charcoal</option><option>Weber kettle, charcoal briquettes</option><option>Weber kettle, Slow ’N Sear, lump charcoal</option><option>Weber kettle, Slow ’N Sear, charcoal briquettes</option><option>Traeger Ironwood 885, wood pellets</option><option value="__custom__">Other / custom combination</option></select></label><label id="equipmentCustom" hidden>Custom equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Include accessories, fuel and probes"></label>
 <label>Preparation<textarea id="editPreparation" maxlength="4000"></textarea></label>
 <label>Rubs<input id="editRubs" maxlength="1000"></label><label>Sauces<input id="editSauces" maxlength="1000"></label>
 <label>Overall rating<select id="editRating"><option value="">Not rated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
@@ -474,6 +474,19 @@ let current = null, busy = false, damaged = false, journal = [];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
 const fmt = at => new Date(at).toLocaleString();
 const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
+function loadSetupChoice(kind, value) {
+  const select=$(kind+'Choice'), input=$('edit'+kind[0].toUpperCase()+kind.slice(1));
+  const preset=[...select.options].some(option=>option.value!=='__custom__' && option.value===value);
+  select.value=preset?value:'__custom__';
+  input.value=value;
+  $(kind+'Custom').hidden=select.value!=='__custom__';
+}
+for (const kind of ['method','equipment']) $(kind+'Choice').onchange=()=>{
+  const select=$(kind+'Choice'),input=$('edit'+kind[0].toUpperCase()+kind.slice(1));
+  $(kind+'Custom').hidden=select.value!=='__custom__';
+  if(select.value!=='__custom__') input.value=select.value;
+  else input.focus();
+};
 async function protection() {
   try { const result = await call('backupStatus'); $('protection').textContent = `${result.message} ${result.local} local snapshots; ${result.uploaded} confirmed uploaded; ${result.pending} pending.`; }
   catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; }
@@ -509,6 +522,7 @@ async function render() {
     $('editFood').value=cook.food;$('editCooker').value=cook.cooker;
     $('editStart').value=localDate(cook.startedAt);$('editFinish').value=localDate(cook.finishedAt);$('editTest').checked=!!cook.isTestCook;
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
+    for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
     $('editRating').value=cook.cookingDetails?.rating || '';
     const preserved={};
     for (const key of ['cook_meat_pieces','cook_methods','cook_preparation','cook_equipment','cook_rubs','cook_sauces','cook_evaluations','weather']) if (related[key]?.length) preserved[key]=related[key];

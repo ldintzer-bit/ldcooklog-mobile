@@ -8,6 +8,19 @@ let current = null, busy = false, damaged = false, journal = [];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
 const fmt = at => new Date(at).toLocaleString();
 const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
+function loadSetupChoice(kind, value) {
+  const select=$(kind+'Choice'), input=$('edit'+kind[0].toUpperCase()+kind.slice(1));
+  const preset=[...select.options].some(option=>option.value!=='__custom__' && option.value===value);
+  select.value=preset?value:'__custom__';
+  input.value=value;
+  $(kind+'Custom').hidden=select.value!=='__custom__';
+}
+for (const kind of ['method','equipment']) $(kind+'Choice').onchange=()=>{
+  const select=$(kind+'Choice'),input=$('edit'+kind[0].toUpperCase()+kind.slice(1));
+  $(kind+'Custom').hidden=select.value!=='__custom__';
+  if(select.value!=='__custom__') input.value=select.value;
+  else input.focus();
+};
 async function protection() {
   try { const result = await call('backupStatus'); $('protection').textContent = `${result.message} ${result.local} local snapshots; ${result.uploaded} confirmed uploaded; ${result.pending} pending.`; }
   catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; }
@@ -43,6 +56,7 @@ async function render() {
     $('editFood').value=cook.food;$('editCooker').value=cook.cooker;
     $('editStart').value=localDate(cook.startedAt);$('editFinish').value=localDate(cook.finishedAt);$('editTest').checked=!!cook.isTestCook;
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
+    for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
     $('editRating').value=cook.cookingDetails?.rating || '';
     const preserved={};
     for (const key of ['cook_meat_pieces','cook_methods','cook_preparation','cook_equipment','cook_rubs','cook_sauces','cook_evaluations','weather']) if (related[key]?.length) preserved[key]=related[key];

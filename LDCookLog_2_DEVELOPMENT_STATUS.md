@@ -1,3 +1,24 @@
+## 2026-10-12 — Method and equipment choices
+
+Owner accepted the new cook setup fields and offline save/reopen persistence.
+The updated Mac worker installed successfully and the phone showed independent
+verification and storage accounting. Actual pruning beyond the retention
+threshold has not yet been observed on the owner device.
+
+Added Method and Equipment/fuel dropdowns, with explicit Other/custom options.
+Methods include smoke, no wrap, foil boat, paper/foil wrapping, direct/indirect
+grilling and sous-vide/smoke sequences. Equipment presets cover Weber kettle,
+Slow 'N Sear, lump/briquettes and Traeger Ironwood pellets. Existing exact preset
+values select automatically; arbitrary saved text appears unchanged under Other.
+Preparation remains free text. There is no stored-data migration: existing
+method/equipment strings and normal recovery snapshots are retained. Changing
+a choice only changes the draft until Save cook setup is pressed.
+
+Browser regression covers preset and custom selection in both directions,
+offline reopening and exact saved-string preservation. Shared store/Scriptable
+regressions and security/CSP checks pass locally; CI browser verification follows.
+No private history, exports or credentials committed; production unchanged.
+
 ## Retention/setup CI checkpoint — 2026-10-12 afternoon
 
 Implementation checkpoint: `3c17fd4f32501c015ac7381a18a4ad5ea4ba28a1`.
