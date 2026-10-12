@@ -1,3 +1,15 @@
+### Dropdown verification checkpoint
+
+Source `106393df58e9e60df78a2988366a76de9ac39efe`, GitHub run
+38293394780: regression job passed, including 68 JavaScript tests, 49 Python
+passes (one Mac-only Linux skip), security/CSP checks, reproducible generated
+artifacts and both browser integrations. Actual macOS recovery and native
+storage test steps also passed; remaining native build/simulator steps were
+still running. Browser tests confirmed preset/custom selections in both
+directions and offline persistence. The first browser run caught label CSS
+overriding the hidden attribute; the fix enforces hidden controls consistently.
+Owner iPhone dropdown acceptance is the next step. No production changes.
+
 ## 2026-10-12 — Method and equipment choices
 
 Owner accepted the new cook setup fields and offline save/reopen persistence.
