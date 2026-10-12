@@ -33,8 +33,11 @@ importer and sealing code, accept complete history, and reject same-count
 changed values/IDs, altered archives/lookups, missing/duplicated records,
 corrupt newest snapshots and ambiguous timestamps. The standalone CLI test
 requires both journals, rejects a damaged trial, checks no source file changes
-and verifies output excludes private record text and paths. Owner-private execution is
-pending. Reinstall/new-device recovery, remaining features and backup retention/
+and verifies output excludes private record text and paths. GitHub regression run `38223623077` passed for checkpoint
+`8df3db4afb8bbe58eb325b89a5a51438ce03e06f`: all 60 JavaScript tests,
+15 Python tests, security checks, reproducible bundles and both browser
+integrations. The unchanged native job was still running. Owner-private
+execution is pending. Reinstall/new-device recovery, remaining features and backup retention/
 quota/cutover operations remain release gates. Keep the original PostgreSQL
 archive and Supabase available.
 
