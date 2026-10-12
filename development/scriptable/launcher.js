@@ -37,7 +37,7 @@ async function reseal(text, revision) {
   if (value.error) throw Error(value.error);
   return value.text;
 }
-const storage = createStorage({local:FileManager.local(), cloud:FileManager.iCloud(), verify:validated, uuid:() => UUID.string(), namespace:LDC_NAMESPACE, waitForDownload:work => bounded(work, 'Downloading selected iCloud recovery copy', 30000)});
+const storage = createStorage({local:FileManager.local(), cloud:FileManager.iCloud(), verify:validated, uuid:() => UUID.string(), namespace:LDC_NAMESPACE, waitForDownload:work => bounded(work, 'Downloading selected iCloud recovery copy', 30000), waitForVerification:work => bounded(work, 'Reading independent Mac verification report', 1500)});
 async function take() {
   const result = await web.evaluateJavaScript('JSON.stringify(window.__ldcTakeNow());', false);
   if (typeof result !== 'string') throw Error('The interface bridge returned an unsupported value');

@@ -30,6 +30,7 @@ STAGES = {
     'publish_copy': 'publishing a new independent copy',
     'verify_copy': 'reading back the independent copy',
     'write_receipt': 'writing backup-status metadata',
+    'publish_report': 'publishing independent-copy status to iCloud',
     'prepare_agent': 'preparing the scheduled helper',
     'register_agent': 'registering the scheduled helper',
     'read_status': 'reading scheduled backup status',
@@ -160,6 +161,25 @@ def begin_cloud_read():
     DOWNLOAD_REQUESTED.clear()
 
 
+def publish_reports(source, status, failed=False):
+    namespaces = {'LDCookLog-2-Development-Recovery': 'development', 'LDCookLog-2-Restore-Check-Recovery': 'restore-check'}
+    namespace = namespaces.get(source.name)
+    if namespace is None:
+        return False  # Custom test/check sources never publish cloud metadata.
+    folder = source.parent / 'LDCookLog-2-Mac-Verification' / namespace
+    require(not folder.is_symlink() and not folder.parent.is_symlink(), 'Verification-report folder is a symbolic link; stopped.')
+    folder.mkdir(parents=True, exist_ok=True)
+    for copy in status['copies']:
+        relative = Path(copy['snapshot'])
+        require(len(relative.parts) == 2 and DEVICE.fullmatch(relative.parts[0]) and NAME.fullmatch(relative.parts[1]), 'Invalid report identity.')
+        report = dict(format='ldcooklog-mac-copy-report', version=1, namespace=namespace, device=relative.parts[0],
+            health='failed' if failed else 'verified', revision=copy['revision'], sha256=copy['sha256'],
+            verifiedAt=status['checkedAt'], checkedAt=datetime.now(timezone.utc).isoformat(), trigger=status['trigger'])
+        # Metadata only: no copy path, cooking data, record counts or errors.
+        atomic_write(folder / (relative.parts[0] + '.json'), canonical(report).encode())
+    return True
+
+
 def private_directory(path):
     require(not path.is_symlink(), 'Managed destination is a symbolic link; stopped.')
     path.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -276,6 +296,12 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
     stage('write_receipt')
     atomic_write(destination / 'status.json', canonical(status).encode())
     atomic_write(destination / 'last-attempt.json', canonical(status).encode())
+    stage('publish_report')
+    try:
+        status['reportPublished'] = publish_reports(source, status)
+    except (AuditFailure, OSError, ValueError, TypeError, AttributeError, KeyError):
+        # An optional cloud receipt failure cannot negate a verified Mac copy.
+        status['reportPublished'] = False
     return status
 
 
@@ -406,6 +432,11 @@ def main():
         if not args.status and not args.diagnose and destination.is_dir() and not destination.is_symlink():
             try:
                 atomic_write(destination / 'last-attempt.json', canonical(dict(healthy=False, trigger='scheduled' if args.scheduled else 'manual', checkedAt=datetime.now(timezone.utc).isoformat(), message=message, details=details)).encode())
+                try:
+                    previous = json.loads((destination / 'status.json').read_text())
+                    publish_reports(args.icloud_root, previous, failed=True)
+                except (AuditFailure, OSError, ValueError, TypeError, AttributeError, KeyError):
+                    pass
             except (OSError, AuditFailure):
                 pass
         print('NOT PROTECTED:', message)

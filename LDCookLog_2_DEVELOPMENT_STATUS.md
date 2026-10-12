@@ -1,3 +1,24 @@
+## 2026-10-12 — Fresh unattended copy accepted; iPhone verification report
+
+Owner confirmed revision 6 was copied by the scheduled Mac worker after a new
+synthetic event, without an intervening manual install/read. A later scheduled
+status check also passed. This resolves the fresh-snapshot acceptance gate for
+the iCloud materialization/retry fix; it does not complete production cutover.
+
+The Mac worker now publishes small verification metadata into Scriptable iCloud
+only after validating an independent local copy. The phone matches device,
+namespace, revision and exact payload checksum before displaying that evidence.
+Missing, failed, stale, malformed or mismatched reports cannot claim current
+protection. Report download is bounded at 1.5 seconds; publication failure does
+not invalidate or remove a verified Mac copy. Upload completion remains
+unconfirmed by Scriptable's own API. Metadata contains no cooking records,
+credentials, local paths or error details. Physical phone display acceptance
+is still required after installing both updated scripts.
+
+Remaining gates include reinstall/new-device recovery, operational retention
+and capacity handling, feature acceptance and a final source-recency check.
+Keep the original PostgreSQL archive. No production merge/deployment occurred.
+
 # LDCookLog 2.0 — development checkpoint, October 11, 2026
 
 Branch: `development/2.0-offline-recovery`.

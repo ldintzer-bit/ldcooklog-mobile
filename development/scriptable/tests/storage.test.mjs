@@ -167,3 +167,41 @@ test('downloaded recovery needs no download; a bounded download failure releases
   const pending=await waiting.listSnapshots();await assert.rejects(waiting.readSnapshot(pending[0].token),/timed out/);
   assert.equal(downloads,1);assert.equal(await waiting.read(),null);assert.equal(await store.read(),original);
 });
+
+
+function macReport(fixture,text,overrides={}) {
+  const device=fs.readFileSync(path.join(fixture.root,'local/LDCookLog-2-Development/device-id'),'utf8');
+  const folder=path.join(fixture.cloud.documentsDirectory(),'LDCookLog-2-Mac-Verification','development');
+  fs.mkdirSync(folder,{recursive:true});
+  const body=JSON.parse(JSON.parse(text).payload);
+  const report={format:'ldcooklog-mac-copy-report',version:1,namespace:'development',device,health:'verified',revision:body.revision,sha256:JSON.parse(text).sha256,verifiedAt:new Date().toISOString(),checkedAt:new Date().toISOString(),trigger:'scheduled',...overrides};
+  const file=path.join(folder,device+'.json');fs.writeFileSync(file,JSON.stringify(report));return {file,report};
+}
+test('independent Mac proof matches the exact current revision/hash and never claims uploaded status',async t=>{
+  const f=setup(t),one=await snapshot(1);await f.store.commit(one,0);macReport(f,one);
+  let status=await f.store.backupStatus();assert.equal(status.mac.verified,true);assert.match(status.message,/Mac independent copy verified for this revision \(1\)/);assert.equal(status.uploaded,0);assert.equal(status.pending,1);
+  const two=await snapshot(2);await f.store.commit(two,1);status=await f.store.backupStatus();assert.equal(status.mac.verified,false);assert.match(status.message,/awaiting an independent Mac copy/);
+  macReport(f,two);assert.equal((await f.store.backupStatus()).mac.verified,true);
+});
+test('wrong identity/namespace/hash, future/stale/failed and malformed Mac reports cannot claim current protection',async t=>{
+  const f=setup(t),one=await snapshot(1);await f.store.commit(one,0);
+  for(const changes of [{device:randomUUID()},{namespace:'restore-check'},{sha256:'a'.repeat(64)},{revision:2},{health:'failed'},{checkedAt:new Date(Date.now()-3600000).toISOString(),verifiedAt:new Date(Date.now()-3600000).toISOString()},{checkedAt:new Date(Date.now()+3600000).toISOString()}]){
+    macReport(f,one,changes);assert.equal((await f.store.backupStatus()).mac.verified,false);
+  }
+  const {file}=macReport(f,one);fs.writeFileSync(file,'PRIVATE INVALID REPORT');const status=await f.store.backupStatus();assert.equal(status.mac.verified,false);assert.doesNotMatch(status.message,/PRIVATE/);
+});
+test('a stalled Mac-report download is bounded, preserves snapshots and releases the save queue',async t=>{
+  const f=setup(t),one=await snapshot(1);await f.store.commit(one,0);const {file}=macReport(f,one);
+  const original=f.cloud.isFileDownloaded;f.cloud.isFileDownloaded=p=>p===file?false:original(p);f.cloud.downloadFileFromiCloud=()=>new Promise(()=>{});
+  const store=createStorage({...f.config,waitForVerification:work=>Promise.race([work(),new Promise((_,reject)=>setTimeout(()=>reject(Error('Private timeout text')),10))])});
+  const status=await store.backupStatus();assert.equal(status.mac.verified,false);assert.doesNotMatch(status.message,/Private timeout/);
+  await store.commit(await snapshot(2),1);assert.equal((await unseal(JSON.parse(await store.read()))).revision,2);assert.equal(fs.readdirSync(f.journal).length,2);
+});
+test('damaged newest state cannot borrow an older independent-copy receipt',async t=>{
+  const f=setup(t),one=await snapshot(1);await f.store.commit(one,0);await f.store.commit(await snapshot(2),1);macReport(f,one);
+  fs.writeFileSync(path.join(f.journal,fs.readdirSync(f.journal).sort().at(-1)),'broken');const status=await f.store.backupStatus();assert.equal(status.mac.verified,false);assert.match(status.message,/1 could not/);
+});
+test('the isolated restore namespace cannot accept the working journal report',async t=>{
+  const f=setup(t),one=await snapshot(1);await f.store.commit(one,0);const {report}=macReport(f,one);
+  const trial=createStorage({...f.config,namespace:'restore-check',uuid:()=>report.device});await trial.commit(one,0);assert.equal((await trial.backupStatus()).mac.verified,false);
+});

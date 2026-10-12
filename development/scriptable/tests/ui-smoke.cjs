@@ -95,6 +95,13 @@ function manager(root) {
     // cloud source copies. Preserve the working journal and all source bytes.
     const originalJournal=path.join(root,'local/LDCookLog-2-Development/journal');
     const originalBytes=fs.readdirSync(originalJournal).sort().map(n=>fs.readFileSync(path.join(originalJournal,n),'utf8'));
+    // Run the actual independent-copy worker and publisher on synthetic data.
+    progress('copy on Mac and display independently verified metadata');
+    const reportRoot=path.join(root,'cloud/LDCookLog-2-Development-Recovery');
+    require('node:child_process').execFileSync('python3',['-c',"import sys;from pathlib import Path;from maintain_verified_recovery import protect;assert protect(Path(sys.argv[1]),Path(sys.argv[2]),scheduled=True)['reportPublished']",reportRoot,path.join(root,'independentMac')],{cwd:path.resolve(__dirname,'../mac')});
+    await page.locator('#retry').click();
+    await page.locator('#protection').filter({hasText:'Mac independent copy verified for this revision (2)'}).waitFor();
+    assert.match(await page.locator('#protection').innerText(),/0 confirmed uploaded/);
     await close();await open(false,true);
     await page.locator('#count').filter({hasText:'0 of 0'}).waitFor();
     await page.locator('#browse').click();

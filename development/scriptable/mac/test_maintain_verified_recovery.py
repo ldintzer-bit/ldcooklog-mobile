@@ -248,5 +248,59 @@ class VerifiedMacCopyTests(unittest.TestCase):
         self.assertEqual(details['errnoName'], 'EDEADLK')
         self.assertIn('EDEADLK', worker.format_details(details))
 
+    def standard_source(self):
+        renamed = self.root / 'LDCookLog-2-Development-Recovery'
+        self.source.rename(renamed)
+        self.source = renamed
+        self.file = next(renamed.rglob('*.recovery.json'))
+
+    def test_cloud_report_contains_only_verified_identity_and_status_metadata(self):
+        self.standard_source()
+        before = self.file.read_bytes()
+        status = protect(self.source, self.destination, scheduled=True)
+        self.assertTrue(status['reportPublished'])
+        report_file = next((self.root / 'LDCookLog-2-Mac-Verification/development').glob('*.json'))
+        report = json.loads(report_file.read_text())
+        self.assertEqual(report['sha256'], self.envelope['sha256'])
+        self.assertEqual(report['revision'], 3)
+        self.assertEqual(report['health'], 'verified')
+        self.assertEqual(report['namespace'], 'development')
+        self.assertEqual(report['trigger'], 'scheduled')
+        self.assertNotIn('Synthetic', report_file.read_text())
+        self.assertNotIn('cooks', report)
+        self.assertNotIn('snapshot', report)
+        self.assertEqual(self.file.read_bytes(), before)
+
+    def test_report_publication_failure_does_not_negate_independently_verified_copy(self):
+        self.standard_source()
+        original = worker.atomic_write
+        def write(path, raw):
+            if 'LDCookLog-2-Mac-Verification' in path.parts:
+                raise PermissionError(1, 'Private path')
+            return original(path, raw)
+        with patch.object(worker, 'atomic_write', write):
+            status = protect(self.source, self.destination)
+        self.assertFalse(status['reportPublished'])
+        self.assertTrue(json.loads((self.destination / 'last-attempt.json').read_text())['healthy'])
+        self.assertEqual((self.destination / status['copies'][0]['snapshot']).read_bytes(), self.file.read_bytes())
+
+    def test_failed_attempt_updates_cloud_health_without_replacing_verified_snapshot(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        self.standard_source()
+        status = protect(self.source, self.destination, scheduled=True)
+        copy = self.destination / status['copies'][0]['snapshot']
+        before = copy.read_bytes()
+        args = ['helper', '--scheduled', '--icloud-root', str(self.source), '--destination', str(self.destination)]
+        with patch.object(worker.sys, 'argv', args), patch.object(worker, 'latest_journals', side_effect=PermissionError(1, 'Private error')), redirect_stdout(StringIO()):
+            self.assertEqual(worker.main(), 1)
+        report_file = next((self.root / 'LDCookLog-2-Mac-Verification/development').glob('*.json'))
+        report = json.loads(report_file.read_text())
+        self.assertEqual(report['health'], 'failed')
+        self.assertEqual(report['revision'], 3)
+        self.assertEqual(report['sha256'], self.envelope['sha256'])
+        self.assertNotIn('Private error', report_file.read_text())
+        self.assertEqual(copy.read_bytes(), before)
+
 
 if __name__ == '__main__': unittest.main()

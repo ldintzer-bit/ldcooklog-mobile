@@ -1,6 +1,6 @@
 // Scriptable FileManager APIs only. No database, credentials or network requests.
 // Injectable validator runs the shared recovery/migration checks in WebView.
-function createStorage({local, cloud, verify, uuid, namespace = 'development', waitForDownload = work => work()}) {
+function createStorage({local, cloud, verify, uuid, namespace = 'development', waitForDownload = work => work(), waitForVerification = work => work()}) {
   if (!['development','restore-check'].includes(namespace)) throw Error('Unsupported journal namespace');
   const isolated = namespace === 'restore-check';
   const localName = isolated ? 'LDCookLog-2-Restore-Check' : 'LDCookLog-2-Development';
@@ -77,7 +77,7 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
   }
   async function backupStatus() {
     const files = entries();
-    let staged = 0, failed = 0;
+    let staged = 0, failed = 0, current = null;
     try {
       const destination = cloud.joinPath(cloudRoot(), device);
       cloud.createDirectory(destination, true);
@@ -85,6 +85,7 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
         try {
           const text = local.readString(local.joinPath(journal, name));
           await verify(text);
+          if (name === files[0]) current = {revision:rev(name), sha256:JSON.parse(text).sha256};
           const path = cloud.joinPath(destination, name);
           if (!cloud.fileExists(path)) cloud.writeString(path, text);
           // Do not force a download during a save/retry: it can block offline.
@@ -93,8 +94,38 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
         } catch { failed++; }
       }
     } catch { failed = files.length; }
-    return {local: files.length, uploaded: 0, pending: files.length,
-      message: `${staged} copies staged in iCloud Drive; ${failed} could not be staged. Upload completion is unconfirmed. Verify recovery on your Mac.`};
+    // Local verification does not depend on successful cloud staging.
+    if (!current && files.length) {
+      try { const text=local.readString(local.joinPath(journal,files[0]));await verify(text);current={revision:rev(files[0]),sha256:JSON.parse(text).sha256}; }
+      catch { /* A damaged newest journal cannot gain proof from an older copy. */ }
+    }
+    const mac = await macVerification(current);
+    return {local: files.length, uploaded: 0, pending: files.length, mac,
+      message: `${staged} copies staged in iCloud Drive; ${failed} could not be staged. Upload completion is unconfirmed. ${mac.message}`};
+  }
+  async function macVerification(current) {
+    const missing = {verified:false, message:'Mac independent-copy report is not available yet.'};
+    try {
+      const folder=cloud.joinPath(cloud.joinPath(cloud.documentsDirectory(),'LDCookLog-2-Mac-Verification'),namespace);
+      const path=cloud.joinPath(folder,device+'.json');
+      if (!cloud.fileExists(path)) return missing;
+      if (!cloud.isFileDownloaded(path)) await waitForVerification(()=>cloud.downloadFileFromiCloud(path));
+      const text=cloud.readString(path);
+      if (text.length>4096) throw Error('Oversized report');
+      const report=JSON.parse(text), checked=Date.parse(report.checkedAt), verified=Date.parse(report.verifiedAt);
+      const timestamp=value=>typeof value==='string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?(?:Z|[+-]\d\d:\d\d)$/.test(value);
+      if (report.format!=='ldcooklog-mac-copy-report' || report.version!==1 || report.namespace!==namespace || report.device!==device ||
+          !['verified','failed'].includes(report.health) || !['manual','scheduled'].includes(report.trigger) || !safeRev(report.revision) ||
+          typeof report.sha256!=='string' || !/^[a-f0-9]{64}$/.test(report.sha256) || !timestamp(report.checkedAt) || !timestamp(report.verifiedAt) || !Number.isFinite(checked) || !Number.isFinite(verified) ||
+          checked>Date.now()+300000 || verified>Date.now()+300000 || verified>checked+300000) throw Error('Invalid report');
+      if (report.health==='failed') return {verified:false,revision:report.revision,message:`Mac reported a failed backup attempt. Last independently verified copy: revision ${report.revision}.`};
+      if (Date.now()-checked>900000) return {verified:false,revision:report.revision,message:`Mac report is over 15 minutes old. Last verified copy: revision ${report.revision}. Keep the Mac awake to refresh it.`};
+      if (!current || report.revision!==current.revision || report.sha256!==current.sha256)
+        return {verified:false,revision:report.revision,message:`Mac last verified revision ${report.revision}. This journal is awaiting an independent Mac copy.`};
+      return {verified:true,revision:report.revision,message:`Mac independent copy verified for this revision (${report.revision}) at ${new Date(verified).toLocaleString()}.`};
+    } catch {
+      return {verified:false,message:'Mac verification report is unavailable or could not be validated. Local snapshots remain available.'};
+    }
   }
   const tokens = new Map();
   async function listSnapshots() {
