@@ -1,3 +1,28 @@
+## Retention/setup CI checkpoint — 2026-10-12 afternoon
+
+Implementation checkpoint: `3c17fd4f32501c015ac7381a18a4ad5ea4ba28a1`.
+Run 38291127633 passed the complete regression job: 68 JavaScript tests,
+49 Python passes and one macOS-only skip on Linux, security checks, artifact
+reproducibility and both browser integrations, including new setup persistence
+and test filtering. Native source was unchanged; its build job continued.
+
+The gate was expanded to execute all Mac recovery tests on actual macOS.
+Initial run 38291309935 exposed a test-fixture assumption about a registered
+LaunchAgent, not a retention failure. The test now mocks registration only,
+including an explicit assertion that missing registration is rejected.
+Checkpoint `360912802db9abfdaf70e448b5a8c94fb41403f0`, run 38291460396,
+passed all 35 Mac recovery tests on the actual macOS runner, including real
+Foundation bridge and filesystem retention tests. Linux test/artifact/security
+steps also passed; repeat browser/native build steps were still running when
+this checkpoint was recorded. Implementation bytes match the prior browser pass.
+
+Candidate update requires the generated Mac helper --install and replacement
+of the working Scriptable script. User data is not migrated again. Verify current
+Mac protection and new setup fields on the owner devices. Installing this helper
+enables the documented pruning policy for eligible redundant managed snapshots;
+original PostgreSQL archives and private export files are never pruned.
+No production merge/deploy and no backup-retirement clearance yet.
+
 ## 2026-10-12 — Retention, capacity and cooking setup candidate
 
 Owner accepted completed FireBoard export using the Mac system CA file,
