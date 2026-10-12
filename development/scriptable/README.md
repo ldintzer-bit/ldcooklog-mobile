@@ -1,3 +1,18 @@
+## October 12 private-history recovery checkpoint
+
+The owner has confirmed full-history working journal reopening offline,
+independent Mac checksum/readability of the staged full-history copy, and
+explicit isolated full-history restoration followed by offline reopening.
+`mac/reconcile_private_history.py` now provides a standalone read-only comparison
+against the original private relational export. Pass --source-export with its
+local path after staging both working and trial recovery folders. It verifies
+all preserved source tables and converted source cooks/events/readings, prints
+aggregate counts only and never writes, uploads or selects a stale fallback.
+This initial-migration audit deliberately rejects changed source-derived records;
+run it before editing imported history. No private files belong in GitHub.
+Owner-private source comparison and remaining release gates are still pending.
+Earlier pending-test statements below describe historical checkpoints.
+
 # No annual developer fee: Scriptable recovery prototype
 
 Decision, October 11, 2026: the owner declined US$99/year Apple Developer

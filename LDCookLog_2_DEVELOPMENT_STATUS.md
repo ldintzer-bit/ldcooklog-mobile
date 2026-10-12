@@ -6,6 +6,38 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: full-history isolated restore and offline reopening passed
+
+The owner explicitly restored the original development iCloud revision 3 into
+the separate Restore Fix journal. It showed the expected combined cook count
+and preserved source export. After force-closing Scriptable and reopening
+Restore Fix with Airplane Mode/Wi-Fi off, both remained; the selected historical
+cook's timeline and retained-reading count looked correct. This establishes
+physical full-history restoration and offline persistence into a separate
+journal in the same Scriptable installation. It is not a reinstall/new-device
+recovery test or exhaustive source reconciliation.
+
+A new standalone read-only Mac helper, `reconcile_private_history.py`, compares
+the original private relational export against the latest independently
+retrieved working and restored-trial recovery journals. It verifies exact UTF-8
+snapshot checksums/revisions, source checksum, exact equality of every source
+table/field (including unknown/global configuration tables), source cook IDs,
+original per-cook records and related/lookup rows, converted cook labels/notes,
+phase/times and event/readings with IDs, timestamps, values, units, device/probe
+identity and multiplicity. Missing/conflicting/damaged newest copies stop the
+comparison; there is no fallback, write, upload or printing of private record
+contents. It permits extra synthetic cooks alongside all source cooks.
+
+Seven new Python tests consume snapshots produced by the actual JavaScript
+importer and sealing code, accept complete history, and reject same-count
+changed values/IDs, altered archives/lookups, missing/duplicated records,
+corrupt newest snapshots and ambiguous timestamps. The standalone CLI test
+requires both journals, rejects a damaged trial, checks no source file changes
+and verifies output excludes private record text and paths. Owner-private execution is
+pending. Reinstall/new-device recovery, remaining features and backup retention/
+quota/cutover operations remain release gates. Keep the original PostgreSQL
+archive and Supabase available.
+
 ## October 12: private history reopened offline and Mac recovery bytes verified
 
 The owner confirmed that Migration Fix opened the imported journal with the

@@ -8,8 +8,8 @@ The replacement is not yet approved for real cooks or Supabase retirement.
 ## Current route: no annual developer fee
 
 The owner declined Apple Developer membership on October 11. Do not enroll or
-purchase it. We are testing Scriptable as the offline iPhone host. First install
-the free Scriptable app and open it once; no private migration is requested.
+purchase it. We are testing Scriptable as the offline iPhone host. The free Scriptable app is installed and the private history has been imported
+locally after synthetic device acceptance.
 See [the prototype and its limits](scriptable/README.md). A guided synthetic
 device/backup test is required before this route can be accepted.
 
@@ -28,16 +28,22 @@ then displayed 31 cooks including the synthetic test and one preserved export.
 Reopening exposed an asynchronous startup readiness race; no data was reset.
 The latest startup fix waits for page validation/render completion. GitHub
 regression run 38176459388 passes including a delayed-checksum reopen of a
-30-cook/18,000-reading synthetic relational journal. The next owner step is to
-install the working candidate under LDCookLog-2-Migration-Fix.js and reopen the
-existing journal. Do not repeat import, delete files or uninstall Scriptable.
+30-cook/18,000-reading synthetic relational journal. The owner now confirmed private journal reopening offline, a historical cook
+smoke check, independent Mac readability/checksum verification of the complete
+recovery copy, and physical full-history restoration/offline reopening in the
+separate Restore Fix journal. The next step is source reconciliation on the Mac.
 
-After successful reopening, inspect historical cooks, events and readings,
-retry iCloud staging, independently verify full-history copies on the Mac,
-and restore that full history into the isolated trial. Compare all source
-records/tables with the restored data before cutover. The original PostgreSQL
-archive and Supabase remain available throughout. Private files never belong
-in GitHub or chat attachments.
+Reconnect Wi-Fi, open Restore Fix and tap Check / retry iCloud so the trial's
+own recovery folder reaches the Mac. Run the standalone
+`scriptable/mac/reconcile_private_history.py` helper with --source-export pointing
+to the existing private relational JSON. It compares both working and restored
+trial recovery folders without writing or uploading anything. Report only its
+counts/pass/fail output; never attach private files or credentials.
+
+A complete source comparison must pass before cutover. Reinstall/new-device
+recovery, completed FireBoard import/device feature acceptance, retention/quota
+and ongoing recoverability still require work. Do not repeat migration, delete
+journals or uninstall Scriptable. Keep the original archive and Supabase.
 
 ## Earlier native route — retained for reference, not the current instructions
 
