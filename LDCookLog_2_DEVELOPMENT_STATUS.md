@@ -15,6 +15,16 @@ unconfirmed by Scriptable's own API. Metadata contains no cooking records,
 credentials, local paths or error details. Physical phone display acceptance
 is still required after installing both updated scripts.
 
+Validation for source checkpoint `6f540407563b7e85bb97732fe784c5a2006eb40a`:
+GitHub run 38254771398 passed the regression job: 65 JavaScript tests,
+34 Python passes (one macOS-only skip on Linux), security checks, generated
+artifact reproducibility and both browser integrations. The Scriptable browser
+test runs the actual Python copy worker and reads its matching report through
+the generated app. The native job passed the actual macOS Foundation bridge
+and native storage tests; unchanged native compilation/simulator checks were
+still running at this update. The previous source run 38251072543 completed
+successfully in full.
+
 Remaining gates include reinstall/new-device recovery, operational retention
 and capacity handling, feature acceptance and a final source-recency check.
 Keep the original PostgreSQL archive. No production merge/deployment occurred.
