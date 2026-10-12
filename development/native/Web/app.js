@@ -7,6 +7,7 @@ const store = new CookStore({ read: () => call('read'), commit: (text, expectedR
 let current = null, busy = false, damaged = false, journal = [];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
 const fmt = at => new Date(at).toLocaleString();
+const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
 async function protection() {
   try { const result = await call('backupStatus'); $('protection').textContent = `${result.message} ${result.local} local snapshots; ${result.uploaded} confirmed uploaded; ${result.pending} pending.`; }
   catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; }
@@ -14,19 +15,20 @@ async function protection() {
 async function render() {
   const {state} = await store.read(), query = $('search').value.toLowerCase();
   journal = state.records;
-  const cooks = state.records.filter(c => `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
+  const cooks = state.records.filter(c => ($('showTests').checked || !c.isTestCook) && `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
   $('count').textContent = `${cooks.length} of ${state.records.length} cooks · ${state.relationalArchives.length} preserved database exports`;
   $('history').replaceChildren();
   for (const cook of cooks) {
     const article = document.createElement('article'), title = document.createElement('strong'), text = document.createElement('p'), open = document.createElement('button');
     title.textContent = `${cook.food}${cook.isTestCook ? ' · Test cook' : ''}`;
     text.textContent = `${cook.cooker} · ${fmt(cook.startedAt)} · ${cook.events.length} events · ${cook.temperatures.length} readings`;
-    open.textContent = 'Open cook'; open.onclick = () => { current = cook.id; render().catch(e => status(e.message, true)); $('active').scrollIntoView({behavior:'smooth'}); };
+    open.textContent = 'Open cook'; open.onclick = () => { current = cook.id; render().then(() => $('active').scrollIntoView({behavior:'smooth'})).catch(e => status(e.message, true)); };
     article.append(title,text,open); $('history').append(article);
   }
   const cook = state.records.find(c => c.id === current);
   $('active').hidden = !cook;
   $('review').hidden = !cook;
+  $('profile').hidden = !cook;
   if (cook) {
     $('title').textContent = `${cook.food} · ${cook.cooker}`;
     const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
@@ -35,9 +37,17 @@ async function render() {
     $('timeline').replaceChildren();
     for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}`; $('timeline').append(li); }
     const channels = [...new Set(cook.temperatures.map(t => `${t.channel} (${t.unit || 'unknown unit'})`))];
-    $('temperatures').textContent = `${cook.temperatures.length} retained readings. ${channels.join(', ')}${channels.length ? '. Charts are still under development.' : ''}`;
+    $('temperatures').textContent = `${cook.temperatures.length} retained readings. ${channels.join(', ')}${channels.length ? '.' : ''}`;
     const related = cook.legacy?.related || {};
     $('details').textContent = `${cook.notes || 'No notes recorded.'} ${Object.entries(related).filter(([,rows]) => rows.length).map(([name,rows]) => `${name.replaceAll('_',' ')}: ${rows.length}`).join(' · ')}`;
+    $('editFood').value=cook.food;$('editCooker').value=cook.cooker;
+    $('editStart').value=localDate(cook.startedAt);$('editFinish').value=localDate(cook.finishedAt);$('editTest').checked=!!cook.isTestCook;
+    for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
+    $('editRating').value=cook.cookingDetails?.rating || '';
+    const preserved={};
+    for (const key of ['cook_meat_pieces','cook_methods','cook_preparation','cook_equipment','cook_rubs','cook_sauces','cook_evaluations','weather']) if (related[key]?.length) preserved[key]=related[key];
+    for (const key of ['equipment','rubs','sauces','locations','cook_methods']) if (cook.legacy?.lookups?.[key]?.length) preserved[key]=cook.legacy.lookups[key];
+    $('legacyDetails').textContent=Object.keys(preserved).length ? JSON.stringify(preserved,null,2) : 'No original structured details recorded. New details are saved above.';
     $('cookNotes').value = cook.notes || '';
     $('evaluation').value = cook.evaluation || '';
     fillProbes($('probe'),cook);
@@ -81,6 +91,8 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=drawChart;$('compareCook').onchange=updateCompare;$('compareProbe').onchange=drawChart;
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
+$('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value));};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};
 async function action(work) {
@@ -88,7 +100,7 @@ async function action(work) {
   busy = true; document.querySelectorAll('button').forEach(b => b.disabled = true);
   try { const changed = await work(); await render(); damaged = false; status(changed === false ? 'Cancelled. Your journal was unchanged.' : 'Saved on this device. A recovery snapshot was created automatically.'); }
   catch (e) { status(e.message, true); }
-  finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); if (damaged) $('new').querySelector('button').disabled = true; await protection(); }
+  finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); if (damaged) $('new').querySelector('button').disabled = true; const selected=journal.find(c=>c.id===current); if(selected && (selected.phase==='Finished' || selected.finishedAt)) $('event').querySelector('button').disabled=true; await protection(); }
 }
 async function restore(envelope) {
   const body = await unseal(envelope);

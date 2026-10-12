@@ -1,3 +1,49 @@
+## 2026-10-12 — Retention, capacity and cooking setup candidate
+
+Owner accepted completed FireBoard export using the Mac system CA file,
+import into the separate restore trial, offline reopening with readings/chart,
+and idempotent repeat import. The same session did not duplicate retained
+readings. This confirms the real-account path; private session files and
+credentials are not committed. Earlier owner tests accepted independent Mac
+file restoration, notes/evaluation persistence and comparison.
+
+Implemented automatic Mac retention: first/newest three per device and a
+representative for every distinct original archive are mandatory; prefer 30
+recent and 12 monthly points within the 1 GiB snapshot budget. Validate all
+managed copies, acquire a worker lock, preflight capacity, write/fsync/read-back
+new copies, then prune eligible older copies. Unavailable-device, conflicting,
+corrupt or required-over-budget copies stop cleanup. 32 MiB disk reserve and
+80% budget warnings are included. Original source files are never pruned by Mac.
+
+Scriptable cleanup needs matching fresh Mac evidence for the exact current
+snapshot and validation of all local/cloud bytes. Keep first/newest 20 plus
+source-archive representatives, only in the current device/namespace. Display
+approximate local storage with a 128 MiB soft warning, and Mac capacity metadata.
+Phone/iCloud deletion failures leave required recovery points; no background
+phone cleanup occurs while Scriptable is closed. Snapshot budgets exclude logs,
+helper versions and unrelated files. These policies need physical acceptance.
+
+Added cooking setup: editable food/cooker, start/finish dates, test-cook flag,
+method, weight/pieces, equipment/fuel, preparation, rubs, sauces and 1–5 rating.
+All edits use normal immutable recovery snapshots and leave legacy rows and
+original exports intact. Unchanged displayed dates retain their original seconds.
+Read-only original cooking details are visible, excluding account-access data.
+History defaults to real cooks with a Show test cooks toggle. Fixed open-cook
+scroll timing and disabled actions for finished cooks after saves.
+
+Local validation: 68 JavaScript tests; 34 Mac Python passes with one macOS-only
+skip; security/CSP checks. Added tests exercise budget pruning, disk full,
+corruption, locking, archive retention, exact-Mac-proof phone cleanup, failed
+deletion, setup validation and full-state restoration. Browser coverage adds
+setup fields and test filtering. CI results follow after the source checkpoint.
+
+Remaining: actual new-device/reinstall recovery; physical retention/setup
+acceptance; four-cook comparisons (currently two); richer structured meat-piece
+and per-dimension evaluation editing; direct iPhone completed-session retrieval
+(current private Mac export works); proactive failure notifications; cutover
+source-recency reconciliation. No production merge or deployment, and no claim
+that manual Supabase backup retirement is yet approved.
+
 ## 2026-10-12 — Credential-free FireBoard connectivity diagnostics
 
 Owner encountered the combined connection/response error during initial login.

@@ -1,6 +1,8 @@
 """Copy verified iCloud recovery bytes to private Mac storage; optional user LaunchAgent."""
 import argparse
 import errno
+import fcntl
+import shutil
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -27,6 +29,7 @@ STAGES = {
     'read_source_bytes': 'retrieving selected snapshot bytes',
     'prepare_destination': 'preparing independent Mac storage',
     'read_existing_copy': 'checking an existing independent copy',
+    'retention': 'checking backup retention and capacity',
     'publish_copy': 'publishing a new independent copy',
     'verify_copy': 'reading back the independent copy',
     'write_receipt': 'writing backup-status metadata',
@@ -175,6 +178,8 @@ def publish_reports(source, status, failed=False):
         report = dict(format='ldcooklog-mac-copy-report', version=1, namespace=namespace, device=relative.parts[0],
             health='failed' if failed else 'verified', revision=copy['revision'], sha256=copy['sha256'],
             verifiedAt=status['checkedAt'], checkedAt=datetime.now(timezone.utc).isoformat(), trigger=status['trigger'])
+        if not failed and 'capacity' in status:
+            report['capacity'] = status['capacity']
         # Metadata only: no copy path, cooking data, record counts or errors.
         atomic_write(folder / (relative.parts[0] + '.json'), canonical(report).encode())
     return True
@@ -230,9 +235,46 @@ def validate_current(body):
     return dict(cooks=len(records), events=events, readings=readings, archives=len(archives))
 
 
+def retention_plan(items, max_bytes):
+    """Keep first + newest three/device; prefer 30 recent and 12 monthly points.
+
+    items have already been validated. Preserve a representative for every
+    original source archive even when it no longer occurs in the newest state.
+    Unknown files are never candidates. No deletion happens in planning.
+    """
+    require(type(max_bytes) is int and max_bytes > 0, 'Invalid size limit.')
+    mandatory, preferred = set(), set()
+    groups = {}
+    for key, item in items.items():
+        groups.setdefault(key.parts[0], []).append((key, item))
+    for group in groups.values():
+        group.sort(key=lambda row: row[1]['revision'])
+        mandatory.add(group[0][0])
+        mandatory.update(key for key, _ in group[-3:])
+        preferred.update(key for key, _ in group[-30:])
+        months, archives = set(), set()
+        for key, item in reversed(group):
+            month = item['createdAt'][:7]
+            if month not in months and len(months) < 12:
+                preferred.add(key)
+                months.add(month)
+            for sha in item['archives']:
+                if sha not in archives:
+                    mandatory.add(key)
+                    archives.add(sha)
+    keep = mandatory | preferred
+    required_bytes = sum(items[key]['size'] for key in mandatory)
+    require(required_bytes <= max_bytes, 'Required recovery points exceed the size limit; existing copies kept. Increase capacity before continuing.')
+    total = sum(items[key]['size'] for key in keep)
+    for key in sorted(keep - mandatory, key=lambda key: items[key]['createdAt']):
+        if total <= max_bytes:
+            break
+        keep.remove(key)
+        total -= items[key]['size']
+    return set(items) - keep, total
+
+
 def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
-    # Validate all retained source snapshots and reject a bad newest copy.
-    # A source failure occurs before destination creation or copying.
     stage('read_icloud')
     begin_cloud_read()
     latest_journals(source, read_icloud_text)
@@ -243,8 +285,43 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
     if destination == DEFAULT_DESTINATION:
         private_directory(MAC_HOME)
     private_directory(destination)
-    existing_size = sum(p.stat().st_size for p in destination.rglob('*.recovery.json') if p.is_file())
-    reports = []
+    # Serialize install/manual/scheduled runs before any copy or retention work.
+    fd = os.open(destination / '.worker.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return protect_locked(source, destination, max_bytes, scheduled)
+    finally:
+        os.close(fd)
+
+
+def protect_locked(source, destination, max_bytes, scheduled):
+    items, pending, reports = {}, {}, []
+
+    def item(path, raw, body):
+        return dict(size=len(raw), revision=body['revision'], createdAt=body['createdAt'],
+                    archives=[a['sha256'] for a in body['state']['relationalArchives']],
+                    digest=hashlib.sha256(raw).hexdigest())
+
+    stage('retention')
+    for folder in destination.iterdir():
+        if not DEVICE.fullmatch(folder.name):
+            continue
+        require(not folder.is_symlink() and folder.is_dir(), 'Managed device folder changed; retention stopped.')
+        revisions = set()
+        for path in folder.iterdir():
+            if not NAME.fullmatch(path.name):
+                continue
+            require(not path.is_symlink() and path.is_file(), 'Managed recovery file changed; retention stopped.')
+            raw = path.read_bytes()
+            try:
+                body = snapshot(path)
+                validate_current(body)
+            except (ValueError, TypeError, KeyError):
+                raise AuditFailure('Existing Mac recovery data is invalid; retention stopped.') from None
+            require(body['revision'] not in revisions, 'Conflicting Mac revisions; retention stopped.')
+            revisions.add(body['revision'])
+            items[path.relative_to(destination)] = item(path, raw, body)
+
     for device in sorted(source.iterdir()):
         if not device.is_dir() or not DEVICE.fullmatch(device.name):
             continue
@@ -258,40 +335,60 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
         counts = validate_current(body)
         stage('read_source_bytes')
         raw = read_icloud_bytes(selected)
-        # Reject a source changed between validation and retrieval.
         parsed = json.loads(raw)
         require(json.loads(parsed['payload']) == body and hashlib.sha256(parsed['payload'].encode()).hexdigest() == parsed['sha256'], 'Source changed during independent copying.')
+        relative = Path(device.name) / selected.name
         folder = destination / device.name
-        stage('prepare_destination')
         private_directory(folder)
-        target = folder / selected.name
+        target = destination / relative
         require(not target.is_symlink(), 'Existing verified copy is a symbolic link; stopped.')
-        if target.exists():
-            stage('read_existing_copy')
-            require(target.read_bytes() == raw, 'Existing verified Mac copy differs; no copy overwritten.')
+        if relative in items:
+            require(items[relative]['digest'] == hashlib.sha256(raw).hexdigest(), 'Existing verified Mac copy differs; no copy overwritten.')
         else:
-            require(existing_size + len(raw) <= max_bytes, 'Verified Mac copies reached the size limit; no copies deleted. Retention review required.')
-            stage('publish_copy')
-            fd, temporary = tempfile.mkstemp(prefix='.ldcooklog-', dir=folder)
-            try:
-                with os.fdopen(fd, 'wb') as handle:
-                    handle.write(raw)
-                    handle.flush()
-                    os.fsync(handle.fileno())
-                # Exclusive immutable publication. A collision never overwrites.
-                try:
-                    os.link(temporary, target)
-                except FileExistsError:
-                    require(target.read_bytes() == raw, 'Concurrent Mac copy differs; no copy overwritten.')
-            finally:
-                os.unlink(temporary)
-            existing_size += len(raw)
-        stage('verify_copy')
-        require(target.read_bytes() == raw, 'Independent Mac copy readback failed.')
-        require(snapshot(target) == body, 'Independent Mac copy validation failed.')
-        reports.append(dict(revision=body['revision'], sha256=parsed['sha256'], snapshot=str(target.relative_to(destination)), **counts))
+            require(all(key.parts[0] != device.name or value['revision'] < body['revision'] for key, value in items.items()), 'Source revision is older than or conflicts with independent history; copies kept.')
+            items[relative] = item(target, raw, body)
+            pending[relative] = (raw, body)
+        reports.append(dict(revision=body['revision'], sha256=parsed['sha256'], snapshot=str(relative), **counts))
     require(bool(reports), 'No current recovery copy was protected.')
-    status = dict(format='ldcooklog-mac-recovery-status', version=1, checkedAt=datetime.now(timezone.utc).isoformat(), healthy=True, trigger='scheduled' if scheduled else 'manual', copies=reports,
+    stage('retention')
+    remove, retained_bytes = retention_plan(items, max_bytes)
+    # Never discard a just-selected source or any copy from a device absent today.
+    require(not any(Path(report['snapshot']) in remove for report in reports), 'Current source conflicts with retention; copies kept.')
+    active_devices = {Path(report['snapshot']).parts[0] for report in reports}
+    remove = {key for key in remove if key.parts[0] in active_devices}
+    retained_bytes = sum(value['size'] for key, value in items.items() if key not in remove)
+    require(retained_bytes <= max_bytes, 'Unavailable-device copies exceed the size limit; copies kept.')
+    additional = sum(len(raw) for raw, _ in pending.values())
+    require(shutil.disk_usage(destination).free >= additional + 32 * 1024 * 1024, 'Not enough free Mac disk space; existing copies kept.')
+    for relative, (raw, body) in pending.items():
+        target = destination / relative
+        stage('publish_copy')
+        fd, temporary = tempfile.mkstemp(prefix='.ldcooklog-', dir=target.parent)
+        try:
+            with os.fdopen(fd, 'wb') as handle:
+                handle.write(raw)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.link(temporary, target)
+            directory_fd = os.open(target.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+        finally:
+            os.unlink(temporary)
+        stage('verify_copy')
+        require(target.read_bytes() == raw and snapshot(target) == body, 'Independent Mac copy readback failed.')
+    # Preflight all bytes again before the first deletion. On partial failure,
+    # first/newest three/archive representatives still remain recoverable.
+    stage('retention')
+    for relative, value in items.items():
+        path = destination / relative
+        require(not path.is_symlink() and not path.parent.is_symlink() and hashlib.sha256(path.read_bytes()).hexdigest() == value['digest'], 'Mac copy changed during retention; deletion stopped.')
+    for relative in sorted(remove):
+        (destination / relative).unlink()
+    capacity = dict(bytes=retained_bytes, limit=max_bytes, copies=len(items)-len(remove), pruned=len(remove), warning=retained_bytes >= max_bytes * .8)
+    status = dict(format='ldcooklog-mac-recovery-status', version=1, checkedAt=datetime.now(timezone.utc).isoformat(), healthy=True, trigger='scheduled' if scheduled else 'manual', copies=reports, capacity=capacity,
                   message='Independent Mac copies verified. iCloud upload API status remains unconfirmed.')
     stage('write_receipt')
     atomic_write(destination / 'status.json', canonical(status).encode())
@@ -300,7 +397,6 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
     try:
         status['reportPublished'] = publish_reports(source, status)
     except (AuditFailure, OSError, ValueError, TypeError, AttributeError, KeyError):
-        # An optional cloud receipt failure cannot negate a verified Mac copy.
         status['reportPublished'] = False
     return status
 
@@ -390,6 +486,9 @@ def show_status(destination):
         envelope = json.loads((destination / relative).read_text())
         require(envelope['sha256'] == report['sha256'] and body['revision'] == report['revision'], 'Recorded independent copy differs from the verified receipt.')
         print(f'AUTOMATIC MAC CHECK PASS: device {index}; revision {body["revision"]}; {counts["cooks"]} cooks; {counts["events"]} events; {counts["readings"]} readings; {counts["archives"]} source archives.')
+    capacity = attempt.get('capacity')
+    if capacity:
+        print(f'MAC STORAGE: {capacity["bytes"] // (1024*1024)} MiB of {capacity["limit"] // (1024*1024)} MiB; {capacity["copies"]} retained copies.' + (' CAPACITY WARNING: over 80%.' if capacity['warning'] else ''))
     print('RECENT SCHEDULED EXECUTION VERIFIED. Independent copies are readable; no cooking files changed.')
 
 
@@ -440,7 +539,7 @@ def main():
             except (OSError, AuditFailure):
                 pass
         print('NOT PROTECTED:', message)
-        print('No source cooking files or existing verified copies were replaced or deleted.')
+        print('Source cooking files were not changed. Retention may have removed only eligible older Mac copies after verified replacement; required recovery points are kept.')
         return 1
     for index, report in enumerate(status['copies'], 1):
         print(f'MAC INDEPENDENT COPY PASS: device {index}; revision {report["revision"]}; {report["cooks"]} cooks; {report["events"]} events; {report["readings"]} readings; {report["archives"]} source archives.')

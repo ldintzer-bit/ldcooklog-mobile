@@ -1,5 +1,7 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-lVs2JA6N/BvBIe8vIv1FBH7l22BJp0nmvHgrJyH6wyM='; style-src 'sha256-x1MgXzINgD0FPWC4/TgWSwdSMXhl/kRPx/cM6UPONqw='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mIQ9LhdFXDC2WU2pa0u5KjPNGFuG+Qion1Pfr1FMFAo='; style-src 'sha256-qgUUyG2gK/eqyaJPP7A3hx3gUEPIIXxsAtm6DuXF3mI='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+
+input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-align:middle;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}summary{padding:12px 0;cursor:pointer}
 
 #ldc-confirm{position:fixed;inset:0;z-index:1000;margin:0;border:0;border-radius:0;padding:24px 18px;overflow:auto;background:#15201cf5;display:flex;align-items:flex-start;justify-content:center}#ldc-confirm .ldc-confirm-card{max-width:680px;width:100%;margin:24px 0;padding:22px;background:#213029;border:2px solid #daba7c;border-radius:14px}#ldc-confirm p{white-space:pre-wrap}#ldc-confirm button{display:block;width:100%;margin-top:14px}
 </style></head><body>
@@ -7,8 +9,19 @@
 <p id="status" role="status">Opening your journal…</p>
 <section><h2>Recovery protection</h2><p id="protection">Checking automatic backups…</p><button id="retry">Check / retry iCloud</button><button id="browse">Find recovery snapshots</button><div id="snapshots"></div><label>Migration or recovery file<input id="import" type="file" accept=".json,application/json"></label><p class="hint">Import the private .relational.json made on your Mac. Your original database archive stays untouched.</p></section>
 <section><h2>New cook</h2><form id="new"><label>Food / cut<input id="food" required maxlength="300" placeholder="Pork butt"></label><label>Cooker<select id="cooker"><option>Traeger Ironwood 885</option><option>Weber 22-inch kettle / Slow ’N Sear</option></select></label><button type="submit">Create cook</button></form></section>
-<section><h2>Cooking history</h2><label>Find similar cooks<input id="search" type="search" placeholder="Food or cooker"></label><p id="count"></p><div id="history"></div></section>
+<section><h2>Cooking history</h2><label>Find similar cooks<input id="search" type="search" placeholder="Food or cooker"></label><label><input id="showTests" type="checkbox"> Show test cooks</label><p id="count"></p><div id="history"></div></section>
 <section id="active" hidden><h2 id="title"></h2><p id="phase"></p><form id="event"><label>Action<select id="type"><option>Meat On</option><option>Target Change</option><option>Wrapped</option><option>Rest Start</option><option>Keep Warm</option><option>Cook Finished</option><option>Note</option></select></label><label>Note<input id="note" maxlength="2000"></label><button type="submit">Save action</button></form><h3>Timeline</h3><ol id="timeline"></ol><h3>Historical temperatures</h3><p id="temperatures"></p><h3>Preserved details</h3><p id="details"></p></section>
+<section id="profile" hidden><h2>Cook setup and preparation</h2><form id="profileForm">
+<label>Food / cut<input id="editFood" required maxlength="300"></label><label>Cooker<input id="editCooker" required maxlength="300"></label>
+<label>Start date and time<input id="editStart" type="datetime-local" required></label><label>Finish date and time (optional)<input id="editFinish" type="datetime-local"></label>
+<label><input id="editTest" type="checkbox"> Test cook — exclude from comparisons</label>
+<label>Method<input id="editMethod" maxlength="300" placeholder="Smoked, foil boat, sous vide…"></label>
+<label>Meat weight / pieces<input id="editWeight" maxlength="100" placeholder="Two 8 lb pork butts"></label>
+<label>Equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Slow ’N Sear, lump charcoal, FireBoard probes"></label>
+<label>Preparation<textarea id="editPreparation" maxlength="4000"></textarea></label>
+<label>Rubs<input id="editRubs" maxlength="1000"></label><label>Sauces<input id="editSauces" maxlength="1000"></label>
+<label>Overall rating<select id="editRating"><option value="">Not rated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+<button type="submit">Save cook setup</button></form><details><summary>Original imported cooking details</summary><pre id="legacyDetails"></pre></details></section>
 <section id="review" hidden><h2>Cook notes and evaluation</h2><form id="reviewForm"><label>Notes<textarea id="cookNotes" maxlength="20000"></textarea></label><label>Evaluation / next time<textarea id="evaluation" maxlength="20000"></textarea></label><button type="submit">Save review</button></form><label>Attach completed FireBoard session<input id="sessionFile" type="file" accept=".json,application/json"></label><p class="hint">Use the private completed-session export made by the Mac helper. Original readings and units are retained.</p><h2>Compare temperature history</h2><label>This cook’s probe<select id="probe"></select></label><label>Compare with another cook<select id="compareCook"></select></label><label>Other cook’s probe<select id="compareProbe"></select></label><div id="chart"></div><p id="chartSummary"></p></section>
 <footer>Every save creates a separate recovery file. Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification. Live temperatures stay in FireBoard.</footer><script>// Embedded before the app; no native credentials or private files in the page.
 (() => {
@@ -401,6 +414,27 @@ class CookStore {
     });
   }
   importSession(id, value) { return this.mutate(state => attachSession(state, id, value)); }
+  profile(id, value) {
+    return this.mutate(state => {
+      const cook = state.records.find(c => c.id === id);
+      if (!cook) throw Error('Cook not found');
+      const limits = {food:300,cooker:300,method:300,weight:100,equipment:1000,preparation:4000,rubs:1000,sauces:1000};
+      for (const [key,limit] of Object.entries(limits)) if (typeof value[key] !== 'string' || value[key].length>limit) throw Error('Invalid '+key);
+      if (!value.food.trim() || !value.cooker.trim() || typeof value.isTestCook !== 'boolean') throw Error('Enter food, cooker and test status');
+      const start = Date.parse(value.startedAt), end = value.finishedAt ? Date.parse(value.finishedAt) : null;
+      if (!Number.isFinite(start) || (end!==null && (!Number.isFinite(end) || end<start))) throw Error('Finish must be on or after a valid start time');
+      if (value.rating!==null && (!Number.isInteger(value.rating) || value.rating<1 || value.rating>5)) throw Error('Rating must be 1 to 5');
+      cook.food=value.food.trim();cook.cooker=value.cooker.trim();cook.startedAt=new Date(start).toISOString();
+      cook.finishedAt=end===null?null:new Date(end).toISOString();
+      if (end!==null) cook.phase='Finished';
+      else if (cook.phase==='Finished') cook.phase='Cooking';
+      cook.isTestCook=value.isTestCook;
+      cook.cookingDetails=Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]));
+      cook.cookingDetails.rating=value.rating;
+      // Legacy relational rows and original archives are immutable evidence.
+      return state;
+    });
+  }
   details(id, notes, evaluation) {
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
@@ -439,6 +473,7 @@ const store = new CookStore({ read: () => call('read'), commit: (text, expectedR
 let current = null, busy = false, damaged = false, journal = [];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
 const fmt = at => new Date(at).toLocaleString();
+const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
 async function protection() {
   try { const result = await call('backupStatus'); $('protection').textContent = `${result.message} ${result.local} local snapshots; ${result.uploaded} confirmed uploaded; ${result.pending} pending.`; }
   catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; }
@@ -446,19 +481,20 @@ async function protection() {
 async function render() {
   const {state} = await store.read(), query = $('search').value.toLowerCase();
   journal = state.records;
-  const cooks = state.records.filter(c => `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
+  const cooks = state.records.filter(c => ($('showTests').checked || !c.isTestCook) && `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
   $('count').textContent = `${cooks.length} of ${state.records.length} cooks · ${state.relationalArchives.length} preserved database exports`;
   $('history').replaceChildren();
   for (const cook of cooks) {
     const article = document.createElement('article'), title = document.createElement('strong'), text = document.createElement('p'), open = document.createElement('button');
     title.textContent = `${cook.food}${cook.isTestCook ? ' · Test cook' : ''}`;
     text.textContent = `${cook.cooker} · ${fmt(cook.startedAt)} · ${cook.events.length} events · ${cook.temperatures.length} readings`;
-    open.textContent = 'Open cook'; open.onclick = () => { current = cook.id; render().catch(e => status(e.message, true)); $('active').scrollIntoView({behavior:'smooth'}); };
+    open.textContent = 'Open cook'; open.onclick = () => { current = cook.id; render().then(() => $('active').scrollIntoView({behavior:'smooth'})).catch(e => status(e.message, true)); };
     article.append(title,text,open); $('history').append(article);
   }
   const cook = state.records.find(c => c.id === current);
   $('active').hidden = !cook;
   $('review').hidden = !cook;
+  $('profile').hidden = !cook;
   if (cook) {
     $('title').textContent = `${cook.food} · ${cook.cooker}`;
     const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
@@ -467,9 +503,17 @@ async function render() {
     $('timeline').replaceChildren();
     for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}`; $('timeline').append(li); }
     const channels = [...new Set(cook.temperatures.map(t => `${t.channel} (${t.unit || 'unknown unit'})`))];
-    $('temperatures').textContent = `${cook.temperatures.length} retained readings. ${channels.join(', ')}${channels.length ? '. Charts are still under development.' : ''}`;
+    $('temperatures').textContent = `${cook.temperatures.length} retained readings. ${channels.join(', ')}${channels.length ? '.' : ''}`;
     const related = cook.legacy?.related || {};
     $('details').textContent = `${cook.notes || 'No notes recorded.'} ${Object.entries(related).filter(([,rows]) => rows.length).map(([name,rows]) => `${name.replaceAll('_',' ')}: ${rows.length}`).join(' · ')}`;
+    $('editFood').value=cook.food;$('editCooker').value=cook.cooker;
+    $('editStart').value=localDate(cook.startedAt);$('editFinish').value=localDate(cook.finishedAt);$('editTest').checked=!!cook.isTestCook;
+    for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
+    $('editRating').value=cook.cookingDetails?.rating || '';
+    const preserved={};
+    for (const key of ['cook_meat_pieces','cook_methods','cook_preparation','cook_equipment','cook_rubs','cook_sauces','cook_evaluations','weather']) if (related[key]?.length) preserved[key]=related[key];
+    for (const key of ['equipment','rubs','sauces','locations','cook_methods']) if (cook.legacy?.lookups?.[key]?.length) preserved[key]=cook.legacy.lookups[key];
+    $('legacyDetails').textContent=Object.keys(preserved).length ? JSON.stringify(preserved,null,2) : 'No original structured details recorded. New details are saved above.';
     $('cookNotes').value = cook.notes || '';
     $('evaluation').value = cook.evaluation || '';
     fillProbes($('probe'),cook);
@@ -513,6 +557,8 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=drawChart;$('compareCook').onchange=updateCompare;$('compareProbe').onchange=drawChart;
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
+$('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value));};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};
 async function action(work) {
@@ -520,7 +566,7 @@ async function action(work) {
   busy = true; document.querySelectorAll('button').forEach(b => b.disabled = true);
   try { const changed = await work(); await render(); damaged = false; status(changed === false ? 'Cancelled. Your journal was unchanged.' : 'Saved on this device. A recovery snapshot was created automatically.'); }
   catch (e) { status(e.message, true); }
-  finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); if (damaged) $('new').querySelector('button').disabled = true; await protection(); }
+  finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); if (damaged) $('new').querySelector('button').disabled = true; const selected=journal.find(c=>c.id===current); if(selected && (selected.phase==='Finished' || selected.finishedAt)) $('event').querySelector('button').disabled=true; await protection(); }
 }
 async function restore(envelope) {
   const body = await unseal(envelope);

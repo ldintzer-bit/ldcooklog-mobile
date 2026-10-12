@@ -304,3 +304,64 @@ class VerifiedMacCopyTests(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
+class RetentionTests(unittest.TestCase):
+    setUpClass = classmethod(VerifiedMacCopyTests.setUpClass.__func__)
+    setUp = VerifiedMacCopyTests.setUp
+    def add_revision(self, revision):
+        import hashlib
+        envelope = json.loads(json.dumps(self.envelope))
+        body = json.loads(envelope['payload'])
+        body['revision'] = revision
+        envelope['payload'] = json.dumps(body,ensure_ascii=False)
+        envelope['sha256'] = hashlib.sha256(envelope['payload'].encode()).hexdigest()
+        path = self.file.with_name(f'{revision:016d}-12345678-1234-1234-1234-123456789abc.recovery.json')
+        path.write_text(json.dumps(envelope))
+        return path
+
+    def test_budget_prunes_only_after_new_copy_and_keeps_first_latest_three(self):
+        for revision in range(3,10):
+            self.add_revision(revision)
+            protect(self.source,self.destination)
+        unrelated=self.destination/'owner-note.txt';unrelated.write_text('keep')
+        new=self.add_revision(10)
+        before_source={p.name:p.read_bytes() for p in self.file.parent.iterdir()}
+        result=protect(self.source,self.destination,max_bytes=new.stat().st_size*5)
+        retained=sorted(int(p.name[:16]) for p in self.destination.rglob('*.recovery.json'))
+        self.assertEqual(retained[0],3)
+        self.assertEqual(retained[-3:],[8,9,10])
+        self.assertLessEqual(len(retained),5)
+        self.assertGreater(result['capacity']['pruned'],0)
+        self.assertEqual(unrelated.read_text(),'keep')
+        self.assertEqual(before_source,{p.name:p.read_bytes() for p in self.file.parent.iterdir()})
+
+    def test_disk_full_and_corruption_do_not_prune(self):
+        for revision in range(3,8):
+            self.add_revision(revision);protect(self.source,self.destination)
+        paths=list(self.destination.rglob('*.recovery.json'))
+        before={p:p.read_bytes() for p in paths}
+        self.add_revision(8)
+        from collections import namedtuple
+        with patch.object(worker.shutil,'disk_usage',return_value=namedtuple('Usage','total used free')(100,99,1)):
+            with self.assertRaisesRegex(AuditFailure,'free Mac disk'):
+                protect(self.source,self.destination)
+        self.assertEqual(before,{p:p.read_bytes() for p in paths})
+        paths[0].write_text('corrupt')
+        with self.assertRaises(AuditFailure):protect(self.source,self.destination)
+        self.assertEqual(len(list(self.destination.rglob('*.recovery.json'))),len(paths))
+
+    def test_lock_blocks_overlapping_cleanup(self):
+        import fcntl
+        self.destination.mkdir()
+        with (self.destination/'.worker.lock').open('w') as lock:
+            fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+            with self.assertRaises(BlockingIOError):protect(self.source,self.destination)
+        self.assertEqual(list(self.destination.rglob('*.recovery.json')),[])
+
+    def test_archive_representative_cannot_be_pruned(self):
+        items={Path('device')/str(n):dict(revision=n,createdAt='2026-10-12T00:00:00Z',size=10,archives=['old'] if n==4 else ['new']) for n in range(1,40)}
+        remove,size=worker.retention_plan(items,60)
+        self.assertNotIn(Path('device')/'4',remove)
+        self.assertNotIn(Path('device')/'1',remove)
+        self.assertLessEqual(size,60)
+        with self.assertRaises(AuditFailure):worker.retention_plan(items,20)

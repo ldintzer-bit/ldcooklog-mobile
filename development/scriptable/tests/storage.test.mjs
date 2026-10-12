@@ -10,7 +10,7 @@ import path from 'node:path';
 export function fileManager(root) {
   fs.mkdirSync(root,{recursive:true});
   return {
-    documentsDirectory:()=>root, joinPath:path.join,
+    remove:p=>fs.unlinkSync(p),documentsDirectory:()=>root, joinPath:path.join,
     createDirectory:(p)=>fs.mkdirSync(p,{recursive:true}),
     fileExists:fs.existsSync, readString:p=>fs.readFileSync(p,'utf8'),
     writeString:(p,s)=>fs.writeFileSync(p,s), listContents:p=>fs.readdirSync(p),
@@ -204,4 +204,19 @@ test('damaged newest state cannot borrow an older independent-copy receipt',asyn
 test('the isolated restore namespace cannot accept the working journal report',async t=>{
   const f=setup(t),one=await snapshot(1);await f.store.commit(one,0);const {report}=macReport(f,one);
   const trial=createStorage({...f.config,namespace:'restore-check',uuid:()=>report.device});await trial.commit(one,0);assert.equal((await trial.backupStatus()).mac.verified,false);
+});
+
+test('retention requires matching Mac evidence and keeps first plus newest twenty',async t=>{
+ const f=setup(t);let last;
+ for(let n=1;n<=25;n++){last=await snapshot(n);await f.store.commit(last,n-1)}
+ await f.store.backupStatus();assert.equal(fs.readdirSync(f.journal).length,25);
+ macReport(f,last);const status=await f.store.backupStatus();assert.equal(status.local,21);assert.equal(await f.store.read(),last);
+ const names=fs.readdirSync(f.journal).sort();assert.ok(names[0].startsWith('0000000000000001'));assert.ok(names[1].startsWith('0000000000000006'));
+ const device=fs.readdirSync(path.join(f.root,'cloud/LDCookLog-2-Development-Recovery'))[0];assert.equal(fs.readdirSync(path.join(f.root,'cloud/LDCookLog-2-Development-Recovery',device)).length,21);
+});
+test('corrupt older snapshots stop retention and deletion failures preserve current journal',async t=>{
+ const f=setup(t);let last;for(let n=1;n<=23;n++){last=await snapshot(n);await f.store.commit(last,n-1)}
+ await f.store.backupStatus();macReport(f,last);
+ const file=path.join(f.journal,fs.readdirSync(f.journal).sort()[1]),original=fs.readFileSync(file,'utf8');fs.writeFileSync(file,'damaged');await f.store.backupStatus();assert.equal(fs.readdirSync(f.journal).length,23);
+ fs.writeFileSync(file,original);f.cloud.remove=()=>{throw Error('disk issue')};const result=await f.store.backupStatus();assert.match(result.message,/cleanup paused/);assert.equal(await f.store.read(),last);assert.equal(fs.readdirSync(f.journal).length,23);
 });

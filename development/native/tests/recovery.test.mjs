@@ -68,3 +68,15 @@ test('preparation cannot be finished and hold-before-rest workflow retains both 
   assert.deepEqual(cook.events.map(e=>e.type),['Meat On','Keep Warm','Rest Start','Cook Finished']);
   assert.equal(cook.startedAt,cook.events[0].at);
 });
+
+test('cook setup changes restore exactly and preserve original relational evidence',async()=>{
+  const adapter=disk(),store=new CookStore(adapter);await store.add('Test','Weber');
+  const id=(await store.read()).state.records[0].id;
+  await store.mutate(state=>{state.records[0].legacy={related:{cook_preparation:[{id:'original',notes:'original prep'}]}};return state});
+  const value={food:'Pork butt',cooker:'Weber kettle',startedAt:'2026-01-01T10:00:00Z',finishedAt:'2026-01-01T18:00:00Z',isTestCook:true,method:'No wrap',weight:'8 lb',equipment:'Slow N Sear',preparation:'Dry brine',rubs:'Salt and pepper',sauces:'None',rating:4};
+  await store.profile(id,value);
+  const cook=(await store.read()).state.records[0];assert.equal(cook.phase,'Finished');assert.equal(cook.cookingDetails.preparation,'Dry brine');assert.equal(cook.legacy.related.cook_preparation[0].notes,'original prep');assert.equal(cook.isTestCook,true);
+  const restored=new CookStore(disk());await restored.restore(JSON.parse(adapter.current));assert.deepEqual((await restored.read()).state,(await store.read()).state);
+  for(const change of [{finishedAt:'2025-01-01T00:00:00Z'},{rating:6},{equipment:'x'.repeat(1001)},{startedAt:'invalid'}]) await assert.rejects(store.profile(id,{...value,...change}));
+  assert.deepEqual((await store.read()).state.records[0],cook);
+});

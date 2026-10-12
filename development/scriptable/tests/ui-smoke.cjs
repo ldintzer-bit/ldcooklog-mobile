@@ -11,7 +11,7 @@ watchdog.unref();
 function progress(value){stage=value;console.log('CHECK: '+stage)}
 function manager(root) {
   fs.mkdirSync(root,{recursive:true});
-  return {documentsDirectory:()=>root,joinPath:path.join,
+  return {remove:p=>fs.unlinkSync(p),documentsDirectory:()=>root,joinPath:path.join,
     createDirectory:p=>fs.mkdirSync(p,{recursive:true}),fileExists:fs.existsSync,
     readString:p=>fs.readFileSync(p,'utf8'),writeString:(p,s)=>fs.writeFileSync(p,s),
     listContents:fs.readdirSync,isDirectory:p=>fs.statSync(p).isDirectory(),

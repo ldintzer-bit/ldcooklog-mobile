@@ -79,6 +79,27 @@ export class CookStore {
     });
   }
   importSession(id, value) { return this.mutate(state => attachSession(state, id, value)); }
+  profile(id, value) {
+    return this.mutate(state => {
+      const cook = state.records.find(c => c.id === id);
+      if (!cook) throw Error('Cook not found');
+      const limits = {food:300,cooker:300,method:300,weight:100,equipment:1000,preparation:4000,rubs:1000,sauces:1000};
+      for (const [key,limit] of Object.entries(limits)) if (typeof value[key] !== 'string' || value[key].length>limit) throw Error('Invalid '+key);
+      if (!value.food.trim() || !value.cooker.trim() || typeof value.isTestCook !== 'boolean') throw Error('Enter food, cooker and test status');
+      const start = Date.parse(value.startedAt), end = value.finishedAt ? Date.parse(value.finishedAt) : null;
+      if (!Number.isFinite(start) || (end!==null && (!Number.isFinite(end) || end<start))) throw Error('Finish must be on or after a valid start time');
+      if (value.rating!==null && (!Number.isInteger(value.rating) || value.rating<1 || value.rating>5)) throw Error('Rating must be 1 to 5');
+      cook.food=value.food.trim();cook.cooker=value.cooker.trim();cook.startedAt=new Date(start).toISOString();
+      cook.finishedAt=end===null?null:new Date(end).toISOString();
+      if (end!==null) cook.phase='Finished';
+      else if (cook.phase==='Finished') cook.phase='Cooking';
+      cook.isTestCook=value.isTestCook;
+      cook.cookingDetails=Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]));
+      cook.cookingDetails.rating=value.rating;
+      // Legacy relational rows and original archives are immutable evidence.
+      return state;
+    });
+  }
   details(id, notes, evaluation) {
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);

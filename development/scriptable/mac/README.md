@@ -33,13 +33,30 @@ Read their timestamps; an old success is not proof of current protection.
 Logs are under `~/Library/Application Support/LDCookLog/` and contain only
 counts and controlled diagnostics. Mac folders use mode 0700; files 0600.
 
-There is no automatic deletion. At 1 GB of managed copies the worker refuses
-a new copy and records failure, preserving existing backups. Retention and
-proactive failure alerts remain development gates; this version is not a
-complete maintenance policy. It does not claim iCloud API upload confirmation,
-protect records newly entered in the old Supabase app or prove restoration on
-a reinstalled/new device. The owner verified scheduled capture of a fresh
-revision and a subsequent scheduled check on October 12, 2026.
+Managed Mac snapshots now use automatic retention, after a new copy is written,
+fsynced and read back successfully. Each device keeps its first and newest three
+snapshots, plus a representative for each original database archive. The worker
+prefers the newest 30 and a latest point from each of up to 12 calendar months;
+older optional points are removed to fit the 1 GiB managed-copy budget. A missing
+device's copies are not deleted. The worker validates every managed snapshot
+before planning, locks against overlapping workers, refuses conflicts/symlinks,
+and checks free disk space before writing. Required points over budget stop the
+operation without deleting existing copies. Unknown files and original exports
+are never pruned. Managed byte totals exclude metadata, logs and helper versions.
+
+Phone snapshots are trimmed only after fresh Mac evidence matches the exact
+current revision/checksum and all staged copies validate. Keep the first and
+newest 20 plus representatives for distinct source archives, in this device's
+local and Scriptable iCloud snapshot folders. Other devices and trial/working
+namespaces remain separate. Missing/stale proof, corruption or unavailable cloud
+bytes prevent cleanup. A local warning appears above 128 MiB; this is a warning,
+not a hard save limit. The independent Mac copy remains outside iCloud.
+
+Mac capacity appears on the phone and in `--status`, with a warning at 80%.
+Publication failure does not invalidate a successful independent copy. Actual
+on-device retention acceptance remains pending; reinstall/new-device recovery,
+proactive alerts and full feature parity remain open gates. Further changes in
+the old Supabase app still require a final source export at cutover.
 
 The installer checks a real copy before creating the agent, refuses unrelated
 agent configurations and preserves/restores earlier managed configuration on

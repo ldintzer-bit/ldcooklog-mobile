@@ -76,7 +76,7 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
     return base;
   }
   async function backupStatus() {
-    const files = entries();
+    let files = entries();
     let staged = 0, failed = 0, current = null;
     try {
       const destination = cloud.joinPath(cloudRoot(), device);
@@ -100,8 +100,45 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
       catch { /* A damaged newest journal cannot gain proof from an older copy. */ }
     }
     const mac = await macVerification(current);
+    let retention = 'Older snapshots kept until current Mac verification is available.';
+    if (mac.verified && !failed) {
+      try { retention = await retainSnapshots(files); files = entries(); staged = files.length; }
+      catch { retention = 'Snapshot cleanup paused; current recovery copies remain available.'; }
+    }
+    let bytes = 0;
+    for (const name of files) { try { bytes += encodeURIComponent(local.readString(local.joinPath(journal,name))).replace(/%[A-F0-9]{2}/g,'x').length; } catch {} }
+    const capacity = `Local snapshots use about ${Math.ceil(bytes/1048576)} MiB.` + (bytes >= 128*1048576 ? ' Storage warning: over 128 MiB. Keep the Mac awake for verification and cleanup.' : '');
     return {local: files.length, uploaded: 0, pending: files.length, mac,
-      message: `${staged} copies staged in iCloud Drive; ${failed} could not be staged. Upload completion is unconfirmed. ${mac.message}`};
+      message: `${staged} copies staged in iCloud Drive; ${failed} could not be staged. Upload completion is unconfirmed. ${mac.message} ${retention} ${capacity}`};
+  }
+  async function retainSnapshots(files) {
+    if (files.length <= 20) return 'Recovery retention is within its 20-recent-copy target.';
+    // Only this device/namespace, after proof of its exact newest snapshot.
+    const keep = new Set([...files.slice(0,20), files.at(-1)]), archives = new Set(), revisions = new Set(), candidates = [];
+    const destination=cloud.joinPath(cloudRoot(),device);
+    for (const name of files) {
+      const path=local.joinPath(journal,name), text=local.readString(path), body=await verify(text);
+      if (body.revision !== rev(name) || revisions.has(body.revision)) throw Error('Conflicting retention revisions');
+      revisions.add(body.revision);
+      for (const archive of JSON.parse(JSON.parse(text).payload).state.relationalArchives) {
+        if (!archives.has(archive.sha256)) { keep.add(name); archives.add(archive.sha256); }
+      }
+      const cloudPath=cloud.joinPath(destination,name);
+      if (!cloud.isFileDownloaded(cloudPath) || cloud.readString(cloudPath)!==text) throw Error('Cloud bytes unavailable');
+      candidates.push({name,path,cloudPath,text});
+    }
+    // Validate every eligible copy before removing any. Never touch another
+    // device, the independent Mac copies, or original database exports.
+    for (const row of candidates) {
+      if (local.readString(row.path)!==row.text || cloud.readString(row.cloudPath)!==row.text) throw Error('Snapshot changed');
+    }
+    let count=0;
+    for (const row of candidates) if (!keep.has(row.name)) {
+      cloud.remove(row.cloudPath);
+      local.remove(row.path);
+      count++;
+    }
+    return `${count} older snapshot pairs removed after Mac verification; first, recent and source-archive recovery points kept.`;
   }
   async function macVerification(current) {
     const missing = {verified:false, message:'Mac independent-copy report is not available yet.'};
@@ -122,7 +159,9 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
       if (Date.now()-checked>900000) return {verified:false,revision:report.revision,message:`Mac report is over 15 minutes old. Last verified copy: revision ${report.revision}. Keep the Mac awake to refresh it.`};
       if (!current || report.revision!==current.revision || report.sha256!==current.sha256)
         return {verified:false,revision:report.revision,message:`Mac last verified revision ${report.revision}. This journal is awaiting an independent Mac copy.`};
-      return {verified:true,revision:report.revision,message:`Mac independent copy verified for this revision (${report.revision}) at ${new Date(verified).toLocaleString()}.`};
+      const capacity = report.capacity;
+      const capacityNote = capacity && Number.isSafeInteger(capacity.bytes) && capacity.bytes >= 0 && Number.isSafeInteger(capacity.limit) && capacity.limit > 0 ? ` Mac backup storage: ${Math.ceil(capacity.bytes/1048576)} of ${Math.ceil(capacity.limit/1048576)} MiB.${capacity.bytes >= capacity.limit*.8 ? ' Storage warning: over 80% of the limit.' : ''}` : '';
+      return {verified:true,revision:report.revision,message:`Mac independent copy verified for this revision (${report.revision}) at ${new Date(verified).toLocaleString()}.${capacityNote}`};
     } catch {
       return {verified:false,message:'Mac verification report is unavailable or could not be validated. Local snapshots remain available.'};
     }
