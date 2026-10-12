@@ -36,9 +36,9 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-      - name: Test actual macOS Foundation download bridge without cloud credentials
+      - name: Test Mac recovery retention, capacity and Foundation bridge
         working-directory: development/scriptable/mac
-        run: python3 -m unittest test_mac_download_bridge
+        run: python3 -m unittest discover -p 'test_*.py'
       - name: Test real native file storage
         working-directory: development/native
         run: swift test
