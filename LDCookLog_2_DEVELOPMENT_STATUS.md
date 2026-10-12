@@ -6,6 +6,31 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: actual independent Mac copying and scheduled execution passed
+
+The owner installed the generated standalone Mac recovery helper at tested
+checkpoint 1979f80c32615e734e9285f4efb08a66723ca078. Installation reported an
+independent-copy pass for the expected working revision and successful
+registration of the periodic user agent. The owner subsequently ran --status,
+which reported AUTOMATIC MAC CHECK PASS and RECENT SCHEDULED EXECUTION VERIFIED.
+This verifies recent scheduled execution on the actual Mac, actual agent
+registration and independently readable/checksummed copies, rather than only
+a manual installation preflight. Private files and credentials stayed local.
+
+The next physical acceptance test saves a new action on the synthetic cook in
+the working Migration Fix journal, preserves it across offline reopening,
+then checks whether iCloud staging plus the periodic Mac helper protects that
+new revision without a manual database export or manual Mac copying command.
+Do not modify historical source cooks, reimport or reset journals for this test.
+
+Source migration/full-history isolated restoration and the initial automatic
+Mac copy are accepted. Ongoing new-revision protection, retention/quota and
+failure visibility, remaining cooking/completed-session features and
+reinstall/new-device recovery remain open. Production main remains untouched;
+Supabase retirement and a real-cooking cutover are not yet approved. The
+existing verified PostgreSQL archive should be kept; no fresh database export
+is needed for this synthetic device test.
+
 ## October 12: owner-private source reconciliation passed; Mac automation candidate
 
 The owner ran the independent source comparison locally and reported SOURCE
