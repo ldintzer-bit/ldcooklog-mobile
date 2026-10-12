@@ -6,6 +6,25 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: revision-4 independent and scheduled copying passed after update
+
+The owner updated the managed helper to the safe-diagnostic checkpoint.
+Preflight reported an independently verified revision-4 copy containing the
+new synthetic action, and --status then confirmed recent scheduled execution
+and independently readable revision-4 bytes. Initial source counts and preserved
+archive were retained. No source cooking files were changed or private files
+published. The updated helper is running on the actual Mac.
+
+The earlier failure cause is still unknown: Terminal diagnosis/preflight had
+read the current source before scheduled success, potentially materializing
+its bytes. This acceptance proves current revision-4 scheduled verification,
+but does not by itself exclude a fresh-file/background-access issue. Next save
+one additional action in the synthetic working cook while online and leave
+the periodic helper to discover/copy it. Only inspect --status afterward;
+avoid a Terminal source read, manual --install or explicit copy before this
+fresh-revision test. No broad macOS privacy changes are warranted without
+an actual stage/errno failure.
+
 ## October 12: current Terminal iCloud read passed; scheduled error still unknown
 
 The owner ran the new read-only diagnostic and reported TERMINAL ICLOUD READ
