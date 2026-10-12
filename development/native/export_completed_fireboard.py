@@ -9,6 +9,8 @@ import getpass
 import json
 import os
 import warnings
+import socket
+import ssl
 from pathlib import Path
 import tempfile
 import urllib.request
@@ -17,6 +19,42 @@ import urllib.error
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+def connection_failure(error):
+    reason = error.reason if isinstance(error, urllib.error.URLError) else error
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return 'TLS certificate verification failed in this Python installation'
+    if isinstance(reason, ssl.SSLError):
+        return 'TLS secure connection failed'
+    if isinstance(reason, socket.gaierror):
+        return 'DNS lookup failed for FireBoard'
+    if isinstance(reason, TimeoutError):
+        return 'Connection timed out'
+    if isinstance(reason, ConnectionRefusedError):
+        return 'Connection was refused'
+    if isinstance(reason, ConnectionResetError):
+        return 'Connection was reset'
+    # Never include exception text: it may contain server data or credentials.
+    code = getattr(reason, 'errno', None)
+    return 'Network connection failed' + (f' (errno {code})' if type(code) is int else '')
+
+
+def diagnose():
+    # A credential-free request tests DNS/TLS/HTTP reachability only.
+    req = urllib.request.Request('https://fireboard.io/api/rest-auth/login/',
+        headers={'User-Agent':'LDCookLog/2.0 connection-check', 'Accept':'application/json'})
+    try:
+        with urllib.request.build_opener(NoRedirect).open(req, timeout=30) as response:
+            code = response.status
+    except urllib.error.HTTPError as error:
+        code = error.code  # 405 is expected for GET on a POST-only endpoint.
+    except OSError as error:
+        print('CONNECTION CHECK:', connection_failure(error) + '. No credentials sent; no files changed.')
+        return 1
+    print(f'CONNECTION CHECK: FireBoard HTTPS responded (HTTP {code}). No credentials sent; no files changed.')
+    print('This checks connectivity only; it does not verify account sign-in.')
+    return 0
 
 
 def api(path, token=None, credentials=None):
@@ -36,8 +74,10 @@ def api(path, token=None, credentials=None):
             return json.loads(raw)
     except urllib.error.HTTPError as error:
         raise RuntimeError(f'FireBoard request failed (HTTP {error.code}); no export written') from None
-    except (OSError, ValueError):
-        raise RuntimeError('FireBoard connection or response could not be read; no export written') from None
+    except OSError as error:
+        raise RuntimeError(connection_failure(error) + '; no export written') from None
+    except (ValueError, UnicodeError):
+        raise RuntimeError('FireBoard returned an unreadable JSON response; no export written') from None
 
 
 def request(path, token):
@@ -100,7 +140,12 @@ def main():
     parser.add_argument('session_id', type=int, nargs='?')
     parser.add_argument('--interactive', action='store_true', help='Sign in privately and select a completed session')
     parser.add_argument('output', type=Path, nargs='?')
+    parser.add_argument('--diagnose', action='store_true', help='Check HTTPS connectivity without credentials or file changes')
     args = parser.parse_args()
+    if args.diagnose:
+        if args.interactive or args.session_id is not None or args.output is not None:
+            parser.error('Use --diagnose alone')
+        return diagnose()
     if args.interactive and (args.session_id is not None or args.output is not None):
         parser.error('Use --interactive alone')
     if not args.interactive and (args.session_id is None or args.session_id <= 0 or args.output is None):

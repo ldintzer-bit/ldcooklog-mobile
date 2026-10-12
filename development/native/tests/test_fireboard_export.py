@@ -66,5 +66,39 @@ class ExportTests(unittest.TestCase):
             self.assertEqual(m.main(),1)
             self.assertFalse(list(Path(directory).iterdir()))
 
+class DiagnosticTests(unittest.TestCase):
+    def test_safe_distinct_network_diagnostics(self):
+        import ssl, socket
+        for error, message in [(ssl.SSLCertVerificationError(1,'PRIVATE'),'TLS certificate verification'), (socket.gaierror(8,'PRIVATE'),'DNS lookup'), (TimeoutError('PRIVATE'),'timed out'), (ConnectionResetError('PRIVATE'),'reset'), (OSError(13,'PRIVATE'),'errno 13')]:
+            with self.subTest(message=message):
+                result=m.connection_failure(urllib.error.URLError(error))
+                self.assertIn(message,result)
+                self.assertNotIn('PRIVATE',result)
+
+    def test_diagnose_has_no_credentials_and_accepts_method_not_allowed(self):
+        error=urllib.error.HTTPError('https://fireboard.io/',405,'PRIVATE',{},None)
+        with patch.object(m.urllib.request,'build_opener') as opener, patch('sys.stdout',new_callable=io.StringIO) as out:
+            opener.return_value.open.side_effect=error
+            self.assertEqual(m.diagnose(),0)
+            req=opener.return_value.open.call_args.args[0]
+            self.assertIsNone(req.data)
+            self.assertIsNone(req.get_header('Authorization'))
+            self.assertIn('HTTP 405',out.getvalue())
+            self.assertNotIn('PRIVATE',out.getvalue())
+
+    def test_invalid_json_does_not_print_body(self):
+        with patch.object(m.urllib.request,'build_opener') as opener:
+            opener.return_value.open.return_value.__enter__.return_value.read.return_value=b'PRIVATE invalid response'
+            with self.assertRaisesRegex(RuntimeError,'^FireBoard returned an unreadable JSON response; no export written$'):
+                m.api('api/rest-auth/login/',credentials={'password':'PRIVATE'})
+
+    def test_diagnose_tls_failure(self):
+        import ssl
+        with patch.object(m.urllib.request,'build_opener') as opener, patch('sys.stdout',new_callable=io.StringIO) as out:
+            opener.return_value.open.side_effect=urllib.error.URLError(ssl.SSLCertVerificationError(1,'PRIVATE'))
+            self.assertEqual(m.diagnose(),1)
+            self.assertIn('TLS certificate verification',out.getvalue())
+            self.assertNotIn('PRIVATE',out.getvalue())
+
 if __name__ == '__main__':
     unittest.main()

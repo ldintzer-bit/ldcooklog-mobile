@@ -1,3 +1,15 @@
+## 2026-10-12 — Credential-free FireBoard connectivity diagnostics
+
+Owner encountered the combined connection/response error during initial login.
+That output does not identify a password rejection. The helper now distinguishes
+TLS certificate verification, other TLS, DNS, timeout, refused/reset connection,
+and invalid JSON errors without exposing exception text or response contents.
+`--diagnose` sends a credential-free GET to the fixed FireBoard login endpoint;
+HTTP responses establish reachability only (405 is expected for a POST-only
+endpoint). It writes no files, supplies no credentials and never disables TLS
+verification. Eleven exporter/diagnostic tests pass locally. Real Mac diagnosis
+is pending; FireBoard import acceptance remains incomplete.
+
 ## 2026-10-12 — Owner recovery/feature acceptance and private FireBoard sign-in
 
 Owner confirmed the matching Mac verification display on iPhone, restoration
