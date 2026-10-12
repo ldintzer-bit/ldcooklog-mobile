@@ -114,7 +114,8 @@ class VerifiedMacCopyTests(unittest.TestCase):
         self.assertEqual(list((home / 'Library/LaunchAgents').glob('*.plist')), [])
         self.assertTrue(json.loads((destination / 'status.json').read_text())['healthy'])
 
-    def test_status_requires_recent_scheduled_execution_and_revalidates_copy(self):
+    @patch.object(worker.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0))
+    def test_status_requires_recent_scheduled_execution_and_revalidates_copy(self, registered_agent):
         protect(self.source, self.destination)
         with self.assertRaisesRegex(AuditFailure, 'manual'): worker.show_status(self.destination)
         protect(self.source, self.destination, scheduled=True)
@@ -123,6 +124,9 @@ class VerifiedMacCopyTests(unittest.TestCase):
         output = StringIO()
         with redirect_stdout(output): worker.show_status(self.destination)
         self.assertIn('RECENT SCHEDULED EXECUTION VERIFIED', output.getvalue())
+        with patch.object(worker.sys, 'platform', 'darwin'), patch.object(worker.subprocess, 'run', return_value=subprocess.CompletedProcess([], 1)):
+            with self.assertRaisesRegex(AuditFailure, 'not registered'):
+                worker.show_status(self.destination)
         receipt = self.destination / 'last-attempt.json'
         status = json.loads(receipt.read_text())
         status['checkedAt'] = '2020-01-01T00:00:00+00:00'
