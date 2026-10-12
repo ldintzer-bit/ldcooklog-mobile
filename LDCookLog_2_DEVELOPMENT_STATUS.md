@@ -6,6 +6,25 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: current Terminal iCloud read passed; scheduled error still unknown
+
+The owner ran the new read-only diagnostic and reported TERMINAL ICLOUD READ
+PASS: the current journal is readable and validated from Terminal. This rules
+out a reproducible current-source read/schema failure in that execution
+context. It does not establish whether earlier failure was transient sync/
+materialization, background permissions or another scheduled operation.
+Do not infer a specific macOS privacy setting or require broad permissions.
+
+GitHub regression run 38248527005 passed for diagnostic checkpoint
+23ce298c3993f538514efb47581664ea36b5f858: 60 JavaScript tests, 25 Python tests,
+security checks, reproducible generated artifacts and both browser integrations.
+The unchanged native job was still running. Next update only the managed Mac
+helper through --install, which first verifies a current independent copy,
+then use --status to observe the next scheduled attempt with stage/errno
+diagnostics. Source cooking files and older verified copies are retained.
+New-revision automatic protection remains unaccepted until actual scheduled
+capture is confirmed; a preflight copy alone is insufficient.
+
 ## October 12: new-revision automatic copy failed; safe diagnosis candidate
 
 After actual scheduled revision-3 acceptance, the owner saved Rest Start on the
