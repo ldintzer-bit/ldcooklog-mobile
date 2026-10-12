@@ -47,8 +47,12 @@ scheduled execution with copy revalidation. The --status command requires a
 scheduled receipt less than 15 minutes old, checks actual agent registration
 on macOS and revalidates the independent copy; manual success alone is refused.
 Existing 60 JavaScript and now 23 Python tests remain the regression set. Security checks pass.
-Generated Mac artifact reproducibility is now a required CI step. Actual
-Mac installation and scheduled execution are untested and require the owner.
+Generated Mac artifact reproducibility is now a required CI step. GitHub regression run `38225951822` passed for checkpoint
+`1979f80c32615e734e9285f4efb08a66723ca078`: 60 JavaScript tests,
+23 Python tests, security checks, all generated artifact reproducibility and
+both browser integrations. The unchanged native job was still running.
+Actual Mac installation and scheduled execution remain untested and require
+the owner; run --install then --status after the scheduled attempt.
 The production branch and iPhone application code are unchanged.
 
 ## October 12: full-history isolated restore and offline reopening passed
