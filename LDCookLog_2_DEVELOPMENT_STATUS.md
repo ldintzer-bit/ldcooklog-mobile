@@ -39,11 +39,14 @@ or recurring database export is performed. A 1 GB cap stops new copies rather
 than deleting backups; automatic retention and proactive failure alerts are
 still needed before an unconditional backup-operational acceptance claim.
 
-Seven worker tests pass for exact independent copies/private permissions,
+Eight worker tests pass for exact independent copies/private permissions,
 idempotency, corrupt-newest/missing-source refusal, collisions/quota, symlinks/
 path overlap, structured scheduling/unrelated-agent refusal, standalone safe
-success/failure receipts and failed-install rollback. Existing 60 JavaScript
-and now 22 Python tests remain the regression set. Security checks pass.
+success/failure receipts, failed-install rollback and status requiring recent
+scheduled execution with copy revalidation. The --status command requires a
+scheduled receipt less than 15 minutes old, checks actual agent registration
+on macOS and revalidates the independent copy; manual success alone is refused.
+Existing 60 JavaScript and now 23 Python tests remain the regression set. Security checks pass.
 Generated Mac artifact reproducibility is now a required CI step. Actual
 Mac installation and scheduled execution are untested and require the owner.
 The production branch and iPhone application code are unchanged.

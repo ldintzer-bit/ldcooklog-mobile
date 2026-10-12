@@ -271,7 +271,7 @@ def validate_current(body):
     return dict(cooks=len(records), events=events, readings=readings, archives=len(archives))
 
 
-def protect(source, destination, max_bytes=MAX_BYTES):
+def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
     # Validate all retained source snapshots and reject a bad newest copy.
     # A source failure occurs before destination creation or copying.
     latest_journals(source)
@@ -322,7 +322,7 @@ def protect(source, destination, max_bytes=MAX_BYTES):
         require(snapshot(target) == body, 'Independent Mac copy validation failed.')
         reports.append(dict(revision=body['revision'], sha256=parsed['sha256'], snapshot=str(target.relative_to(destination)), **counts))
     require(bool(reports), 'No current recovery copy was protected.')
-    status = dict(format='ldcooklog-mac-recovery-status', version=1, checkedAt=datetime.now(timezone.utc).isoformat(), healthy=True, copies=reports,
+    status = dict(format='ldcooklog-mac-recovery-status', version=1, checkedAt=datetime.now(timezone.utc).isoformat(), healthy=True, trigger='scheduled' if scheduled else 'manual', copies=reports,
                   message='Independent Mac copies verified. iCloud upload API status remains unconfirmed.')
     atomic_write(destination / 'status.json', canonical(status).encode())
     atomic_write(destination / 'last-attempt.json', canonical(status).encode())
@@ -330,7 +330,7 @@ def protect(source, destination, max_bytes=MAX_BYTES):
 
 
 def agent_plist(program, executable, destination):
-    return dict(Label=LABEL, ProgramArguments=[str(executable), str(program)], StartInterval=300, RunAtLoad=True,
+    return dict(Label=LABEL, ProgramArguments=[str(executable), str(program), '--scheduled'], StartInterval=300, RunAtLoad=True,
                 ProcessType='Background', Umask=0o077, StandardOutPath=str(destination.parent / 'recovery-worker.log'),
                 StandardErrorPath=str(destination.parent / 'recovery-worker-error.log'))
 
@@ -341,7 +341,7 @@ def owned_agent(path, programs):
     require(not path.is_symlink(), 'Agent configuration is a symbolic link; stopped.')
     value = plistlib.loads(path.read_bytes())
     arguments = value.get('ProgramArguments', [])
-    require(value.get('Label') == LABEL and len(arguments) == 2 and Path(arguments[1]).parent == programs, 'An unrelated agent configuration exists; left unchanged.')
+    require(value.get('Label') == LABEL and len(arguments) in (2, 3) and (len(arguments) == 2 or arguments[2] == '--scheduled') and Path(arguments[1]).parent == programs, 'An unrelated agent configuration exists; left unchanged.')
     return True
 
 
@@ -393,11 +393,34 @@ def remove():
     print('Automatic Mac copying stopped. All verified recovery copies and cooking files were kept.')
 
 
+def show_status(destination):
+    attempt = json.loads((destination / 'last-attempt.json').read_text())
+    age = (datetime.now(timezone.utc) - datetime.fromisoformat(attempt['checkedAt'])).total_seconds()
+    require(-300 <= age <= 900, 'Last Mac check is stale; keep the Mac awake and check the worker.')
+    require(attempt.get('healthy') is True, 'Most recent Mac backup attempt failed; check the controlled worker log.')
+    require(attempt.get('trigger') == 'scheduled', 'Only manual copying is verified so far; scheduled execution is not yet confirmed.')
+    if sys.platform == 'darwin':
+        result = subprocess.run(['launchctl', 'print', 'gui/' + str(os.getuid()) + '/' + LABEL], capture_output=True)
+        require(result.returncode == 0, 'Automatic agent is not registered.')
+    for index, report in enumerate(attempt['copies'], 1):
+        relative = Path(report['snapshot'])
+        require(len(relative.parts) == 2 and DEVICE.fullmatch(relative.parts[0]) and NAME.fullmatch(relative.parts[1]), 'Managed receipt contains an invalid snapshot path.')
+        require(not destination.is_symlink() and not (destination / relative.parts[0]).is_symlink() and not (destination / relative).is_symlink(), 'Independent copy location changed; verification stopped.')
+        body = snapshot(destination / relative)
+        counts = validate_current(body)
+        envelope = json.loads((destination / relative).read_text())
+        require(envelope['sha256'] == report['sha256'] and body['revision'] == report['revision'], 'Recorded independent copy differs from the verified receipt.')
+        print(f'AUTOMATIC MAC CHECK PASS: device {index}; revision {body["revision"]}; {counts["cooks"]} cooks; {counts["events"]} events; {counts["readings"]} readings; {counts["archives"]} source archives.')
+    print('RECENT SCHEDULED EXECUTION VERIFIED. Independent copies are readable; no cooking files changed.')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument('--install', action='store_true')
     mode.add_argument('--remove', action='store_true')
+    mode.add_argument('--scheduled', action='store_true')
+    mode.add_argument('--status', action='store_true')
     parser.add_argument('--icloud-root', type=Path, default=DEFAULT_SOURCE)
     parser.add_argument('--destination', type=Path, default=DEFAULT_DESTINATION)
     args = parser.parse_args()
@@ -405,16 +428,19 @@ def main():
         if args.remove:
             remove()
             return 0
+        if args.status:
+            show_status(args.destination)
+            return 0
         if args.install:
             require(args.icloud_root == DEFAULT_SOURCE and args.destination == DEFAULT_DESTINATION, 'Install uses the standard folders; custom paths are only for individual checks.')
-        status = install() if args.install else protect(args.icloud_root, args.destination)
+        status = install() if args.install else protect(args.icloud_root, args.destination, scheduled=args.scheduled)
     except (AuditFailure, OSError, ValueError, TypeError, AttributeError, KeyError, OverflowError) as error:
         message = str(error) if isinstance(error, AuditFailure) else 'Files unavailable or data needs review.'
         # Do not replace a previous success receipt with another success on failure.
         destination = DEFAULT_DESTINATION if args.install else args.destination
-        if destination.is_dir() and not destination.is_symlink():
+        if not args.status and destination.is_dir() and not destination.is_symlink():
             try:
-                atomic_write(destination / 'last-attempt.json', canonical(dict(healthy=False, checkedAt=datetime.now(timezone.utc).isoformat(), message=message)).encode())
+                atomic_write(destination / 'last-attempt.json', canonical(dict(healthy=False, trigger='scheduled' if args.scheduled else 'manual', checkedAt=datetime.now(timezone.utc).isoformat(), message=message)).encode())
             except (OSError, AuditFailure):
                 pass
         print('NOT PROTECTED:', message)

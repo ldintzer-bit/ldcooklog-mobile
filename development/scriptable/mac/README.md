@@ -9,6 +9,9 @@ Run the reviewed generated `LDCookLog-Mac-Recovery.py` with `python3`:
 - No arguments: validate and copy the latest working recovery snapshot once.
 - `--install`: prove a copy, install a per-user LaunchAgent, check at login and
   every five minutes while the Mac is awake and the owner is signed in.
+- `--status`: require a scheduled execution within 15 minutes, confirm agent
+  registration on macOS and revalidate its independently stored bytes. A manual
+  copy or stale/failed attempt cannot pass this scheduled-execution check.
 - `--remove`: stop/remove that managed agent; retain all verified copies.
 
 No administrator password, Supabase password or FireBoard credentials are

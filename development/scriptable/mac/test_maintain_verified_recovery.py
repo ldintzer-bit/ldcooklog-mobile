@@ -75,7 +75,7 @@ class VerifiedMacCopyTests(unittest.TestCase):
         program = programs / 'version.py'
         plist = agent_plist(program, Path('/path with spaces/python3'), self.destination)
         self.assertEqual(plist['StartInterval'], 300)
-        self.assertEqual(plist['ProgramArguments'], ['/path with spaces/python3', str(program)])
+        self.assertEqual(plist['ProgramArguments'], ['/path with spaces/python3', str(program), '--scheduled'])
         self.assertTrue(plist['RunAtLoad'])
         file = self.root / 'agent.plist'
         file.write_bytes(plistlib.dumps(plist))
@@ -112,6 +112,25 @@ class VerifiedMacCopyTests(unittest.TestCase):
         self.assertEqual(len(list(destination.rglob('*.recovery.json'))), 1)
         self.assertEqual(list((home / 'Library/LaunchAgents').glob('*.plist')), [])
         self.assertTrue(json.loads((destination / 'status.json').read_text())['healthy'])
+
+    def test_status_requires_recent_scheduled_execution_and_revalidates_copy(self):
+        protect(self.source, self.destination)
+        with self.assertRaisesRegex(AuditFailure, 'manual'): worker.show_status(self.destination)
+        protect(self.source, self.destination, scheduled=True)
+        from contextlib import redirect_stdout
+        from io import StringIO
+        output = StringIO()
+        with redirect_stdout(output): worker.show_status(self.destination)
+        self.assertIn('RECENT SCHEDULED EXECUTION VERIFIED', output.getvalue())
+        receipt = self.destination / 'last-attempt.json'
+        status = json.loads(receipt.read_text())
+        status['checkedAt'] = '2020-01-01T00:00:00+00:00'
+        receipt.write_text(json.dumps(status))
+        with self.assertRaisesRegex(AuditFailure, 'stale'): worker.show_status(self.destination)
+        protect(self.source, self.destination, scheduled=True)
+        target = self.destination / status['copies'][0]['snapshot']
+        target.write_text('damaged')
+        with self.assertRaises(ValueError): worker.show_status(self.destination)
 
 
 if __name__ == '__main__': unittest.main()
