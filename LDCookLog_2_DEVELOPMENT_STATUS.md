@@ -37,8 +37,15 @@ timeout handling and EDEADLK recovery across platform numbering. An actual
 macOS Foundation bridge test is added to native CI, using only a synthetic
 local non-iCloud file. Local Python regression: 31 passed, one macOS-only test
 skipped; existing 60 JavaScript tests and security checks are unchanged.
-Generated standalone helper is rebuilt. Actual native bridge CI and private
-fresh-snapshot unattended capture remain acceptance gates for this candidate.
+Generated standalone helper is rebuilt. GitHub run 38251072543 passed the regression job for checkpoint
+f3ce194fa8f1b7a75dc0b8602a06c108c9d3684d: 60 JavaScript tests, 31 Python
+passes and one macOS-only skip on Linux, security checks, generated artifact
+reproducibility and both browser integrations. Its native job passed the
+actual macOS Foundation/osascript bridge test with the synthetic local file;
+remaining unchanged native build/simulator steps were still running.
+Actual private iCloud materialization and fresh-snapshot unattended capture
+remain owner acceptance gates. Update the managed helper through --install;
+retain all original cooking files and previously verified Mac copies.
 
 Apple references:
 https://github.com/apple/darwin-xnu/blob/main/bsd/sys/errno.h
