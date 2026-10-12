@@ -6,6 +6,33 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: new-revision automatic copy failed; safe diagnosis candidate
+
+After actual scheduled revision-3 acceptance, the owner saved Rest Start on the
+synthetic cook in the working journal. The action and timestamp appeared. A
+later scheduled status check reported failure; its recorded reason was only
+"Files unavailable or data needs review." That does not identify iCloud read/
+materialization, filesystem permissions, data validation or destination I/O.
+The cause remains unknown. Automatic protection of this new revision is NOT
+accepted; do not claim current backup health or a real-cooking cutover.
+Existing verified copies and source cooking files are not overwritten/deleted
+by this failure path. No private record contents were supplied to development.
+
+The helper now records a controlled operation stage, exception class and errno
+in failed-attempt metadata. It never stores exception arguments, raw exception
+text, paths or cooking/credential values. --status reports these safe details
+when the most recent scheduled attempt fails. A new --diagnose mode reads and
+validates current iCloud recovery data from Terminal without creating copies,
+changing receipts or modifying source files. This will distinguish whether the
+source is readable from Terminal before updating/rechecking the scheduled job.
+
+Two additional tests simulate permission failure containing fake private text
+and paths, assert neither reaches output/receipts, and verify the standalone
+Terminal diagnostic makes no writes. All 21 Mac Python tests plus four converter
+tests pass locally (25 Python total); existing 60 JavaScript tests are unchanged.
+The generated worker is rebuilt; GitHub regression and actual diagnosis are
+next. The iPhone application and production branch are unchanged.
+
 ## October 12: actual independent Mac copying and scheduled execution passed
 
 The owner installed the generated standalone Mac recovery helper at tested

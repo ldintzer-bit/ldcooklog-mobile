@@ -219,6 +219,50 @@ MAC_HOME = Path.home() / 'Library/Application Support/LDCookLog'
 DEFAULT_SOURCE = BASE / 'LDCookLog-2-Development-Recovery'
 DEFAULT_DESTINATION = MAC_HOME / 'Verified Recovery'
 MAX_BYTES = 1024 * 1024 * 1024
+STAGES = {
+    'starting': 'starting the recovery check',
+    'read_icloud': 'reading iCloud recovery snapshots',
+    'validate_state': 'validating current cooking data',
+    'read_source_bytes': 'retrieving selected snapshot bytes',
+    'prepare_destination': 'preparing independent Mac storage',
+    'read_existing_copy': 'checking an existing independent copy',
+    'publish_copy': 'publishing a new independent copy',
+    'verify_copy': 'reading back the independent copy',
+    'write_receipt': 'writing backup-status metadata',
+    'prepare_agent': 'preparing the scheduled helper',
+    'register_agent': 'registering the scheduled helper',
+    'read_status': 'reading scheduled backup status',
+}
+CURRENT_STAGE = 'starting'
+ERROR_TYPES = {'AuditFailure', 'PermissionError', 'FileNotFoundError', 'NotADirectoryError',
+               'IsADirectoryError', 'BlockingIOError', 'OSError', 'JSONDecodeError',
+               'UnicodeDecodeError', 'UnicodeEncodeError', 'ValueError', 'TypeError',
+               'AttributeError', 'KeyError', 'OverflowError'}
+
+
+def stage(value):
+    global CURRENT_STAGE
+    require(value in STAGES, 'Unknown recovery operation.')
+    CURRENT_STAGE = value
+
+
+def error_details(error):
+    # Exception strings/args/filenames can contain private data: never retain them.
+    name = type(error).__name__
+    result = dict(stage=CURRENT_STAGE, errorType=name if name in ERROR_TYPES else 'Error')
+    if isinstance(error, OSError) and type(error.errno) is int:
+        result['errno'] = error.errno
+    return result
+
+
+def format_details(value):
+    if not isinstance(value, dict):
+        return 'operation details were not recorded by the older helper'
+    operation = STAGES.get(value.get('stage'), 'unknown operation')
+    name = value.get('errorType')
+    name = name if name in ERROR_TYPES else 'Error'
+    errno = value.get('errno')
+    return operation + ' / ' + name + (f' / errno {errno}' if type(errno) is int else '')
 
 
 def private_directory(path):
@@ -274,7 +318,9 @@ def validate_current(body):
 def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
     # Validate all retained source snapshots and reject a bad newest copy.
     # A source failure occurs before destination creation or copying.
+    stage('read_icloud')
     latest_journals(source)
+    stage('prepare_destination')
     require(source.resolve() != destination.resolve() and source.resolve() not in destination.resolve().parents and destination.resolve() not in source.resolve().parents, 'Source and destination must be separate folders.')
     for cloud_folder in (Path.home() / 'Library/Mobile Documents', Path.home() / 'Library/CloudStorage'):
         require(destination.resolve() != cloud_folder.resolve() and cloud_folder.resolve() not in destination.resolve().parents, 'Independent destination must be outside cloud storage.')
@@ -290,20 +336,26 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
         if not files:
             continue
         selected = files[-1]
+        stage('read_icloud')
         body = snapshot(selected)
+        stage('validate_state')
         counts = validate_current(body)
+        stage('read_source_bytes')
         raw = selected.read_bytes()
         # Reject a source changed between validation and retrieval.
         parsed = json.loads(raw)
         require(json.loads(parsed['payload']) == body and hashlib.sha256(parsed['payload'].encode()).hexdigest() == parsed['sha256'], 'Source changed during independent copying.')
         folder = destination / device.name
+        stage('prepare_destination')
         private_directory(folder)
         target = folder / selected.name
         require(not target.is_symlink(), 'Existing verified copy is a symbolic link; stopped.')
         if target.exists():
+            stage('read_existing_copy')
             require(target.read_bytes() == raw, 'Existing verified Mac copy differs; no copy overwritten.')
         else:
             require(existing_size + len(raw) <= max_bytes, 'Verified Mac copies reached the size limit; no copies deleted. Retention review required.')
+            stage('publish_copy')
             fd, temporary = tempfile.mkstemp(prefix='.ldcooklog-', dir=folder)
             try:
                 with os.fdopen(fd, 'wb') as handle:
@@ -318,12 +370,14 @@ def protect(source, destination, max_bytes=MAX_BYTES, scheduled=False):
             finally:
                 os.unlink(temporary)
             existing_size += len(raw)
+        stage('verify_copy')
         require(target.read_bytes() == raw, 'Independent Mac copy readback failed.')
         require(snapshot(target) == body, 'Independent Mac copy validation failed.')
         reports.append(dict(revision=body['revision'], sha256=parsed['sha256'], snapshot=str(target.relative_to(destination)), **counts))
     require(bool(reports), 'No current recovery copy was protected.')
     status = dict(format='ldcooklog-mac-recovery-status', version=1, checkedAt=datetime.now(timezone.utc).isoformat(), healthy=True, trigger='scheduled' if scheduled else 'manual', copies=reports,
                   message='Independent Mac copies verified. iCloud upload API status remains unconfirmed.')
+    stage('write_receipt')
     atomic_write(destination / 'status.json', canonical(status).encode())
     atomic_write(destination / 'last-attempt.json', canonical(status).encode())
     return status
@@ -350,6 +404,7 @@ def install():
     require(globals().get('LDC_STANDALONE') is True, 'Use the generated standalone Mac recovery installer.')
     # Prove a real independent copy before configuring periodic execution.
     status = protect(DEFAULT_SOURCE, DEFAULT_DESTINATION)
+    stage('prepare_agent')
     private_directory(MAC_HOME)
     programs = MAC_HOME / 'Programs'
     private_directory(programs)
@@ -373,6 +428,7 @@ def install():
     if previous:
         subprocess.run(['launchctl', 'bootout', domain + '/' + LABEL], capture_output=True)
     atomic_write(plist, plistlib.dumps(agent_plist(program, Path(sys.executable).resolve(), DEFAULT_DESTINATION)))
+    stage('register_agent')
     result = subprocess.run(['launchctl', 'bootstrap', domain, str(plist)], capture_output=True)
     if result.returncode:
         if previous:
@@ -394,10 +450,11 @@ def remove():
 
 
 def show_status(destination):
+    stage('read_status')
     attempt = json.loads((destination / 'last-attempt.json').read_text())
     age = (datetime.now(timezone.utc) - datetime.fromisoformat(attempt['checkedAt'])).total_seconds()
     require(-300 <= age <= 900, 'Last Mac check is stale; keep the Mac awake and check the worker.')
-    require(attempt.get('healthy') is True, 'Most recent Mac backup attempt failed; check the controlled worker log.')
+    require(attempt.get('healthy') is True, 'Most recent Mac backup attempt failed: ' + format_details(attempt.get('details')) + '.')
     require(attempt.get('trigger') == 'scheduled', 'Only manual copying is verified so far; scheduled execution is not yet confirmed.')
     if sys.platform == 'darwin':
         result = subprocess.run(['launchctl', 'print', 'gui/' + str(os.getuid()) + '/' + LABEL], capture_output=True)
@@ -421,9 +478,11 @@ def main():
     mode.add_argument('--remove', action='store_true')
     mode.add_argument('--scheduled', action='store_true')
     mode.add_argument('--status', action='store_true')
+    mode.add_argument('--diagnose', action='store_true', help='Read and validate iCloud recovery data from Terminal without copying or changing status.')
     parser.add_argument('--icloud-root', type=Path, default=DEFAULT_SOURCE)
     parser.add_argument('--destination', type=Path, default=DEFAULT_DESTINATION)
     args = parser.parse_args()
+    stage('starting')
     try:
         if args.remove:
             remove()
@@ -431,16 +490,25 @@ def main():
         if args.status:
             show_status(args.destination)
             return 0
+        if args.diagnose:
+            stage('read_icloud')
+            journals = latest_journals(args.icloud_root)
+            stage('validate_state')
+            for body in journals:
+                validate_current(body)
+            print(f'TERMINAL ICLOUD READ PASS: {len(journals)} current journal(s) readable and validated. No files changed.')
+            return 0
         if args.install:
             require(args.icloud_root == DEFAULT_SOURCE and args.destination == DEFAULT_DESTINATION, 'Install uses the standard folders; custom paths are only for individual checks.')
         status = install() if args.install else protect(args.icloud_root, args.destination, scheduled=args.scheduled)
     except (AuditFailure, OSError, ValueError, TypeError, AttributeError, KeyError, OverflowError) as error:
-        message = str(error) if isinstance(error, AuditFailure) else 'Files unavailable or data needs review.'
+        details = error_details(error)
+        message = str(error) if isinstance(error, AuditFailure) else 'Files unavailable or data needs review: ' + format_details(details) + '.'
         # Do not replace a previous success receipt with another success on failure.
         destination = DEFAULT_DESTINATION if args.install else args.destination
-        if not args.status and destination.is_dir() and not destination.is_symlink():
+        if not args.status and not args.diagnose and destination.is_dir() and not destination.is_symlink():
             try:
-                atomic_write(destination / 'last-attempt.json', canonical(dict(healthy=False, trigger='scheduled' if args.scheduled else 'manual', checkedAt=datetime.now(timezone.utc).isoformat(), message=message)).encode())
+                atomic_write(destination / 'last-attempt.json', canonical(dict(healthy=False, trigger='scheduled' if args.scheduled else 'manual', checkedAt=datetime.now(timezone.utc).isoformat(), message=message, details=details)).encode())
             except (OSError, AuditFailure):
                 pass
         print('NOT PROTECTED:', message)

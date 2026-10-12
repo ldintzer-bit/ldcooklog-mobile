@@ -132,5 +132,33 @@ class VerifiedMacCopyTests(unittest.TestCase):
         target.write_text('damaged')
         with self.assertRaises(ValueError): worker.show_status(self.destination)
 
+    def test_permission_diagnostic_excludes_exception_text_paths_and_record_contents(self):
+        from contextlib import redirect_stdout
+        from io import StringIO
+        output = StringIO()
+        protect(self.source, self.destination)
+        error = PermissionError(1, 'PRIVATE COOK NOTE PASSWORD', '/private/secret-data')
+        args = ['helper', '--scheduled', '--icloud-root', str(self.source), '--destination', str(self.destination)]
+        with patch.object(worker.sys, 'argv', args), patch.object(worker, 'latest_journals', side_effect=error), redirect_stdout(output):
+            self.assertEqual(worker.main(), 1)
+        text = output.getvalue()
+        self.assertIn('reading iCloud recovery snapshots / PermissionError / errno 1', text)
+        self.assertNotIn('PRIVATE COOK', text)
+        self.assertNotIn('/private/secret-data', text)
+        attempt = json.loads((self.destination / 'last-attempt.json').read_text())
+        self.assertEqual(attempt['details'], dict(stage='read_icloud', errorType='PermissionError', errno=1))
+        self.assertNotIn('PASSWORD', json.dumps(attempt))
+        with self.assertRaisesRegex(AuditFailure, 'PermissionError / errno 1'): worker.show_status(self.destination)
+
+    def test_standalone_diagnosis_does_not_create_destination_or_change_source(self):
+        artifact = Path(__file__).with_name('LDCookLog-Mac-Recovery.py')
+        before = self.file.read_bytes()
+        command = [sys.executable, str(artifact), '--diagnose', '--icloud-root', str(self.source), '--destination', str(self.destination)]
+        result = subprocess.run(command, text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('TERMINAL ICLOUD READ PASS', result.stdout)
+        self.assertFalse(self.destination.exists())
+        self.assertEqual(self.file.read_bytes(), before)
+
 
 if __name__ == '__main__': unittest.main()
