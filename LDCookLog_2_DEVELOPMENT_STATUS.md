@@ -6,6 +6,32 @@ Production `main` remains `e0ba05f6043b15d79a9ac053002137366a1105c3`.
 No production merge/deployment, database changes, private-history upload,
 backup upload or credential publication was performed.
 
+## October 12: private history reopened offline and Mac recovery bytes verified
+
+The owner confirmed that Migration Fix opened the imported journal with the
+expected combined cook count and preserved source export. After fully closing
+Scriptable and reopening with Airplane Mode/Wi-Fi off, the same count remained;
+a historical cook's timeline and retained reading count looked correct.
+This is a physical reopening/smoke check, not a record-by-record reconciliation.
+
+The owner retried iCloud staging successfully for all three local snapshots.
+The independent read-only Mac checker reported checksum/readability PASS on
+the latest revision 3 with the expected combined cook, event and reading
+counts and one preserved source archive. Private files were not supplied to
+ChatGPT or GitHub. Upload status in the app remains unconfirmed by design;
+the Mac result is independent evidence of readable recovery bytes.
+
+Next update the isolated Restore Check launcher to the tested startup-readiness
+checkpoint b8d1efb2a2d1dc162ad3cfa9a319b4703bda9d80, then explicitly restore the
+original development iCloud revision 3 into that separate trial journal.
+Verify full-history reopening offline and original working journal preservation.
+Full source-table/ID/value reconciliation, reinstall/new-device recovery,
+remaining feature acceptance and backup retention/quota remain release gates.
+The original PostgreSQL backup and Supabase remain available.
+
+Earlier pending physical-reopening statements below are historical checkpoints
+superseded by these observations; private full-history restoration is still pending.
+
 ## Imported history exposed an asynchronous startup race
 
 The owner confirmed the expected combined cook count and one preserved database
