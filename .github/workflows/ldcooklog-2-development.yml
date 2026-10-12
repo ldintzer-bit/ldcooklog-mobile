@@ -15,6 +15,7 @@ jobs:
         with:
           persist-credentials: false
       - run: node --test development/local-poc/tests/*.test.mjs development/native/tests/*.test.mjs development/scriptable/tests/*.test.mjs
+      - run: python3 -m unittest discover -s development/native/tests -p 'test_*.py'
       - run: python3 -m unittest discover -s development/local-poc/migration -p 'test_*.py'
       - run: python3 -m unittest discover -s development/scriptable/mac -p 'test_*.py'
       - run: python3 development/native/bundle_web.py && git diff --exit-code development/native/Web/app.bundle.js

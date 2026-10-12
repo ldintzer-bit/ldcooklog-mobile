@@ -1,3 +1,29 @@
+## 2026-10-12 — Owner recovery/feature acceptance and private FireBoard sign-in
+
+Owner confirmed the matching Mac verification display on iPhone, restoration
+from an independent Mac copy through the recovery-file picker into the isolated
+trial journal, offline reopening with preserved archive/history/latest synthetic
+event, offline notes/evaluation persistence in the working journal, and two-cook
+temperature comparison with clear labels. These are owner-observed checks, not
+an actual Scriptable reinstall or new-device test. Private files remain outside
+the repository; no cooking records or credentials are included in this update.
+
+The completed-session exporter now supports `--interactive`: hidden-password
+FireBoard login, local title/date selection of completed sessions, and exclusive
+private export into iCloud Drive / LDCookLog Backups. Credentials are used only
+in memory and sent to the fixed HTTPS FireBoard endpoint; redirects are refused.
+No password/token is printed or included in the export. Unsafe echoed password
+fallback is refused. Existing token/ID invocation remains supported. Session ID
+and completion dates are checked before writing. HTTP/transport failures avoid
+response-body/credential output. Source: https://docs.fireboard.io/app/app-api/.
+
+Seven Python tests passed for login, password preservation, selection, redirect
+refusal, safe authentication errors, hidden-input enforcement, private output,
+no-overwrite and identity mismatch handling. Tests are included in regression CI.
+Real-account completed-session export/import acceptance remains pending. Also
+pending: retention/capacity operations, remaining feature parity, new-device
+recovery and source recency at cutover. No production deployment or merge.
+
 ## 2026-10-12 — Fresh unattended copy accepted; iPhone verification report
 
 Owner confirmed revision 6 was copied by the scheduled Mac worker after a new
