@@ -1,3 +1,34 @@
+### Timers, targets and reading links verification checkpoint
+
+Installable source cdc474c961c2e59ff4b1678b65e13c2d77c2573d (Scriptable runtime
+identical to dc6a271a2d4f94996306410e50ac1a0eb393e8e6). Actions run 38441742800
+regression passed: 79 JavaScript tests, 58 Python passes with two Mac-only Linux
+skips, generated artifact/security/CSP checks and all three browser suites.
+Actual generated Scriptable host accepted automatic active-real-cook reopening,
+clock displays, numeric target history, mapped names in chart choices/legends,
+and exact linked/target state after offline full-history reopening. All original
+18,000 synthetic readings and pre-change recovery bytes remained identical.
+Native-bridge browser accepted finished-clock stopping and Target Change note
+transfer; only matching event drafts clear on successful numeric save. Other
+unsaved drafts and failed-write rollback still pass. Reviewed the updated mobile
+layout in a synthetic 390-pixel screenshot.
+
+Full-history testing initially read before asynchronous cook rendering, then
+queried a visible-label property while its comparison disclosure was collapsed.
+The tests now wait for the validated target summary and open comparisons before
+checking the visible label. Reading choices are built once per render and reused;
+identity sets are constructed only for cooks with actual saved bindings. These
+optimizations skip no required identity validation. Timer updates do not write
+backups or redraw forms; cumulative phase totals reflect recorded transitions.
+Historical unrecorded phase starts remain unknown.
+
+Actual macOS recovery tests/native storage and both platform compiles passed;
+iPhone simulator integration was still running at this checkpoint, so all native
+checks are not claimed complete. Physical Scriptable acceptance requires this
+single working-script update; no migration, backup-worker change or repeated
+retention rehearsal is requested. Existing original archives and production are
+unchanged. The next real cook remains the practical controlled-pilot gate.
+
 ## 2026-10-13 — Approved timers, targets and imported probe links
 
 Added clock-derived total/current-phase/cumulative-rest/cumulative-hold displays.
