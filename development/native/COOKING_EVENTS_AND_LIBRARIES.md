@@ -27,3 +27,34 @@ wrap method display, lid state and unchanged archived history/readings.
 Remaining physical acceptance: use these controls during the next real cook and
 restore on a replacement phone. Neither requirement blocks this development batch;
 neither is claimed completed by automated or synthetic testing.
+
+## Complete cooking setup additions
+
+New cook's Cooker selector and Equipment / fuel presets include Traeger Pro 780
+alongside Ironwood 885 and Weber kettle choices. Existing cooker text is preserved.
+
+Individual meat pieces is an optional disclosure in Cook setup. Add up to 32
+pieces; open each Piece entry to enter cut, package/cook weights with lb/kg/g/oz,
+bone status, brand, source, grade, notes and dollar prices. Zero remains zero;
+blank numeric values remain unknown. Removing a piece affects editable metadata
+only when Save cook setup succeeds; original imported rows remain intact. The
+existing general weight/pieces field remains independent, with no automatic total
+or silent replacement of historical values.
+
+Saved location and Saved method / recipe choices use the archived catalogs and
+saved non-test cooks. Selecting a method copies its name and reference into
+editable fields; Save cook setup commits the change. These fields also accept
+custom text. No web request is made to a recipe reference.
+
+Rub application details supports up to 64 named entries, Light/Normal/Heavy or
+Not recorded, and notes. Choosing Add saved rub creates a matching detail entry
+when absent. Add rub detail supports custom rub names. Removing a detail does not
+remove the general rub text; edit that field too if the rub is no longer used.
+Existing imported applications populate the editor without changing original rows.
+
+Spritz records a timestamp and the Action / note text while retaining the phase.
+Serve / Slice / Pull is offered during Cooking, Resting or Keeping Warm and moves
+the cook to Serving, ending the previous rest/hold timer. Cook Finished remains
+available during Serving. Finish after serving when the record is complete.
+All successful saves use the existing journal and automatic recovery snapshots.
+Drafts survive in-session filtering and switching; save before closing the app.

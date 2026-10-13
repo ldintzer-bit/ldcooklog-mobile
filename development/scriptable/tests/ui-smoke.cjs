@@ -151,6 +151,10 @@ function manager(root) {
     const recovery=await import(pathToFileURL(path.resolve(__dirname,'../../native/Web/recovery.js')).href);
     const tables=Object.fromEntries([...migration.REQUIRED_TABLES].sort().map(name=>[name,{columns:['id'],rows:[]}]));
     for(const kind of ['equipment','rubs','sauces'])tables[kind]={columns:['id','name'],rows:[{id:'synthetic-'+kind,name:'Synthetic archive '+kind}]};
+    tables.locations={columns:['id','name'],rows:[{id:'synthetic-location',name:'Synthetic saved cottage'}]};
+    tables.cook_methods={columns:['id','name','source_reference'],rows:[{id:'synthetic-recipe',name:'Synthetic saved recipe',source_reference:'Synthetic book page 3'}]};
+    tables.cook_meat_pieces={columns:['id','cook_id','piece_number','meat_cut','cook_weight','weight_unit','total_price'],rows:[{id:'synthetic-piece',cook_id:'synthetic-large-0',piece_number:1,meat_cut:'Synthetic archived piece',cook_weight:0,weight_unit:'kg',total_price:0}]};
+    tables.cook_rubs={columns:['id','cook_id','rub_id','application_level','notes'],rows:[{id:'synthetic-link',cook_id:'synthetic-large-0',rub_id:'synthetic-rubs',application_level:'Light',notes:'Synthetic archived rub note'}]};
     tables.cooks={columns:['id','food','start_time'],rows:[]};
     tables.events={columns:['id','cook_id','event_type','event_time','note'],rows:[]};
     tables.cook_fireboard_sessions={columns:['id','cook_id'],rows:[]};
@@ -197,6 +201,9 @@ function manager(root) {
     await page.locator('#fbModel').selectOption('FireBoard 2');await expand('fbChannel1');
     await page.locator('#fbRole1').selectOption('Pit / ambient');await page.locator('#fbProbe1').selectOption('Wired');await page.locator('#fbPort1').selectOption('6');await page.locator('#fbLabel1').fill('Named synthetic pit');
     const link=await page.locator('#fbSeries1 option').nth(1).getAttribute('value');await page.locator('#fbSeries1').selectOption(link);
+    await page.locator('#locationLibrary').selectOption('Synthetic saved cottage');await page.locator('#recipeLibrary').selectOption('Synthetic saved recipe');
+    assert.equal(await page.locator('#editRecipeReference').inputValue(),'Synthetic book page 3');
+    await expand('meatPiecesPanel');await expand('pieceRow1');assert.equal(await page.locator('#piececookWeight1').inputValue(),'0');assert.equal(await page.locator('#pieceweightUnit1').inputValue(),'kg');await expand('rubApplicationsPanel');await expand('rubRow1');assert.equal(await page.locator('#rublevel1').inputValue(),'Light');
     await page.locator('#equipmentLibrary').selectOption('Synthetic archive equipment');await page.locator('#rubsLibrary').selectOption('Synthetic archive rubs');await page.locator('#saucesLibrary').selectOption('Synthetic archive sauces');
     await page.locator('#profileForm button[type=submit]').click();await page.locator('#profileFormFeedback').filter({hasText:'Saved on this device'}).waitFor();
     assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);assert.match(await page.locator('#chartLegend').innerText(),/Named synthetic pit/);
@@ -213,6 +220,7 @@ function manager(root) {
     assert.match(await page.locator('#targetSummary').innerText(),/250°F.*203°F/);
     assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);
     const latest=JSON.parse(JSON.parse(fs.readFileSync(path.join(journal,fs.readdirSync(journal).sort().at(-1)),'utf8')).payload);
+    const edited=latest.state.records.find(c=>c.cookingDetails?.location==='Synthetic saved cottage');assert.equal(edited.cookingDetails.meatPieces[0].cookWeight,0);assert.equal(edited.cookingDetails.rubApplications[0].notes,'Synthetic archived rub note');assert.equal(edited.cookingDetails.recipeReference,'Synthetic book page 3');
     assert.deepEqual(latest.state.relationalArchives,JSON.parse(JSON.parse(originalLarge).payload).state.relationalArchives,'Catalog choices preserve every archived table exactly');
     assert.match(latest.state.records.map(c=>c.cookingDetails?.rubs || '').join(';'),/Synthetic archive rubs/);
     const previous=JSON.parse(JSON.parse(originalLarge).payload);assert.deepEqual(latest.state.records.map(c=>c.temperatures),previous.state.records.map(c=>c.temperatures),'Links/targets leave every original reading unchanged');

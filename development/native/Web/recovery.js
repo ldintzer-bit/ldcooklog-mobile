@@ -1,16 +1,17 @@
+import { validateMeatPieces, validateRubApplications } from './setup-details.js';
 import { validateCook, planRestore, validateFireboardSetup, validateTargets, validateWrap } from './backup.js';
 import { migrateRelationalExport, RELATIONAL_FORMAT, verifyRelationalExport } from './migration.js';
 import { cookTargets } from './cook-tools.js';
 import { attachSession } from './fireboard.js';
 
-const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+const cookTransitions = { 'Serve / Slice / Pull': [['Cooking','Resting','Keeping Warm'], 'Serving'], 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm','Serving'], 'Finished'] };
 export function lidIsOpen(cook){return (cook.events || []).filter(e=>e.type==='Lid Open' || e.type==='Lid Closed').at(-1)?.type==='Lid Open';}
 export function availableActions(cook) {
   const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
   if(phase==='Finished')return [];
   const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
-  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Note']);
-  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
+  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Spritz','Note']);
+  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Serve / Slice / Pull','Spritz','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
 }
 export const FORMAT = 'ldcooklog-recovery';
 export const emptyState = () => ({ records: [], relationalArchives: [] });
@@ -111,6 +112,9 @@ export class CookStore {
       }
       if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
       if(value.fireboardSetup!==undefined)cook.cookingDetails.fireboardSetup=structuredClone(validateFireboardSetup(value.fireboardSetup));
+      for(const [key,limit] of [['location',300],['recipeReference',2000]])if(value[key]!==undefined){if(typeof value[key]!=='string' || value[key].length>limit)throw Error('Invalid '+key);cook.cookingDetails[key]=value[key];}
+      if(value.meatPieces!==undefined)cook.cookingDetails.meatPieces=structuredClone(validateMeatPieces(value.meatPieces));
+      if(value.rubApplications!==undefined)cook.cookingDetails.rubApplications=structuredClone(validateRubApplications(value.rubApplications));
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });

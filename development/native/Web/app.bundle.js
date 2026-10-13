@@ -1,5 +1,43 @@
 'use strict';
 (() => {
+// Optional editable metadata. Original relational rows remain immutable.
+const pieceTextLimits={meatCut:300,boneStatus:40,brandProducer:300,storeSource:300,gradeType:300,meatNote:2000};
+const pieceNumbers=['packageWeight','cookWeight','totalPrice','pricePerLb'];
+function blankMeatPiece(){return {meatCut:'',packageWeight:null,cookWeight:null,weightUnit:'lb',boneStatus:'',brandProducer:'',storeSource:'',totalPrice:null,pricePerLb:null,gradeType:'',meatNote:''};}
+function validateMeatPieces(rows){
+ if(!Array.isArray(rows) || rows.length>32)throw Error('Use up to 32 meat pieces');
+ for(const row of rows){if(!row || typeof row!=='object' || Array.isArray(row))throw Error('Invalid meat piece');
+  for(const [key,limit] of Object.entries(pieceTextLimits))if(typeof row[key]!=='string' || row[key].length>limit)throw Error('Invalid meat piece '+key);
+  if(!['','bone-in','boneless'].includes(row.boneStatus) || !['lb','kg','g','oz'].includes(row.weightUnit))throw Error('Invalid meat piece unit or bone status');
+  for(const key of pieceNumbers)if(row[key]!==null && (!Number.isFinite(row[key]) || row[key]<0 || row[key]>10000000))throw Error('Meat weights and prices must be nonnegative numbers or blank');
+ }
+ return rows;
+}
+function validateRubApplications(rows){
+ if(!Array.isArray(rows) || rows.length>64)throw Error('Use up to 64 rub applications');
+ for(const row of rows)if(!row || typeof row.name!=='string' || !row.name.trim() || row.name.length>300 || !['Not recorded','Light','Normal','Heavy'].includes(row.level) || typeof row.notes!=='string' || row.notes.length>2000)throw Error('Enter a rub name, application level and optional notes');
+ return rows;
+}
+function meatPiecesFor(cook){
+ if(cook.cookingDetails?.meatPieces!==undefined)return structuredClone(cook.cookingDetails.meatPieces);
+ return (cook.legacy?.related?.cook_meat_pieces || []).slice().sort((a,b)=>a.piece_number-b.piece_number).map(row=>{
+  const piece=blankMeatPiece();for(const [key,source] of Object.entries({meatCut:'meat_cut',boneStatus:'bone_status',brandProducer:'brand_producer',storeSource:'store_source',gradeType:'grade_type',meatNote:'meat_note'}))piece[key]=String(row[source] ?? '');
+  for(const [key,source] of Object.entries({packageWeight:'package_weight',cookWeight:'cook_weight',totalPrice:'total_price',pricePerLb:'price_per_lb'}))piece[key]=row[source]===null || row[source]===undefined || row[source]===''?null:Number(row[source]);
+  piece.weightUnit=row.weight_unit || 'lb';return piece;
+ });
+}
+function rubApplicationsFor(cook){
+ if(cook.cookingDetails?.rubApplications!==undefined)return structuredClone(cook.cookingDetails.rubApplications);
+ return (cook.legacy?.related?.cook_rubs || []).map(row=>({name:(cook.legacy?.lookups?.rubs || []).find(r=>r.id===row.rub_id)?.name || 'Saved rub',level:row.application_level || 'Not recorded',notes:row.notes || ''}));
+}
+function recipeChoices(state){
+ const choices=new Map();
+ for(const archive of state.relationalArchives || [])for(const row of archive.tables?.cook_methods?.rows || [])if(typeof row.name==='string' && row.name.trim() && row.name.length<=300){const name=row.name.trim();if(!choices.has(name.toLowerCase()))choices.set(name.toLowerCase(),{name,reference:typeof row.source_reference==='string'?row.source_reference:''});}
+ for(const cook of state.records || [])if(!cook.isTestCook && typeof cook.cookingDetails?.method==='string' && cook.cookingDetails.method){const name=cook.cookingDetails.method;if(!choices.has(name.toLowerCase()))choices.set(name.toLowerCase(),{name,reference:cook.cookingDetails.recipeReference || ''});}
+ return [...choices.values()].sort((a,b)=>a.name.localeCompare(b.name));
+}
+
+
 
 /* Pure, independently testable backup and restore planning. */
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
@@ -43,6 +81,9 @@ function validateCook(c) {
   if (!c.events.every(e => e && typeof e.type === 'string' && typeof e.at === 'string' && Number.isFinite(Date.parse(e.at)) && typeof e.note === 'string')) throw Error('Invalid cook events');
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
+  if(c.cookingDetails?.meatPieces!==undefined)validateMeatPieces(c.cookingDetails.meatPieces);
+  if(c.cookingDetails?.rubApplications!==undefined)validateRubApplications(c.cookingDetails.rubApplications);
+  for(const [key,limit] of [['location',300],['recipeReference',2000]])if(c.cookingDetails?.[key]!==undefined && (typeof c.cookingDetails[key]!=='string' || c.cookingDetails[key].length>limit))throw Error('Invalid '+key);
   if(c.targets!==undefined)validateTargets(c.targets);
   for(const event of c.events){if(event.wrapMethod!==undefined)validateWrap(event);if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
   const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);
@@ -288,14 +329,15 @@ function comparisonSeries(cook, key) {
 
 
 
-const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+
+const cookTransitions = { 'Serve / Slice / Pull': [['Cooking','Resting','Keeping Warm'], 'Serving'], 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm','Serving'], 'Finished'] };
 function lidIsOpen(cook){return (cook.events || []).filter(e=>e.type==='Lid Open' || e.type==='Lid Closed').at(-1)?.type==='Lid Open';}
 function availableActions(cook) {
   const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
   if(phase==='Finished')return [];
   const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
-  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Note']);
-  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
+  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Spritz','Note']);
+  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Serve / Slice / Pull','Spritz','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
 }
 const FORMAT = 'ldcooklog-recovery';
 const emptyState = () => ({ records: [], relationalArchives: [] });
@@ -396,6 +438,9 @@ class CookStore {
       }
       if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
       if(value.fireboardSetup!==undefined)cook.cookingDetails.fireboardSetup=structuredClone(validateFireboardSetup(value.fireboardSetup));
+      for(const [key,limit] of [['location',300],['recipeReference',2000]])if(value[key]!==undefined){if(typeof value[key]!=='string' || value[key].length>limit)throw Error('Invalid '+key);cook.cookingDetails[key]=value[key];}
+      if(value.meatPieces!==undefined)cook.cookingDetails.meatPieces=structuredClone(validateMeatPieces(value.meatPieces));
+      if(value.rubApplications!==undefined)cook.cookingDetails.rubApplications=structuredClone(validateRubApplications(value.rubApplications));
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });
@@ -482,11 +527,11 @@ function reviewValues(cook) {
 }
 
 function setupChoices(state,kind){
-  if(!['equipment','rubs','sauces'].includes(kind))throw Error('Unsupported setup library');
+  if(!['equipment','rubs','sauces','locations'].includes(kind))throw Error('Unsupported setup library');
   const names=new Map();
   const add=value=>{if(typeof value!=='string')return;const name=value.trim();if(name && name.length<=1000 && !names.has(name.toLocaleLowerCase()))names.set(name.toLocaleLowerCase(),name);};
   for(const archive of state.relationalArchives || [])for(const row of archive.tables?.[kind]?.rows || [])add(row.name);
-  for(const cook of state.records || [])if(!cook.isTestCook)for(const name of (typeof cook.cookingDetails?.[kind]==='string'?cook.cookingDetails[kind]:'').split(';'))add(name);
+  for(const cook of state.records || [])if(!cook.isTestCook)for(const name of (typeof cook.cookingDetails?.[kind==='locations'?'location':kind]==='string'?cook.cookingDetails[kind==='locations'?'location':kind]:'').split(';'))add(name);
   return [...names.values()].sort((a,b)=>a.localeCompare(b));
 }
 
@@ -504,7 +549,7 @@ function cookTimers(cook,now=Date.now()){
   if(cook.phase==='Finished' && !finish)return {waiting:false,totalMs:null,phaseMs:null,restMs:null,holdMs:null};
   const end=finish?Date.parse(finish):now;
   if(!Number.isFinite(start) || !Number.isFinite(end) || end<start)return {waiting:true,totalMs:0,phaseMs:null,restMs:0,holdMs:0};
-  const phases={'Meat On':'Cooking','Rest Start':'Resting','Keep Warm':'Keeping Warm','Cook Finished':'Finished'};
+  const phases={'Meat On':'Cooking','Rest Start':'Resting','Keep Warm':'Keeping Warm','Serve / Slice / Pull':'Serving','Cook Finished':'Finished'};
   let phase=cook.phase==='Preparation'?'Preparation':'Cooking',at=start,rest=0,hold=0,lastTransition=null;
   const events=cook.events.map((event,index)=>({...event,index,time:Date.parse(event.at)})).filter(e=>phases[e.type] && e.time>=start && e.time<=end).sort((a,b)=>a.time-b.time || a.index-b.index);
   const accumulate=to=>{if(phase==='Resting')rest+=to-at;if(phase==='Keeping Warm')hold+=to-at;};
@@ -523,6 +568,7 @@ function assignedProbeLabel(cook,sample){
   if(assignment.measurement && assignment.measurement!=='Not recorded')parts.push(assignment.measurement);
   return parts.join(' · ');
 }
+
 
 
 
@@ -622,6 +668,26 @@ function renderProbeGuide(setup){
     $('probeGuideList').append(item);
   }
 }
+const structuredFields={piece:[['meatCut','Meat / cut','text',300],['packageWeight','Package weight','number'],['cookWeight','Cook / start weight','number'],['weightUnit','Weight unit',['lb','kg','g','oz']],['boneStatus','Bone',['','bone-in','boneless']],['brandProducer','Brand / producer','text',300],['storeSource','Store / source','text',300],['totalPrice','Total price ($)','number'],['pricePerLb','Price per lb ($)','number'],['gradeType','Grade / type','text',300],['meatNote','Meat notes','text',2000]],rub:[['name','Rub name','text',300],['level','Application',['Not recorded','Light','Normal','Heavy']],['notes','Application notes','text',2000]]};
+const rowContainer={piece:'meatPieceRows',rub:'rubApplicationRows'};
+function structuredRows(kind,numeric=true){return [...$(rowContainer[kind]).children].map((row,index)=>Object.fromEntries(structuredFields[kind].map(([key,label,type])=>{const value=$(kind+key+(index+1)).value;return [key,type==='number' && numeric?(value===''?null:Number(value)):value]})));}
+function rebuildStructuredRows(kind,values){
+ const container=$(rowContainer[kind]);container.replaceChildren();
+ values.forEach((value,index)=>{
+  const row=document.createElement('details');row.id=kind+'Row'+(index+1);const summary=document.createElement('summary');summary.textContent=(kind==='piece'?'Piece ':'Rub ')+(index+1)+(value[kind==='piece'?'meatCut':'name']?' · '+value[kind==='piece'?'meatCut':'name']:'');row.append(summary);
+  for(const [key,label,type,limit] of structuredFields[kind]){const wrapper=document.createElement('label');wrapper.append(label);const input=document.createElement(Array.isArray(type)?'select':key.endsWith('Note') || key==='notes'?'textarea':'input');input.id=kind+key+(index+1);
+   if(Array.isArray(type))for(const choice of type)input.append(new Option(choice || 'Not recorded',choice));else if(type==='number'){input.type='number';input.min='0';input.max='10000000';input.step='any';}else input.maxLength=limit;
+   input.value=value[key] ?? (kind==='piece' && key==='weightUnit'?'lb':kind==='rub' && key==='level'?'Not recorded':'');wrapper.append(input);row.append(wrapper);
+  }
+  const remove=document.createElement('button');remove.type='button';remove.id=kind+'Remove'+(index+1);remove.textContent=kind==='piece'?'Remove piece':'Remove rub detail';remove.onclick=()=>{const rows=structuredRows(kind,false);rows.splice(index,1);rebuildStructuredRows(kind,rows);$('profileForm').dispatchEvent(new Event('input',{bubbles:true}));};row.append(remove);container.append(row);
+ });
+}
+function addStructuredRow(kind){const rows=structuredRows(kind,false);if(rows.length>=(kind==='piece'?32:64)){feedback('profileForm','Maximum '+(kind==='piece'?'32 pieces':'64 rub details')+' reached.',true);return;}rows.push(kind==='piece'?blankMeatPiece():{name:'',level:'Not recorded',notes:''});rebuildStructuredRows(kind,rows);$(kind+'Row'+rows.length).open=true;$('profileForm').dispatchEvent(new Event('input',{bubbles:true}));}
+$('addMeatPiece').onclick=()=>addStructuredRow('piece');$('addRubApplication').onclick=()=>addStructuredRow('rub');
+let savedRecipeChoices=[];
+$('locationLibrary').onchange=e=>{const name=e.target.value;e.target.value='';if(!name)return;$('editLocation').value=name;$('editLocation').dispatchEvent(new Event('input',{bubbles:true}));};
+$('recipeLibrary').onchange=e=>{const recipe=savedRecipeChoices.find(r=>r.name===e.target.value);e.target.value='';if(!recipe)return;$('editMethod').value=recipe.name;$('methodChoice').value='__custom__';$('methodCustom').hidden=false;$('editRecipeReference').value=recipe.reference;$('editMethod').dispatchEvent(new Event('input',{bubbles:true}));};
+
 let view = 'cook';
 const drafts = new Map();
 const editForms = ['event','profileForm','reviewForm','targetsForm','wrapForm'];
@@ -654,7 +720,8 @@ function restoreDrafts() {
   for(const form of editForms){
     const draft=drafts.get(draftKey(form));
     if(draft && form==='profileForm')rebuildFireboardRows(Object.keys(draft).filter(id=>/^fbRole\d+$/.test(id)).map(id=>Number(id.slice(6))));
-    if(draft)for(const [id,value] of Object.entries(draft)){const e=$(id);if(e.type==='checkbox')e.checked=value;else e.value=value;}
+    if(draft){for(const kind of ['piece','rub']){const ids=[...new Set(Object.keys(draft).filter(id=>new RegExp('^'+kind+(kind==='piece'?'meatCut':'name')+'\\d+$').test(id)).map(id=>Number(id.match(/\d+$/)[0])))];rebuildStructuredRows(kind,ids.map(()=>kind==='piece'?blankMeatPiece():{name:'',level:'Not recorded',notes:''}));}}
+    if(draft)for(const [id,value] of Object.entries(draft)){const e=$(id);if(!e)continue;if(e.type==='checkbox')e.checked=value;else e.value=value;}
     feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
   }
   for(const kind of ['method','equipment'])$(kind+'Custom').hidden=$(kind+'Choice').value!=='__custom__';
@@ -749,6 +816,11 @@ async function render() {
     $('editStart').value=localDate(cook.startedAt);$('editFinish').value=localDate(cook.finishedAt);$('editTest').checked=!!cook.isTestCook;
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
     for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
+    $('editLocation').value=cook.cookingDetails?.location ?? cook.legacy?.lookups?.locations?.[0]?.name ?? '';
+    $('editRecipeReference').value=cook.cookingDetails?.recipeReference ?? cook.legacy?.lookups?.cook_methods?.[0]?.source_reference ?? '';
+    $('locationLibrary').replaceChildren(new Option('Choose saved location…',''),...setupChoices(state,'locations').map(name=>new Option(name,name)));
+    savedRecipeChoices=recipeChoices(state);$('recipeLibrary').replaceChildren(new Option('Choose saved method / recipe…',''),...savedRecipeChoices.map(r=>new Option(r.name,r.name)));
+    rebuildStructuredRows('piece',meatPiecesFor(cook));rebuildStructuredRows('rub',rubApplicationsFor(cook));
     $('editRating').value=cook.cookingDetails?.rating || '';
     loadFireboardSetup(cook.cookingDetails?.fireboardSetup);
     renderProbeGuide(cook.cookingDetails?.fireboardSetup);
@@ -827,7 +899,7 @@ for(const kind of ['equipment','rubs','sauces'])$(kind+'Library').onchange=e=>{
   const input=$('edit'+kind[0].toUpperCase()+kind.slice(1)),parts=input.value.split(';').map(s=>s.trim()).filter(Boolean);
   if(!parts.some(s=>s.toLocaleLowerCase()===name.toLocaleLowerCase()))parts.push(name);
   const value=parts.join('; ');if(value.length>input.maxLength){feedback('profileForm','This list is too long. Shorten it before adding another item.',true);return;}
-  input.value=value;if(kind==='equipment'){$('equipmentChoice').value='__custom__';$('equipmentCustom').hidden=false;}
+  input.value=value;if(kind==='rubs'){const rows=structuredRows('rub',false);if(!rows.some(r=>r.name.trim().toLowerCase()===name.toLowerCase()) && rows.length<64){rows.push({name,level:'Not recorded',notes:''});rebuildStructuredRows('rub',rows);}}if(kind==='equipment'){$('equipmentChoice').value='__custom__';$('equipmentCustom').hidden=false;}
   input.dispatchEvent(new Event('input',{bubbles:true}));
 };
 function refreshWrap(){$('wrapOther').hidden=$('wrapMethod').value!=='Other';$('wrapDetail').required=!$('wrapOther').hidden;}
@@ -848,7 +920,7 @@ $('targetsForm').onsubmit=e=>{e.preventDefault();if(current)action(async()=>{
   await store.targets(current,{unit:'F',pitF:$('pitTarget').value===''?null:Number($('pitTarget').value),meatF:$('meatTarget').value===''?null:Number($('meatTarget').value)},note);
   if(fromAction){drafts.delete(draftKey('event'));$('note').value='';}
 },'targetsForm');};
-$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value,fireboardSetup:fireboardSetupValue()};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,location:$('editLocation').value,recipeReference:$('editRecipeReference').value,meatPieces:structuredRows('piece'),rubApplications:structuredRows('rub'),rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value,fireboardSetup:fireboardSetupValue()};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}),'reviewForm');};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};

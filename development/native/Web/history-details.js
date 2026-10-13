@@ -30,10 +30,10 @@ export function reviewValues(cook) {
 }
 
 export function setupChoices(state,kind){
-  if(!['equipment','rubs','sauces'].includes(kind))throw Error('Unsupported setup library');
+  if(!['equipment','rubs','sauces','locations'].includes(kind))throw Error('Unsupported setup library');
   const names=new Map();
   const add=value=>{if(typeof value!=='string')return;const name=value.trim();if(name && name.length<=1000 && !names.has(name.toLocaleLowerCase()))names.set(name.toLocaleLowerCase(),name);};
   for(const archive of state.relationalArchives || [])for(const row of archive.tables?.[kind]?.rows || [])add(row.name);
-  for(const cook of state.records || [])if(!cook.isTestCook)for(const name of (typeof cook.cookingDetails?.[kind]==='string'?cook.cookingDetails[kind]:'').split(';'))add(name);
+  for(const cook of state.records || [])if(!cook.isTestCook)for(const name of (typeof cook.cookingDetails?.[kind==='locations'?'location':kind]==='string'?cook.cookingDetails[kind==='locations'?'location':kind]:'').split(';'))add(name);
   return [...names.values()].sort((a,b)=>a.localeCompare(b));
 }

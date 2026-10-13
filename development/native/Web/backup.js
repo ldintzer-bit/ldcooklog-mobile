@@ -1,3 +1,4 @@
+import { validateMeatPieces, validateRubApplications } from './setup-details.js';
 import { seriesKey } from './fireboard.js';
 /* Pure, independently testable backup and restore planning. */
 export const BACKUP_FORMAT = 'ldcooklog-local-backup';
@@ -41,6 +42,9 @@ export function validateCook(c) {
   if (!c.events.every(e => e && typeof e.type === 'string' && typeof e.at === 'string' && Number.isFinite(Date.parse(e.at)) && typeof e.note === 'string')) throw Error('Invalid cook events');
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
+  if(c.cookingDetails?.meatPieces!==undefined)validateMeatPieces(c.cookingDetails.meatPieces);
+  if(c.cookingDetails?.rubApplications!==undefined)validateRubApplications(c.cookingDetails.rubApplications);
+  for(const [key,limit] of [['location',300],['recipeReference',2000]])if(c.cookingDetails?.[key]!==undefined && (typeof c.cookingDetails[key]!=='string' || c.cookingDetails[key].length>limit))throw Error('Invalid '+key);
   if(c.targets!==undefined)validateTargets(c.targets);
   for(const event of c.events){if(event.wrapMethod!==undefined)validateWrap(event);if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
   const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);

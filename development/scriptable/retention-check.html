@@ -1,5 +1,6 @@
-<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-60QZRvu61g+/orRLsU5EZjwIuNbkQg44pQBdJ76k84c='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
+<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-dB9TvCOG/WUk9ZVevb+e65ffYhWkmZYEvSWke2ZgPcE='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
 (() => {
+
 
 /* Pure, independently testable backup and restore planning. */
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
@@ -43,6 +44,9 @@ function validateCook(c) {
   if (!c.events.every(e => e && typeof e.type === 'string' && typeof e.at === 'string' && Number.isFinite(Date.parse(e.at)) && typeof e.note === 'string')) throw Error('Invalid cook events');
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
+  if(c.cookingDetails?.meatPieces!==undefined)validateMeatPieces(c.cookingDetails.meatPieces);
+  if(c.cookingDetails?.rubApplications!==undefined)validateRubApplications(c.cookingDetails.rubApplications);
+  for(const [key,limit] of [['location',300],['recipeReference',2000]])if(c.cookingDetails?.[key]!==undefined && (typeof c.cookingDetails[key]!=='string' || c.cookingDetails[key].length>limit))throw Error('Invalid '+key);
   if(c.targets!==undefined)validateTargets(c.targets);
   for(const event of c.events){if(event.wrapMethod!==undefined)validateWrap(event);if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
   const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);
@@ -288,14 +292,15 @@ function comparisonSeries(cook, key) {
 
 
 
-const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+
+const cookTransitions = { 'Serve / Slice / Pull': [['Cooking','Resting','Keeping Warm'], 'Serving'], 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm','Serving'], 'Finished'] };
 function lidIsOpen(cook){return (cook.events || []).filter(e=>e.type==='Lid Open' || e.type==='Lid Closed').at(-1)?.type==='Lid Open';}
 function availableActions(cook) {
   const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
   if(phase==='Finished')return [];
   const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
-  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Note']);
-  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
+  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Spritz','Note']);
+  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Serve / Slice / Pull','Spritz','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
 }
 const FORMAT = 'ldcooklog-recovery';
 const emptyState = () => ({ records: [], relationalArchives: [] });
@@ -396,6 +401,9 @@ class CookStore {
       }
       if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
       if(value.fireboardSetup!==undefined)cook.cookingDetails.fireboardSetup=structuredClone(validateFireboardSetup(value.fireboardSetup));
+      for(const [key,limit] of [['location',300],['recipeReference',2000]])if(value[key]!==undefined){if(typeof value[key]!=='string' || value[key].length>limit)throw Error('Invalid '+key);cook.cookingDetails[key]=value[key];}
+      if(value.meatPieces!==undefined)cook.cookingDetails.meatPieces=structuredClone(validateMeatPieces(value.meatPieces));
+      if(value.rubApplications!==undefined)cook.cookingDetails.rubApplications=structuredClone(validateRubApplications(value.rubApplications));
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });

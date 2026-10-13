@@ -12,7 +12,7 @@ export function cookTimers(cook,now=Date.now()){
   if(cook.phase==='Finished' && !finish)return {waiting:false,totalMs:null,phaseMs:null,restMs:null,holdMs:null};
   const end=finish?Date.parse(finish):now;
   if(!Number.isFinite(start) || !Number.isFinite(end) || end<start)return {waiting:true,totalMs:0,phaseMs:null,restMs:0,holdMs:0};
-  const phases={'Meat On':'Cooking','Rest Start':'Resting','Keep Warm':'Keeping Warm','Cook Finished':'Finished'};
+  const phases={'Meat On':'Cooking','Rest Start':'Resting','Keep Warm':'Keeping Warm','Serve / Slice / Pull':'Serving','Cook Finished':'Finished'};
   let phase=cook.phase==='Preparation'?'Preparation':'Cooking',at=start,rest=0,hold=0,lastTransition=null;
   const events=cook.events.map((event,index)=>({...event,index,time:Date.parse(event.at)})).filter(e=>phases[e.type] && e.time>=start && e.time<=end).sort((a,b)=>a.time-b.time || a.index-b.index);
   const accumulate=to=>{if(phase==='Resting')rest+=to-at;if(phase==='Keeping Warm')hold+=to-at;};
