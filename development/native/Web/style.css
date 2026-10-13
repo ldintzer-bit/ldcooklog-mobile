@@ -15,3 +15,5 @@ nav{display:flex;gap:8px;position:sticky;top:0;background:#15201c;padding:10px 0
 #fireboardPanel{border:1px solid #68766a;border-radius:8px;padding:8px 12px;margin:16px 0}#fbChannels>details{border-top:1px solid #68766a;padding:4px 0}#fbChannels summary{font-weight:600}
 
 #probeGuideList p{border-left:4px solid #88998a;padding-left:10px}#probeGuideList .probe-orange{border-color:#f5a24a}#probeGuideList .probe-silver{border-color:#c3c9cf}
+/* Keep draft acknowledgement changes from shifting controls while typing. */
+#draftPersistence:not([hidden]){min-height:4.5em}

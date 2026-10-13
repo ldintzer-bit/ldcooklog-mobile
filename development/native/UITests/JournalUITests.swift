@@ -19,12 +19,24 @@ final class JournalUITests: XCTestCase {
         }
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 10))
         food.typeText("Synthetic simulator ribs")
+        let entered = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Synthetic simulator ribs"), object: food)
+        guard XCTWaiter.wait(for: [entered], timeout: 20) == .completed else {
+            XCTFail("Typed cook name did not remain in the field: \(web.debugDescription)")
+            return
+        }
+        let protectedDraft = web.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Drafts saved on this phone")).firstMatch
+        guard protectedDraft.waitForExistence(timeout: 30) else {
+            XCTFail("Native private draft was not acknowledged: \(web.debugDescription)")
+            return
+        }
         let create = web.buttons["Create cook"]
         if !create.isHittable { app.swipeUp() }
         create.tap()
         let history = web.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Synthetic simulator ribs")).firstMatch
-        if !history.isHittable { app.swipeUp() }
-        XCTAssertTrue(history.waitForExistence(timeout: 20))
+        guard history.waitForExistence(timeout: 30) else {
+            XCTFail("Cook creation did not appear after a protected draft: \(web.debugDescription)")
+            return
+        }
         app.terminate()
         app.launch()
         let reopened = app.webViews.firstMatch
