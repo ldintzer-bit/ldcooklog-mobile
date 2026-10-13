@@ -297,7 +297,11 @@ function updateTimers(){
   const text=timers.waiting?'Timers start at the recorded start time.':`${phase==='Preparation'?'Preparation elapsed':'Total elapsed'} ${elapsedText(timers.totalMs)}${phase!=='Finished'?' · '+phase+' '+elapsedText(timers.phaseMs):''} · Rest total ${elapsedText(timers.restMs)} · Hold total ${elapsedText(timers.holdMs)}`;
   if($('timers').textContent!==text)$('timers').textContent=text;
 }
-$('targetsForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.targets(current,{unit:'F',pitF:$('pitTarget').value===''?null:Number($('pitTarget').value),meatF:$('meatTarget').value===''?null:Number($('meatTarget').value)},$('targetNote').value),'targetsForm');};
+$('targetsForm').onsubmit=e=>{e.preventDefault();if(current)action(async()=>{
+  const note=$('targetNote').value,fromAction=$('type').value==='Target Change' && $('note').value===note;
+  await store.targets(current,{unit:'F',pitF:$('pitTarget').value===''?null:Number($('pitTarget').value),meatF:$('meatTarget').value===''?null:Number($('meatTarget').value)},note);
+  if(fromAction){drafts.delete(draftKey('event'));$('note').value='';}
+},'targetsForm');};
 $('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value,fireboardSetup:fireboardSetupValue()};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}),'reviewForm');};
@@ -336,7 +340,11 @@ $('new').onsubmit = e => { e.preventDefault(); if (!damaged) action(async () => 
   showView('cook');
 },'new'); };
 function saveEvent(type) {
-  if(type==='Target Change'){$('targetsPanel').open=true;$('pitTarget').focus();return;}
+  if(type==='Target Change'){
+    $('targetsPanel').open=true;
+    if(!$('targetNote').value && $('note').value){$('targetNote').value=$('note').value;$('targetsForm').dispatchEvent(new Event('input',{bubbles:true}));}
+    $('pitTarget').focus();return;
+  }
   if(current)action(async()=>{await store.event(current,type,$('note').value);$('note').value='';},'event');
 }
 $('event').onsubmit = e => { e.preventDefault();saveEvent($('type').value); };
