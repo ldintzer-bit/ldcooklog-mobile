@@ -6,7 +6,7 @@ export function validateMeatPieces(rows){
  if(!Array.isArray(rows) || rows.length>32)throw Error('Use up to 32 meat pieces');
  for(const row of rows){if(!row || typeof row!=='object' || Array.isArray(row))throw Error('Invalid meat piece');
   for(const [key,limit] of Object.entries(pieceTextLimits))if(typeof row[key]!=='string' || row[key].length>limit)throw Error('Invalid meat piece '+key);
-  if(!['','bone-in','boneless'].includes(row.boneStatus) || !['lb','kg','g','oz'].includes(row.weightUnit))throw Error('Invalid meat piece unit or bone status');
+  if(!['','bone-in','boneless'].includes(row.boneStatus) || !['','lb','kg','g','oz'].includes(row.weightUnit))throw Error('Invalid meat piece unit or bone status');
   for(const key of pieceNumbers)if(row[key]!==null && (!Number.isFinite(row[key]) || row[key]<0 || row[key]>10000000))throw Error('Meat weights and prices must be nonnegative numbers or blank');
  }
  return rows;
@@ -21,7 +21,7 @@ export function meatPiecesFor(cook){
  return (cook.legacy?.related?.cook_meat_pieces || []).slice().sort((a,b)=>a.piece_number-b.piece_number).map(row=>{
   const piece=blankMeatPiece();for(const [key,source] of Object.entries({meatCut:'meat_cut',boneStatus:'bone_status',brandProducer:'brand_producer',storeSource:'store_source',gradeType:'grade_type',meatNote:'meat_note'}))piece[key]=String(row[source] ?? '');
   for(const [key,source] of Object.entries({packageWeight:'package_weight',cookWeight:'cook_weight',totalPrice:'total_price',pricePerLb:'price_per_lb'}))piece[key]=row[source]===null || row[source]===undefined || row[source]===''?null:Number(row[source]);
-  piece.weightUnit=row.weight_unit || 'lb';return piece;
+  piece.weightUnit=row.weight_unit || '';return piece;
  });
 }
 export function rubApplicationsFor(cook){

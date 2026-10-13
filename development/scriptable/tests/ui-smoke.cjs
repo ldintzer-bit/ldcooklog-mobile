@@ -153,7 +153,7 @@ function manager(root) {
     for(const kind of ['equipment','rubs','sauces'])tables[kind]={columns:['id','name'],rows:[{id:'synthetic-'+kind,name:'Synthetic archive '+kind}]};
     tables.locations={columns:['id','name'],rows:[{id:'synthetic-location',name:'Synthetic saved cottage'}]};
     tables.cook_methods={columns:['id','name','source_reference'],rows:[{id:'synthetic-recipe',name:'Synthetic saved recipe',source_reference:'Synthetic book page 3'}]};
-    tables.cook_meat_pieces={columns:['id','cook_id','piece_number','meat_cut','cook_weight','weight_unit','total_price'],rows:[{id:'synthetic-piece',cook_id:'synthetic-large-0',piece_number:1,meat_cut:'Synthetic archived piece',cook_weight:0,weight_unit:'kg',total_price:0}]};
+    tables.cook_meat_pieces={columns:['id','cook_id','piece_number','meat_cut','cook_weight','weight_unit','total_price'],rows:[{id:'synthetic-piece',cook_id:'synthetic-large-0',piece_number:'1',meat_cut:'Synthetic archived piece',cook_weight:'0',weight_unit:'kg',total_price:'0'}]};
     tables.cook_rubs={columns:['id','cook_id','rub_id','application_level','notes'],rows:[{id:'synthetic-link',cook_id:'synthetic-large-0',rub_id:'synthetic-rubs',application_level:'Light',notes:'Synthetic archived rub note'}]};
     tables.cooks={columns:['id','food','start_time'],rows:[]};
     tables.events={columns:['id','cook_id','event_type','event_time','note'],rows:[]};

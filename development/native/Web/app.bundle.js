@@ -8,7 +8,7 @@ function validateMeatPieces(rows){
  if(!Array.isArray(rows) || rows.length>32)throw Error('Use up to 32 meat pieces');
  for(const row of rows){if(!row || typeof row!=='object' || Array.isArray(row))throw Error('Invalid meat piece');
   for(const [key,limit] of Object.entries(pieceTextLimits))if(typeof row[key]!=='string' || row[key].length>limit)throw Error('Invalid meat piece '+key);
-  if(!['','bone-in','boneless'].includes(row.boneStatus) || !['lb','kg','g','oz'].includes(row.weightUnit))throw Error('Invalid meat piece unit or bone status');
+  if(!['','bone-in','boneless'].includes(row.boneStatus) || !['','lb','kg','g','oz'].includes(row.weightUnit))throw Error('Invalid meat piece unit or bone status');
   for(const key of pieceNumbers)if(row[key]!==null && (!Number.isFinite(row[key]) || row[key]<0 || row[key]>10000000))throw Error('Meat weights and prices must be nonnegative numbers or blank');
  }
  return rows;
@@ -23,7 +23,7 @@ function meatPiecesFor(cook){
  return (cook.legacy?.related?.cook_meat_pieces || []).slice().sort((a,b)=>a.piece_number-b.piece_number).map(row=>{
   const piece=blankMeatPiece();for(const [key,source] of Object.entries({meatCut:'meat_cut',boneStatus:'bone_status',brandProducer:'brand_producer',storeSource:'store_source',gradeType:'grade_type',meatNote:'meat_note'}))piece[key]=String(row[source] ?? '');
   for(const [key,source] of Object.entries({packageWeight:'package_weight',cookWeight:'cook_weight',totalPrice:'total_price',pricePerLb:'price_per_lb'}))piece[key]=row[source]===null || row[source]===undefined || row[source]===''?null:Number(row[source]);
-  piece.weightUnit=row.weight_unit || 'lb';return piece;
+  piece.weightUnit=row.weight_unit || '';return piece;
  });
 }
 function rubApplicationsFor(cook){
@@ -668,7 +668,7 @@ function renderProbeGuide(setup){
     $('probeGuideList').append(item);
   }
 }
-const structuredFields={piece:[['meatCut','Meat / cut','text',300],['packageWeight','Package weight','number'],['cookWeight','Cook / start weight','number'],['weightUnit','Weight unit',['lb','kg','g','oz']],['boneStatus','Bone',['','bone-in','boneless']],['brandProducer','Brand / producer','text',300],['storeSource','Store / source','text',300],['totalPrice','Total price ($)','number'],['pricePerLb','Price per lb ($)','number'],['gradeType','Grade / type','text',300],['meatNote','Meat notes','text',2000]],rub:[['name','Rub name','text',300],['level','Application',['Not recorded','Light','Normal','Heavy']],['notes','Application notes','text',2000]]};
+const structuredFields={piece:[['meatCut','Meat / cut','text',300],['packageWeight','Package weight','number'],['cookWeight','Cook / start weight','number'],['weightUnit','Weight unit',['','lb','kg','g','oz']],['boneStatus','Bone',['','bone-in','boneless']],['brandProducer','Brand / producer','text',300],['storeSource','Store / source','text',300],['totalPrice','Total price ($)','number'],['pricePerLb','Price per lb ($)','number'],['gradeType','Grade / type','text',300],['meatNote','Meat notes','text',2000]],rub:[['name','Rub name','text',300],['level','Application',['Not recorded','Light','Normal','Heavy']],['notes','Application notes','text',2000]]};
 const rowContainer={piece:'meatPieceRows',rub:'rubApplicationRows'};
 function structuredRows(kind,numeric=true){return [...$(rowContainer[kind]).children].map((row,index)=>Object.fromEntries(structuredFields[kind].map(([key,label,type])=>{const value=$(kind+key+(index+1)).value;return [key,type==='number' && numeric?(value===''?null:Number(value)):value]})));}
 function rebuildStructuredRows(kind,values){
