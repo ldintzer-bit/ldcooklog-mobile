@@ -53,7 +53,7 @@ function cookingActions(cook) {
   if(options.includes(previous))$('type').value=previous;
   $('quickActions').replaceChildren();
   for(const type of options.filter(t=>!['Note','Target Change'].includes(t))){
-    const button=document.createElement('button');button.textContent=type;
+    const button=document.createElement('button');button.textContent=type;button.dataset.final=String(type==='Cook Finished');
     button.onclick=()=>saveEvent(type);$('quickActions').append(button);
   }
   $('event').querySelector('button').disabled=busy || options.length===0;
@@ -208,7 +208,7 @@ async function action(work, form = null) {
   for(const [e] of lockedFields)e.disabled=true;
   try {
     const changed = await work();
-    if(changed!==false){if(key)drafts.delete(key);damaged=false;}
+    if(changed!==false){if(key)drafts.delete(key);damaged=false;$('backupBrief').textContent='Saved locally · checking backups';}
     await render();
     const text=changed===false?'Cancelled. Your journal was unchanged.':'Saved on this device. A recovery snapshot was created automatically.';
     status(text);if(form)feedback(form,text);updateDraftNotice();

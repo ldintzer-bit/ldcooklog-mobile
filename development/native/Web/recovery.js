@@ -7,7 +7,8 @@ export function availableActions(cook) {
   const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
   if(phase==='Finished')return [];
   const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
-  return [...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note'];
+  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note']);
+  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Target Change','Note'].filter(type=>allowed.has(type));
 }
 export const FORMAT = 'ldcooklog-recovery';
 export const emptyState = () => ({ records: [], relationalArchives: [] });

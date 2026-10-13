@@ -1,4 +1,4 @@
-<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mZUCzJpfZjchrg1fT40u4qYjS8bnkTOYCI2jZNFaj5g='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
+<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KMb5LvaGi+pETu5mXldYt8pxnWibBi3K22lQ971Udc8='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
 (() => {
 /* Pure, independently testable backup and restore planning. */
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
@@ -253,7 +253,8 @@ function availableActions(cook) {
   const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
   if(phase==='Finished')return [];
   const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
-  return [...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note'];
+  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note']);
+  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Target Change','Note'].filter(type=>allowed.has(type));
 }
 const FORMAT = 'ldcooklog-recovery';
 const emptyState = () => ({ records: [], relationalArchives: [] });

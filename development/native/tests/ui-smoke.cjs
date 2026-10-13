@@ -44,6 +44,7 @@ const {createHash} = require('node:crypto');
       await page.locator('#type').selectOption(type); await page.locator('#event button').click();
       await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     }
+    await page.locator('#phase').filter({hasText:'Finished'}).waitFor();
     assert.equal(JSON.parse(JSON.parse(current).payload).state.records[0].events.length,5);
     assert.equal(snapshots.length,6);
     await context.setOffline(true); await page.reload();
@@ -161,6 +162,8 @@ const {createHash} = require('node:crypto');
     await page.locator('#count').filter({hasText:'2 of 2'}).waitFor();
     await page.locator('#history button').first().click();
     await page.locator('#title').filter({hasText:'Synthetic second cook'}).waitFor();
+    await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
+    await page.waitForTimeout(100);
     if(process.env.LDC_UI_SCREENSHOT)console.log('SYNTHETIC_UI_PNG:'+ (await page.screenshot({fullPage:true})).toString('base64'));
     console.log('PASS: Cook/History/Backups navigation, compact backup summary, collapsible panels, automatic cook opening, valid quick actions, nearby save feedback, per-cook drafts across filtering/switching/other saves, failed-save preservation.');
     console.log('PASS: structured preparation and evaluation survive offline reopening.');
