@@ -220,3 +220,14 @@ test('corrupt older snapshots stop retention and deletion failures preserve curr
  const file=path.join(f.journal,fs.readdirSync(f.journal).sort()[1]),original=fs.readFileSync(file,'utf8');fs.writeFileSync(file,'damaged');await f.store.backupStatus();assert.equal(fs.readdirSync(f.journal).length,23);
  fs.writeFileSync(file,original);f.cloud.remove=()=>{throw Error('disk issue')};const result=await f.store.backupStatus();assert.match(result.message,/cleanup paused/);assert.equal(await f.store.read(),last);assert.equal(fs.readdirSync(f.journal).length,23);
 });
+
+test('private draft generations survive reopening, stay bounded and never enter journal/cloud backups',async t=>{
+ const {sealDrafts}=await import('../../native/Web/drafts.js');const {store,config,journal}=setup(t);const saved=await snapshot(1);await store.commit(saved,0);const files=fs.readdirSync(journal);
+ let latest;for(let i=0;i<8;i++){latest=await sealDrafts([{key:'new:new',base:'new',fields:{food:'Draft '+i}}]);await store.writeDrafts(latest);}
+ assert.equal((await createStorage(config).readDrafts())[0],latest);assert.equal((await store.readDrafts()).length,3);assert.deepEqual(fs.readdirSync(journal),files);assert.equal(await store.read(),saved);
+ const trial=createStorage({...config,namespace:'restore-check'});assert.deepEqual(await trial.readDrafts(),[]);
+});
+test('failed draft writes preserve the last readable draft and all cooking snapshots',async t=>{
+ const {sealDrafts}=await import('../../native/Web/drafts.js');const {store,local,config}=setup(t);const good=await sealDrafts([{key:'new:new',base:'new',fields:{food:'Keep this'}}]);await store.writeDrafts(good);const write=local.writeString;local.writeString=(p,text)=>{if(p.includes('/drafts/'))throw Error('Synthetic draft disk full');return write(p,text)};
+ await assert.rejects(store.writeDrafts(await sealDrafts([])),/disk full/);assert.deepEqual(await createStorage(config).readDrafts(),[good]);assert.equal(await store.read(),null);
+});

@@ -17,7 +17,7 @@
       text.textContent = message;
       const yes = document.createElement('button'), no = document.createElement('button');
       yes.id = 'ldc-confirm-yes'; no.id = 'ldc-confirm-no';
-      yes.textContent = message.startsWith('Restore ') ? 'Restore recovery copy' : 'Import database export';
+      yes.textContent = message.startsWith('Restore ') ? 'Restore recovery copy' : message.startsWith('Finish ')?'Finish cook':message.startsWith('Discard ')?'Discard unsaved drafts':'Import database export';
       no.textContent = 'Cancel';
       function finish(answer) {
         panel.remove(); active = false; document.removeEventListener('keydown',escape);

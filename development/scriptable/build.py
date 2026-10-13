@@ -12,7 +12,7 @@ window.__ldcVerify = text => unseal(JSON.parse(text));
 window.__ldcReseal = async (text, revision) => JSON.stringify(await seal((await unseal(JSON.parse(text))).state, revision));
 })();
 '''
-assert app.count('if (!confirm(') == 2, 'Review Scriptable confirmation substitutions after upstream changes'
+assert app.count('if (!confirm(') == 5, 'Review Scriptable confirmation substitutions after upstream changes'
 app = app.replace('if (!confirm(', 'if (!await window.__ldcConfirm(')
 app = app.replace("button.onclick = () => action(async () => restore(JSON.parse(await call('readSnapshot',{token:snapshot.token}))));", "button.onclick = () => action(async () => { status('Reading selected recovery copy…'); $('status').scrollIntoView({behavior:'smooth'}); return restore(JSON.parse(await call('readSnapshot',{token:snapshot.token}))); });")
 # Read delivery starts asynchronous checksum/schema validation in the page.

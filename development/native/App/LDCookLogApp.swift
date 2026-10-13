@@ -1,6 +1,11 @@
 import SwiftUI
 import WebKit
 import RecoveryCore
+#if os(macOS)
+import AppKit
+#else
+import UIKit
+#endif
 
 @main
 struct LDCookLogApp: App {
@@ -19,7 +24,7 @@ struct CookingView: UIViewRepresentable {
     func updateUIView(_ view: WKWebView, context: Context) {}
 }
 #endif
-final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate {
+final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDelegate, WKUIDelegate {
     var allowedRoot = ""
     func makeWebView() -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -27,6 +32,7 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDeleg
         configuration.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "recovery")
         let view = WKWebView(frame: .zero, configuration: configuration)
         view.navigationDelegate = self
+        view.uiDelegate = self
         let folder = Bundle.main.url(forResource: "Web", withExtension: nil)!
         allowedRoot = folder.standardizedFileURL.path + "/"
         view.loadFileURL(folder.appendingPathComponent("index.html"), allowingReadAccessTo: folder)
@@ -50,7 +56,16 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDeleg
                 let store = try self.initialize()
                 let result: Any
                 switch operation {
-                case "read": result = try store.read().flatMap { String(data: $0, encoding: .utf8) } as Any? ?? NSNull()
+                case "read":
+                    let journal: Any = try store.read().flatMap { String(data: $0, encoding: .utf8) } as Any? ?? NSNull()
+                    if body["includeDrafts"] as? Bool == true {
+                        var drafts: [String] = [], draftError = ""
+                        do { drafts = try store.readDrafts() } catch { draftError = "Private drafts could not be read" }
+                        result = ["journal": journal, "drafts": drafts, "draftError": draftError]
+                    } else { result = journal }
+                case "writeDrafts":
+                    guard let text = body["text"] as? String else { throw RecoveryError.damaged }
+                    try store.writeDrafts(Data(text.utf8)); result = true
                 case "commit":
                     guard let text = body["text"] as? String, let revision = body["expectedRevision"] as? Int else { throw RecoveryError.damaged }
                     try store.commit(Data(text.utf8), expectedRevision: revision)
@@ -70,6 +85,23 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply, WKNavigationDeleg
                 DispatchQueue.main.async { replyHandler(nil, error.localizedDescription) }
             }
         }
+    }
+    func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String, initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
+        guard frame.isMainFrame, let url = frame.request.url, url.isFileURL, url.standardizedFileURL.path.hasPrefix(allowedRoot) else { completionHandler(false); return }
+        let label = message.hasPrefix("Finish ") ? "Finish cook" : message.hasPrefix("Discard ") ? "Discard unsaved drafts" : message.hasPrefix("Restore ") ? "Restore recovery copy" : "Import database export"
+        #if os(macOS)
+        let alert = NSAlert(); alert.messageText = "Confirm journal change"; alert.informativeText = message
+        alert.addButton(withTitle: "Cancel"); alert.addButton(withTitle: label)
+        completionHandler(alert.runModal() == .alertSecondButtonReturn)
+        #else
+        guard var presenter = webView.window?.rootViewController else { completionHandler(false); return }
+        while let presented = presenter.presentedViewController { presenter = presented }
+        guard !(presenter is UIAlertController) else { completionHandler(false); return }
+        let alert = UIAlertController(title: "Confirm journal change", message: message, preferredStyle: .alert)
+        let cancel = UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) }
+        alert.addAction(cancel); alert.addAction(UIAlertAction(title: label, style: .destructive) { _ in completionHandler(true) }); alert.preferredAction = cancel
+        presenter.present(alert, animated: true)
+        #endif
     }
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         let url = navigationAction.request.url

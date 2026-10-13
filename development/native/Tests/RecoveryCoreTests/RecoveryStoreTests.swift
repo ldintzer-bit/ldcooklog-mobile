@@ -58,4 +58,23 @@ final class RecoveryStoreTests: XCTestCase {
         XCTAssertThrowsError(try store.repair(Data("{}".utf8)))
         XCTAssertEqual(try store.read(), first)
     }
+    func testPrivateDraftsReopenWithoutChangingJournalOrSnapshots() throws {
+        let root = try directory(), store = try RecoveryStore(root: root)
+        let saved = try snapshot(1); try store.commit(saved, expectedRevision: 0)
+        var latest = Data()
+        for index in 0..<8 {
+            let payload = "Private synthetic draft \(index) 🍖"
+            let digest = SHA256.hash(data: Data(payload.utf8)).map { String(format: "%02x", $0) }.joined()
+            latest = try JSONSerialization.data(withJSONObject: ["format": "ldcooklog-private-drafts", "payload": payload, "sha256": digest])
+            try store.writeDrafts(latest)
+        }
+        let reopened = try RecoveryStore(root: root)
+        XCTAssertEqual(try reopened.readDrafts().count, 3)
+        XCTAssertEqual(try reopened.readDrafts().first, String(data: latest, encoding: .utf8))
+        XCTAssertEqual(try reopened.read(), saved)
+        XCTAssertEqual(try reopened.files().count, 1)
+        XCTAssertThrowsError(try reopened.writeDrafts(Data("invalid".utf8)))
+        XCTAssertEqual(try reopened.readDrafts().count, 3)
+    }
+
 }

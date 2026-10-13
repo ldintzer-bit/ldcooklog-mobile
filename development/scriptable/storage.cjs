@@ -203,8 +203,24 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
     if (body.revision !== source.revision) throw Error('Recovery snapshot revision mismatch');
     return text;
   }
+  const draftRoot=local.joinPath(root,'drafts');
+  const draftPattern=/^([0-9]{16})-([a-f0-9-]{36})\.draft\.json$/i;
+  const draftFiles=()=>local.fileExists(draftRoot)?local.listContents(draftRoot).filter(name=>draftPattern.test(name)).sort().reverse():[];
+  function readDrafts(){return draftFiles().slice(0,3).map(name=>{try{return local.readString(local.joinPath(draftRoot,name));}catch{return '';}});}
+  function writeDrafts(text){
+    if(typeof text!=='string' || encodeURIComponent(text).replace(/%[A-F0-9]{2}/g,'x').length>2097152)throw Error('Private drafts exceed 2 MiB');
+    const envelope=JSON.parse(text);if(envelope.format!=='ldcooklog-private-drafts' || typeof envelope.payload!=='string' || !/^[a-f0-9]{64}$/.test(envelope.sha256))throw Error('Invalid private draft document');
+    local.createDirectory(draftRoot,true);const files=draftFiles(),revision=files.length?Number(files[0].slice(0,16))+1:1;if(files.length>=10)throw Error('Private draft cleanup needs attention; save edits to the journal');if(!Number.isSafeInteger(revision))throw Error('Invalid draft revision');
+    const target=local.joinPath(draftRoot,String(revision).padStart(16,'0')+'-'+uuid()+'.draft.json');
+    try{local.writeString(target,text);if(local.readString(target)!==text)throw Error('Private draft read-back failed');}
+    catch(error){try{if(local.fileExists(target))local.remove(target);}catch{}throw error;}
+    for(const name of draftFiles().slice(JSON.parse(envelope.payload).entries?.length===0?1:3)){try{local.remove(local.joinPath(draftRoot,name));}catch{}}
+    return true;
+  }
   return {
     read: () => serialized(read),
+    readDrafts: () => serialized(readDrafts),
+    writeDrafts: text => serialized(() => writeDrafts(text)),
     commit: (text, expectedRevision) => serialized(() => append(text, expectedRevision)),
     repair: (text, reseal) => serialized(() => append(text, null, reseal)),
     backupStatus: () => serialized(backupStatus),

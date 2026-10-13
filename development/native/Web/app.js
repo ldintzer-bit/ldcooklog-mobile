@@ -1,3 +1,4 @@
+import { draftBase, sealDrafts, readDrafts } from './drafts.js';
 import { blankMeatPiece, meatPiecesFor, rubApplicationsFor, recipeChoices } from './setup-details.js';
 import { CookStore, unseal, availableActions, lidIsOpen } from './recovery.js';
 import { RELATIONAL_FORMAT } from './migration.js';
@@ -6,7 +7,8 @@ import { originalCookingDetails, reviewValues, setupChoices } from './history-de
 import { cookTargets, targetText, cookTimers, elapsedText, assignedProbeLabel } from './cook-tools.js';
 const $ = id => document.getElementById(id);
 const call = (operation, args = {}) => (window.ldcooklogHost || window.webkit.messageHandlers.recovery).postMessage({operation, ...args});
-const store = new CookStore({ read: () => call('read'), commit: (text, expectedRevision) => call('commit', {text, expectedRevision}) });
+let requestedDrafts=false;
+const store = new CookStore({ read: async () => {const includeDrafts=!requestedDrafts,response=await call('read',{includeDrafts});if(includeDrafts){requestedDrafts=true;if(response && typeof response==='object'){await initialDrafts(response);return response.journal;}draftError='This host cannot protect private drafts yet';draftCacheBlocked=true;}return response;}, commit: (text, expectedRevision) => call('commit', {text, expectedRevision}) });
 let current = null, busy = false, damaged = false, journal = [];
 const comparisonSelections=new Map();
 const comparisonSlots=[['compareCook','compareProbe'],['compareCook2','compareProbe2'],['compareCook3','compareProbe3']];
@@ -119,6 +121,30 @@ $('recipeLibrary').onchange=e=>{const recipe=savedRecipeChoices.find(r=>r.name==
 
 let view = 'cook';
 const drafts = new Map();
+let draftWriteQueue=Promise.resolve(),draftBases=new Map(),pendingDraftEntries=null,draftCacheBlocked=false,draftError='',draftGeneration=0;
+function draftFeedback(text,error=false){$('draftPersistence').hidden=!text;$('draftPersistence').textContent=text;$('draftPersistence').dataset.error=String(error);$('discardDrafts').hidden=!drafts.size && !draftCacheBlocked;}
+async function initialDrafts(response){
+ if(response.draftError){draftError=response.draftError;draftCacheBlocked=true;return;}
+ try{const loaded=await readDrafts(response.drafts);pendingDraftEntries=loaded.entries;if(loaded.recovered)draftError='Recovered an earlier private draft copy. Review edits before saving.';}catch(error){draftError=error.message;draftCacheBlocked=true;}
+}
+function currentDraftBase(id,form){return form==='new'?'new:'+JSON.stringify(journal.map(c=>c.id).sort()):draftBase(journal.find(c=>c.id===id),form);}
+function hydrateDrafts(){
+ if(pendingDraftEntries===null)return;
+ for(const entry of pendingDraftEntries){const split=entry.key.lastIndexOf(':'),id=entry.key.slice(0,split),form=entry.key.slice(split+1),cook=journal.find(c=>c.id===id);if(entry.base===currentDraftBase(id,form)){drafts.set(entry.key,entry.fields);draftBases.set(entry.key,entry.base);}}
+ pendingDraftEntries=null;
+ const newDraft=drafts.get('new:new');if(newDraft)for(const e of fields('new'))if(Object.hasOwn(newDraft,e.id)){if(e.type==='checkbox')e.checked=newDraft[e.id];else e.value=newDraft[e.id];}
+ updateDraftNotice();draftFeedback(draftError || (drafts.size?'Private drafts restored on this phone. Tap Save to add edits to cooking backups.':''),!!draftError);
+}
+function persistDrafts(force=false){
+ if(draftCacheBlocked && !force){draftFeedback(draftError+' Save edits to the journal, or explicitly discard private drafts.',true);return Promise.resolve(false);}
+ const generation=++draftGeneration,entries=[...drafts].map(([key,fields])=>({key,base:draftBases.get(key) ?? 'new',fields:structuredClone(fields)}));
+ if(entries.length)draftFeedback('Saving private drafts on this phone…');
+ const task=draftWriteQueue.then(async()=>{const text=await sealDrafts(entries);await call('writeDrafts',{text});if(generation===draftGeneration){draftError='';draftCacheBlocked=false;draftFeedback(drafts.size?'Drafts saved on this phone. Tap Save to include them in cooking backups.':'');}return true;});
+ draftWriteQueue=task.catch(error=>{draftError='Draft protection unavailable: '+error.message;if(generation===draftGeneration)draftFeedback(draftError+' Keep this screen open and save your edits.',true);return false;});
+ return draftWriteQueue;
+}
+$('discardDrafts').onclick=async()=>{let discarded=false;await action(async()=>{if (!confirm('Discard all unsaved drafts on this phone? Saved cooking records and recovery snapshots are kept.'))return false;const previous=new Map(drafts),previousBases=new Map(draftBases);drafts.clear();draftBases.clear();discarded=await persistDrafts(true);if(discarded)$('new').reset();if(!discarded){for(const [key,value] of previous)drafts.set(key,value);draftBases=previousBases;}return false;});if(discarded)status('Unsaved drafts discarded. Saved cooking records and recovery snapshots are unchanged.');};
+
 const editForms = ['event','profileForm','reviewForm','targetsForm','wrapForm'];
 function showView(next, scroll = true) {
   view = next;
@@ -141,16 +167,18 @@ for (const form of ['new',...editForms]) {
   const changed=()=>{
     if(busy || (form!=='new' && !current))return;
     drafts.set(draftKey(form),Object.fromEntries(fields(form).map(e=>[e.id,e.type==='checkbox'?e.checked:e.value])));
-    feedback(form,'Unsaved changes. Save before closing the app.');updateDraftNotice();
+    draftBases.set(draftKey(form),currentDraftBase(current,form));
+    feedback(form,'Unsaved changes. Tap Save to include them in cooking backups.');updateDraftNotice();persistDrafts();
   };
   $(form).addEventListener('input',changed);$(form).addEventListener('change',changed);
 }
 function restoreDrafts() {
   for(const form of editForms){
     const draft=drafts.get(draftKey(form));
+    if(draft && form==='profileForm'){try{const base=JSON.parse(draftBases.get(draftKey(form))),cook=journal.find(c=>c.id===current);for(const [field,key] of [['editStart','startedAt'],['editFinish','finishedAt']])if(draft[field]===localDate(base[key]))draft[field]=localDate(cook[key]);}catch{}}
     if(draft && form==='profileForm')rebuildFireboardRows(Object.keys(draft).filter(id=>/^fbRole\d+$/.test(id)).map(id=>Number(id.slice(6))));
     if(draft){for(const kind of ['piece','rub']){const ids=[...new Set(Object.keys(draft).filter(id=>new RegExp('^'+kind+(kind==='piece'?'meatCut':'name')+'\\d+$').test(id)).map(id=>Number(id.match(/\d+$/)[0])))];rebuildStructuredRows(kind,ids.map(()=>kind==='piece'?blankMeatPiece():{name:'',level:'Not recorded',notes:''}));}}
-    if(draft)for(const [id,value] of Object.entries(draft)){const e=$(id);if(!e)continue;if(e.type==='checkbox')e.checked=value;else e.value=value;}
+    if(draft)for(const [id,value] of Object.entries(draft)){const e=$(id);if(!e || !$(form).contains(e))continue;if(e.type==='checkbox')e.checked=value;else if(e.tagName!=='SELECT' || [...e.options].some(o=>o.value===value))e.value=value;else if(id==='type')e.value='Note';}
     feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
   }
   for(const kind of ['method','equipment'])$(kind+'Custom').hidden=$(kind+'Choice').value!=='__custom__';
@@ -208,7 +236,7 @@ async function protection() {
 }
 async function render() {
   const {state} = await store.read(), query = $('search').value.toLowerCase();
-  journal = state.records;
+  journal = state.records;hydrateDrafts();if(draftError)draftFeedback(draftError,true);
   const cooks = state.records.filter(c => ($('showTests').checked || !c.isTestCook) && `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
   $('count').textContent = `${cooks.length} of ${state.records.length} cooks · ${state.relationalArchives.length} preserved database exports`;
   $('history').replaceChildren();
@@ -336,7 +364,7 @@ $('wrapMethod').onchange=refreshWrap;
 $('wrapForm').onsubmit=e=>{e.preventDefault();if(current)action(async()=>{
   const note=$('wrapNote').value,fromAction=$('type').value==='Wrapped' && $('note').value===note;
   await store.event(current,'Wrapped',note,{wrapMethod:$('wrapMethod').value,wrapDetail:$('wrapMethod').value==='Other'?$('wrapDetail').value:''});
-  if(fromAction){drafts.delete(draftKey('event'));$('note').value='';}
+  if(fromAction){drafts.delete(draftKey('event'));draftBases.delete(draftKey('event'));$('note').value='';}
 },'wrapForm');};
 function updateTimers(){
   const cook=journal.find(c=>c.id===current);if(!cook){$('timers').textContent='';return;}
@@ -347,9 +375,9 @@ function updateTimers(){
 $('targetsForm').onsubmit=e=>{e.preventDefault();if(current)action(async()=>{
   const note=$('targetNote').value,fromAction=$('type').value==='Target Change' && $('note').value===note;
   await store.targets(current,{unit:'F',pitF:$('pitTarget').value===''?null:Number($('pitTarget').value),meatF:$('meatTarget').value===''?null:Number($('meatTarget').value)},note);
-  if(fromAction){drafts.delete(draftKey('event'));$('note').value='';}
+  if(fromAction){drafts.delete(draftKey('event'));draftBases.delete(draftKey('event'));$('note').value='';}
 },'targetsForm');};
-$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,location:$('editLocation').value,recipeReference:$('editRecipeReference').value,meatPieces:structuredRows('piece'),rubApplications:structuredRows('rub'),rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value,fireboardSetup:fireboardSetupValue()};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,location:$('editLocation').value,recipeReference:$('editRecipeReference').value,meatPieces:structuredRows('piece'),rubApplications:structuredRows('rub'),rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value,fireboardSetup:fireboardSetupValue()};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(async()=>{if(value.finishedAt && !original.finishedAt){if (!confirm(`Finish ${original.food}? Saving this finish time stops the cook timer and prevents new cooking actions.`))return false;}return store.profile(current,value);},'profileForm');};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}),'reviewForm');};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};
@@ -360,9 +388,11 @@ async function action(work, form = null) {
   const lockedFields=[...document.querySelectorAll('input,select,textarea')].map(e=>[e,e.disabled]);
   for(const [e] of lockedFields)e.disabled=true;
   try {
+    await draftWriteQueue;
     const changed = await work();
-    if(changed!==false){if(key)drafts.delete(key);damaged=false;$('backupBrief').textContent='Saved locally · checking backups';}
+    if(changed!==false){if(key){drafts.delete(key);draftBases.delete(key);}damaged=false;$('backupBrief').textContent='Saved locally · checking backups';}
     await render();
+    if(changed!==false){for(const draftKey of drafts.keys()){const at=draftKey.lastIndexOf(':'),id=draftKey.slice(0,at),name=draftKey.slice(at+1);draftBases.set(draftKey,currentDraftBase(id,name));}await persistDrafts();}
     const text=changed===false?'Cancelled. Your journal was unchanged.':'Saved on this device. A recovery snapshot was created automatically.';
     status(text);if(form)feedback(form,text);updateDraftNotice();
   }
@@ -379,7 +409,7 @@ async function restore(envelope) {
   const body = await unseal(envelope);
   if (!confirm(`Restore ${body.state.records.length} cooks from ${fmt(body.createdAt)}? This replaces the current journal. Existing recovery snapshots are kept. Unsaved edits will be discarded. Keep your original database archive.`)) return false;
   if (damaged) await call('repair', {text:JSON.stringify(envelope)}); else await store.restore(envelope);
-  current = null;drafts.clear();showView('history');
+  current = null;drafts.clear();draftBases.clear();showView('history');
 }
 $('new').onsubmit = e => { e.preventDefault(); if (!damaged) action(async () => {
   const state=await store.add($('food').value,$('cooker').value);
@@ -397,7 +427,7 @@ function saveEvent(type) {
     if(!$('targetNote').value && $('note').value){$('targetNote').value=$('note').value;$('targetsForm').dispatchEvent(new Event('input',{bubbles:true}));}
     $('pitTarget').focus();return;
   }
-  if(current)action(async()=>{await store.event(current,type,$('note').value);$('note').value='';},'event');
+  if(current)action(async()=>{if(type==='Cook Finished'){if (!confirm(`Finish ${journal.find(c=>c.id===current)?.food || 'this cook'}? This stops the cook timer and prevents new cooking actions. Choose Cancel to keep cooking.`))return false;}await store.event(current,type,$('note').value);$('note').value='';},'event');
 }
 $('event').onsubmit = e => { e.preventDefault();saveEvent($('type').value); };
 $('search').oninput = () => render().catch(e => status(e.message,true));

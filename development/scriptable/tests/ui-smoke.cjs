@@ -94,10 +94,14 @@ function manager(root) {
     await page.locator('#phase').filter({hasText:'Cooking'}).waitFor();
     await page.locator('#protection').filter({hasText:'2 pending'}).waitFor({state:'attached'});
     assert.equal(await page.locator('#fbPlacement1').inputValue(),'Synthetic grate','Event save preserves an unsaved setup');
+    await page.locator('#note').fill('Cancel preserves this note');await page.locator('#draftPersistence').filter({hasText:'Drafts saved on this phone'}).waitFor();
+    const beforeFinish=fs.readdirSync(path.join(root,'local/LDCookLog-2-Development/journal')).sort().map(n=>fs.readFileSync(path.join(root,'local/LDCookLog-2-Development/journal',n),'utf8'));
+    await page.locator('#quickActions button').filter({hasText:'Cook Finished',exact:true}).click();await page.locator('#ldc-confirm').waitFor();assert.equal(await page.locator('#ldc-confirm-yes').innerText(),'Finish cook');await page.locator('#ldc-confirm-no').click();await page.locator('#status').filter({hasText:'Cancelled'}).waitFor();assert.equal(await page.locator('#note').inputValue(),'Cancel preserves this note');
+    assert.deepEqual(fs.readdirSync(path.join(root,'local/LDCookLog-2-Development/journal')).sort().map(n=>fs.readFileSync(path.join(root,'local/LDCookLog-2-Development/journal',n),'utf8')),beforeFinish);
     await close();await open();
     await page.locator('#title').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     assert.equal(await page.locator('#cookView').isVisible(),true,'Resume unfinished real cook on reopening');
-    assert.match(await page.locator('#timers').innerText(),/Total elapsed.*Cooking/);
+    assert.match(await page.locator('#timers').innerText(),/Total elapsed.*Cooking/);await expand('setupPanel');await expand('fireboardPanel');await expand('fbChannel1');assert.equal(await page.locator('#fbPlacement1').inputValue(),'Synthetic grate');assert.equal(await page.locator('#note').inputValue(),'Cancel preserves this note');
     await showHistory();await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     progress('stage original cloud copies');
     cloudAvailable=true;await showBackups();await page.locator('#retry').click();
@@ -211,6 +215,9 @@ function manager(root) {
     await page.locator('#targetsFormFeedback').filter({hasText:'Saved on this device'}).waitFor();
     assert.match(await page.locator('#timeline').innerText(),/Target Change.*250°F/);
     assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Original recovery snapshot remains byte-identical after target/link saves');
+    await expand('reviewPanel');await page.locator('#reviewObservations').fill('Private tasting draft after reopening');await page.locator('#draftPersistence').filter({hasText:'Drafts saved on this phone'}).waitFor();
+    await page.locator('#quickActions button').filter({hasText:'Cook Finished',exact:true}).click();await page.locator('#ldc-confirm-yes').click();await page.locator('#phase').filter({hasText:'Finished'}).waitFor();
+
     await close();await open();
     await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor({state:'attached'});
     assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Opening large history never rewrites the journal');
@@ -219,11 +226,13 @@ function manager(root) {
     await expand('comparisonPanel');
     assert.match(await page.locator('#targetSummary').innerText(),/250°F.*203°F/);
     assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);
+    await expand('reviewPanel');assert.equal(await page.locator('#reviewObservations').inputValue(),'Private tasting draft after reopening');
     const latest=JSON.parse(JSON.parse(fs.readFileSync(path.join(journal,fs.readdirSync(journal).sort().at(-1)),'utf8')).payload);
     const edited=latest.state.records.find(c=>c.cookingDetails?.location==='Synthetic saved cottage');assert.equal(edited.cookingDetails.meatPieces[0].cookWeight,0);assert.equal(edited.cookingDetails.rubApplications[0].notes,'Synthetic archived rub note');assert.equal(edited.cookingDetails.recipeReference,'Synthetic book page 3');
     assert.deepEqual(latest.state.relationalArchives,JSON.parse(JSON.parse(originalLarge).payload).state.relationalArchives,'Catalog choices preserve every archived table exactly');
     assert.match(latest.state.records.map(c=>c.cookingDetails?.rubs || '').join(';'),/Synthetic archive rubs/);
     const previous=JSON.parse(JSON.parse(originalLarge).payload);assert.deepEqual(latest.state.records.map(c=>c.temperatures),previous.state.records.map(c=>c.temperatures),'Links/targets leave every original reading unchanged');
+    console.log('PASS: actual generated Scriptable Finish Cancel/acceptance, durable private setup/note/review drafts, namespace isolation and exact cooking bytes preserved.');
     console.log('PASS: saved clock-based timers/active cook reopening, numeric target history and exact probe links/chart labels survive offline reopen without changing original readings.');
     console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration, delayed startup checksum and 30-cook/18,000-reading relational-history reopening. Host APIs simulated.');
     await close();

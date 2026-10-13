@@ -34,3 +34,6 @@ test('Cancel and Escape reject a journal change; concurrent confirmations cannot
   let prevented=false;listeners.get('keydown')({key:'Escape',preventDefault(){prevented=true}});
   assert.equal(await second,false);assert.equal(prevented,true);assert.equal(listeners.size,0);
 });
+test('finish and discard confirmations use explicit action labels and Cancel remains the initial focus',async()=>{
+ const {window,find,document}=setup();for(const [message,label] of [['Finish Synthetic ribs?','Finish cook'],['Discard all unsaved drafts?','Discard unsaved drafts']]){const result=window.__ldcConfirm(message);assert.equal(find('ldc-confirm-yes').textContent,label);assert.equal(document.activeElement,find('ldc-confirm-no'));find('ldc-confirm-no').onclick();assert.equal(await result,false);}
+});

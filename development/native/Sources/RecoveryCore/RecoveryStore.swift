@@ -64,6 +64,32 @@ public final class RecoveryStore {
         }
         return try Snapshot(Data(contentsOf: current)).bytes
     }
+    /// Device-local drafts never enter the committed journal or cloud snapshots.
+    public func readDrafts() throws -> [String] {
+        let directory = root.appendingPathComponent("Drafts", isDirectory: true)
+        guard manager.fileExists(atPath: directory.path) else { return [] }
+        return try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+            .filter { $0.lastPathComponent.hasSuffix(".draft.json") }.sorted { $0.lastPathComponent > $1.lastPathComponent }.prefix(3)
+            .map { (try? String(contentsOf: $0, encoding: .utf8)) ?? "" }
+    }
+    public func writeDrafts(_ data: Data) throws {
+        guard data.count <= 2_097_152,
+              let envelope = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              envelope["format"] as? String == "ldcooklog-private-drafts",
+              let payload = envelope["payload"] as? String, let digest = envelope["sha256"] as? String, digest == SHA256.hash(data: Data(payload.utf8)).map({ String(format: "%02x", $0) }).joined() else { throw RecoveryError.damaged }
+        let directory = root.appendingPathComponent("Drafts", isDirectory: true)
+        try manager.createDirectory(at: directory, withIntermediateDirectories: true)
+        let files = try manager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil).filter { $0.lastPathComponent.hasSuffix(".draft.json") }.sorted { $0.lastPathComponent > $1.lastPathComponent }
+        let previous = files.first.flatMap { Int($0.lastPathComponent.prefix(16)) } ?? 0
+        guard files.count < 10, previous >= 0, previous < 9_007_199_254_740_990 else { throw RecoveryError.damaged }
+        let revision = previous + 1
+        let target = directory.appendingPathComponent(String(format: "%016lld", Int64(revision)) + "-" + UUID().uuidString + ".draft.json")
+        try protectedWrite(data, to: target)
+        guard try Data(contentsOf: target) == data else { throw RecoveryError.damaged }
+        let body = (try? JSONSerialization.jsonObject(with: Data(payload.utf8))) as? [String: Any]
+        let empty = (body?["entries"] as? [Any])?.isEmpty == true
+        for file in files.dropFirst(empty ? 0 : 2) { try? manager.removeItem(at: file) }
+    }
     public func commit(_ data: Data, expectedRevision: Int) throws {
         let snapshot = try Snapshot(data)
         let existing = try read().map { try Snapshot($0).revision } ?? 0

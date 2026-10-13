@@ -5,15 +5,16 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 const {createHash} = require('node:crypto');
 (async () => {
-  let current = null, snapshots = [], available = false, failNextCommit=false;
+  let current = null, snapshots = [], available = false, failNextCommit=false, privateDrafts=[],cancelFinish=false;
   const browser = await chromium.launch({headless:true});
   try {
     const context = await browser.newContext({viewport:{width:390,height:844}});
-    await context.exposeBinding('testNative',async (_,{operation,text,expectedRevision,token}) => {
+    await context.exposeBinding('testNative',async (_,{operation,text,expectedRevision,token,includeDrafts}) => {
       if (operation === 'read') {
         if (current === 'broken') throw Error('Damaged recovery file');
-        return current;
+        return includeDrafts?{journal:current,drafts:privateDrafts}:current;
       }
+      if(operation==='writeDrafts'){privateDrafts.unshift(text);privateDrafts=privateDrafts.slice(0,3);return true;}
       if (operation === 'commit' || operation === 'repair') {
         if(failNextCommit){failNextCommit=false;throw Error('Synthetic disk full: no cooking save written');}
         const envelope = JSON.parse(text), body = JSON.parse(envelope.payload);
@@ -31,7 +32,7 @@ const {createHash} = require('node:crypto');
   async function expand(id){if(!await page.locator('#'+id).evaluate(e=>e.open))await page.locator('#'+id+' > summary').click();}
   async function showHistory(){await page.locator('#navHistory').click();}
   async function showBackups(){await page.locator('#navBackups').click();await expand('backupDetails');await expand('recoveryTools');}
-    page.on('dialog',dialog=>dialog.accept());
+    page.on('dialog',dialog=>{if(cancelFinish && dialog.message().startsWith('Finish ')){cancelFinish=false;return dialog.dismiss();}return dialog.accept();});
     await page.goto(pathToFileURL(path.resolve(__dirname,'../Web/index.html')).href);
     await page.locator('#status').filter({hasText:'Journal ready'}).waitFor();
     await page.locator('#food').fill('Synthetic ribs'); await page.locator('#new button').click();
@@ -46,7 +47,9 @@ const {createHash} = require('node:crypto');
     assert.match(await page.locator('#timeline').innerText(),/Target Change.*Synthetic plan.*225°F/);
     await showHistory();await page.locator('#history button').click();await expand('setupPanel');
     for (const type of ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished']) {
-      await page.locator('#type').selectOption(type); await page.locator('#event button').click();
+      await page.locator('#type').selectOption(type);
+      if(type==='Cook Finished'){await page.locator('#note').fill('Keep finish draft');await page.locator('#draftPersistence').filter({hasText:'Drafts saved on this phone'}).waitFor();const before=current,count=snapshots.length;cancelFinish=true;await page.locator('#event button').click();await page.locator('#status').filter({hasText:'Cancelled'}).waitFor();assert.equal(current,before);assert.equal(snapshots.length,count);assert.equal(await page.locator('#note').inputValue(),'Keep finish draft');}
+      await page.locator('#event button').click();
       if(type==='Wrapped'){await page.locator('#wrapMethod').selectOption('Butcher Paper');await page.locator('#wrapForm button').click();await page.locator('#wrapFormFeedback').filter({hasText:'Saved on this device'}).waitFor();}
       await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
     }
@@ -247,6 +250,15 @@ const {createHash} = require('node:crypto');
     assert.match(await page.locator('#timeline').innerText(),/Serve \/ Slice \/ Pull/);assert.equal(await page.locator('#quickActions button').count(),0);
     console.log('PASS: Pro 780, two meat pieces, rub application notes, location and recipe survive draft filtering, remove/add, save and offline reopen; Spritz/Serve/Finish preserve history.');
 
+    await page.locator('#editBinder').fill('Persistent binder draft');await expand('reviewPanel');await page.locator('#reviewObservations').fill('Persistent tasting draft');await page.locator('#food').fill('Persistent new cook draft');await page.locator('#cooker').selectOption('Traeger Pro 780');
+    await page.locator('#draftPersistence').filter({hasText:'Drafts saved on this phone'}).waitFor();const beforeDraftReopen=current,copyCount=snapshots.length;
+    await page.reload();await showHistory();await page.locator('#search').fill('Synthetic second cook');await page.locator('#history button').click();await expand('setupPanel');await expand('reviewPanel');
+    assert.equal(await page.locator('#editBinder').inputValue(),'Persistent binder draft');assert.equal(await page.locator('#reviewObservations').inputValue(),'Persistent tasting draft');assert.equal(await page.locator('#food').inputValue(),'Persistent new cook draft');assert.equal(await page.locator('#cooker').inputValue(),'Traeger Pro 780');assert.equal(current,beforeDraftReopen);assert.equal(snapshots.length,copyCount);
+    await page.locator('#profileForm button[type=submit]').click();await page.locator('#profileFormFeedback').filter({hasText:'Saved on this device'}).waitFor();
+    await page.reload();await showHistory();await page.locator('#search').fill('Synthetic second cook');await page.locator('#history button').click();await expand('setupPanel');await expand('reviewPanel');assert.equal(await page.locator('#editBinder').inputValue(),'Persistent binder draft');assert.equal(await page.locator('#reviewObservations').inputValue(),'Persistent tasting draft');assert.equal(await page.locator('#profileFormFeedback').innerText(),'');
+    await page.locator('#reviewForm button').click();await page.locator('#reviewFormFeedback').filter({hasText:'Saved on this device'}).waitFor();
+    assert.deepEqual(JSON.parse(JSON.parse(privateDrafts[0]).payload).entries.map(e=>e.key),['new:new']);
+    console.log('PASS: Finish Cancel preserves exact journal/snapshot count and notes; accepted finish saves once. Profile/review/new-cook drafts survive offline reload, and each successful save clears only its own draft.');
     await page.evaluate(()=>window.scrollTo({top:0,behavior:'instant'}));
     await page.waitForTimeout(100);
     if(process.env.LDC_UI_SCREENSHOT)console.log('SYNTHETIC_UI_PNG:'+ (await page.screenshot({fullPage:true})).toString('base64'));
