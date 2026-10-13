@@ -1,3 +1,22 @@
+## Timers, numeric targets and reading links
+
+Cook shows elapsed total/current phase and cumulative rest/hold time from saved
+timestamps. Times resume on reopening and stop at recorded finish. Missing
+historical phase timestamps show Not recorded. A recent unfinished real cook
+created in LDCookLog 2 resumes automatically; tests remain selected through History.
+
+Expand Set pit and meat targets, enter Fahrenheit values (blank clears), optional
+reason and Save targets. Timeline records the numeric change; finished cooks
+retain their final targets. This records plans, not FireBoard alarms/control.
+
+After importing a completed session, open Cook setup and preparation → FireBoard
+2 and probes. In the relevant entry, choose Link to imported reading using the
+original session/device/sensor information, then Save cook setup. Chart probe
+choices and legends use your configured label/color/reading while retaining raw
+FireBoard data. A source reading can belong to only one active entry; choose the
+wired chamber stream explicitly for your pit reference. Unlinked readings keep
+original labels. Target/link drafts survive view switching; save before closing.
+
 ## Adding more probes
 
 Inside FireBoard 2 and probes, select Add probe to add another reading entry.

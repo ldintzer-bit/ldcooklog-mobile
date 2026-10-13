@@ -95,6 +95,9 @@ function manager(root) {
     await page.locator('#protection').filter({hasText:'2 pending'}).waitFor({state:'attached'});
     assert.equal(await page.locator('#fbPlacement1').inputValue(),'Synthetic grate','Event save preserves an unsaved setup');
     await close();await open();
+    await page.locator('#title').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
+    assert.equal(await page.locator('#cookView').isVisible(),true,'Resume unfinished real cook on reopening');
+    assert.match(await page.locator('#timers').innerText(),/Total elapsed.*Cooking/);
     await showHistory();await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     progress('stage original cloud copies');
     cloudAvailable=true;await showBackups();await page.locator('#retry').click();
@@ -189,9 +192,25 @@ function manager(root) {
     assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Comparisons never mutate cooking data');
     await showHistory();await page.locator('#search').fill('');
     await page.locator('#count').filter({hasText:'30 of 30'}).waitFor({state:'attached'});
+    await page.locator('#navCook').click();await expand('setupPanel');await expand('fireboardPanel');
+    await page.locator('#fbModel').selectOption('FireBoard 2');await expand('fbChannel1');
+    await page.locator('#fbRole1').selectOption('Pit / ambient');await page.locator('#fbProbe1').selectOption('Wired');await page.locator('#fbPort1').selectOption('6');await page.locator('#fbLabel1').fill('Named synthetic pit');
+    const link=await page.locator('#fbSeries1 option').nth(1).getAttribute('value');await page.locator('#fbSeries1').selectOption(link);
+    await page.locator('#profileForm button[type=submit]').click();await page.locator('#profileFormFeedback').filter({hasText:'Saved on this device'}).waitFor();
+    assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);assert.match(await page.locator('#chartLegend').innerText(),/Named synthetic pit/);
+    await expand('targetsPanel');await page.locator('#pitTarget').fill('250');await page.locator('#meatTarget').fill('203');await page.locator('#targetsForm button').click();
+    await page.locator('#targetsFormFeedback').filter({hasText:'Saved on this device'}).waitFor();
+    assert.match(await page.locator('#timeline').innerText(),/Target Change.*250°F/);
+    assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Original recovery snapshot remains byte-identical after target/link saves');
     await close();await open();
     await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor({state:'attached'});
     assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Opening large history never rewrites the journal');
+    await showHistory();await page.locator('#history button').first().click();
+    assert.match(await page.locator('#targetSummary').innerText(),/250°F.*203°F/);
+    assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);
+    const latest=JSON.parse(JSON.parse(fs.readFileSync(path.join(journal,fs.readdirSync(journal).sort().at(-1)),'utf8')).payload);
+    const previous=JSON.parse(JSON.parse(originalLarge).payload);assert.deepEqual(latest.state.records.map(c=>c.temperatures),previous.state.records.map(c=>c.temperatures),'Links/targets leave every original reading unchanged');
+    console.log('PASS: saved clock-based timers/active cook reopening, numeric target history and exact probe links/chart labels survive offline reopen without changing original readings.');
     console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration, delayed startup checksum and 30-cook/18,000-reading relational-history reopening. Host APIs simulated.');
     await close();
   } finally {clearTimeout(watchdog);await browser.close();fs.rmSync(root,{recursive:true,force:true})}

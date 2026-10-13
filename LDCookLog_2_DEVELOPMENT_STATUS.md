@@ -1,3 +1,39 @@
+## 2026-10-13 — Approved timers, targets and imported probe links
+
+Added clock-derived total/current-phase/cumulative-rest/cumulative-hold displays.
+They rebuild from saved times/events on reopening, stop at finishedAt or a known
+Cook Finished event and report unknown durations instead of inventing missing
+historical phase times. No timer ticks write snapshots or reload edit forms;
+minute display changes avoid unnecessary DOM updates. Newly created unfinished
+real cooks resume automatically; test cooks and migrated historical cooks are
+not chosen automatically. Multiple active real cooks select the most recent.
+
+Separate optional pit/meat targets use explicit Fahrenheit values. Save targets
+records Target Change with before/after numeric snapshots and optional reason.
+Preparation/cooking changes are allowed; finished cooks cannot change targets.
+Blank clears a target; validation rejects non-finite/out-of-range values before
+writes. Existing legacy target_temp displays as pit target where valid, without
+writing or modifying preserved source rows. Generic Target Change action opens
+the numeric editor instead of recording a numeric-free action in the UI.
+
+Each setup entry now has Link to imported reading, with original session,
+device and sensor labels/identifiers. Saving validates membership in the same
+cook and rejects duplicate active assignments. Links use exact existing series
+keys (session/device/channel/source-label); neither chart order, wired port nor
+wireless color is used to guess identity. Configured names and wireless identifiers
+appear in comparison selectors/legends. Source readings/raw charts/units/IDs and
+original archives remain unchanged. Unlinked readings retain their original
+labels. Mapping and target fields participate in drafts, immutable snapshots and
+fresh restore. Use current working/restore scripts for the new optional fields.
+
+Added pure tests for repeated phase timing, finished stopping/missing-time handling,
+exact numeric before/after recovery, invalid/finished rollback and unambiguous
+same-label devices, link restoration, duplicate/unavailable-link rollback and raw
+reading preservation. Browser tests cover target UI/history, stopped timers,
+automatic active-cook reopening, exact names in charts and target/link persistence
+across offline reopening of full synthetic history. CI results follow. Production
+is unchanged; no private cooking data or credentials were accessed or published.
+
 ### Expandable setup and wireless identifiers verification
 
 Installable Scriptable source 54ae460bf2acf972e4ceffe976516eba8916276d;

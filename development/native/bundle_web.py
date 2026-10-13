@@ -3,7 +3,7 @@ from pathlib import Path
 import re
 root = Path(__file__).parent / 'Web'
 parts = []
-for name in ['backup.js', 'migration.js', 'fireboard.js', 'recovery.js', 'history-details.js', 'app.js']:
+for name in ['backup.js', 'migration.js', 'fireboard.js', 'recovery.js', 'history-details.js', 'cook-tools.js', 'app.js']:
     text = (root / name).read_text()
     text = re.sub(r'^import .*?;\s*$', '', text, flags=re.M)
     text = re.sub(r'\bexport (?=(?:async )?(?:function|class|const))', '', text)

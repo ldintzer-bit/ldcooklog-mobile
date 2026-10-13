@@ -1,7 +1,13 @@
+import { seriesKey } from './fireboard.js';
 /* Pure, independently testable backup and restore planning. */
 export const BACKUP_FORMAT = 'ldcooklog-local-backup';
 export const BACKUP_VERSION = 1;
 
+export function validateTargets(value){
+  if(!value || typeof value!=='object' || value.unit!=='F')throw Error('Invalid temperature targets');
+  for(const key of ['pitF','meatF'])if(value[key]!==null && (!Number.isFinite(value[key]) || value[key]<0 || value[key]>1000))throw Error('Targets must be between 0 and 1000°F, or blank');
+  return value;
+}
 export function validateFireboardSetup(value) {
   if(value===null)return value;
   if(!value || typeof value!=='object' || Array.isArray(value) || ![1,2].includes(value.version) || value.model!=='FireBoard 2')throw Error('Invalid FireBoard setup');
@@ -12,6 +18,7 @@ export function validateFireboardSetup(value) {
     if(!probe || !Number.isInteger(probe.channel) || probe.channel<1 || probe.channel>(value.version===1?6:32) || seen.has(probe.channel))throw Error('Invalid or duplicate FireBoard channel');
     seen.add(probe.channel);
     if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired','Wireless','Other','Wired ambient probe','Wired food probe'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
+    if(probe.seriesKey!==undefined && (typeof probe.seriesKey!=='string' || probe.seriesKey.length>2000))throw Error('Invalid FireBoard reading link');
     if(probe.wiredPort!==undefined && probe.wiredPort!==null && (!Number.isInteger(probe.wiredPort) || probe.wiredPort<1 || probe.wiredPort>6))throw Error('Invalid FireBoard wired port');
     if(probe.color!==undefined && !['Not recorded','Orange','Silver','Other'].includes(probe.color))throw Error('Invalid FireBoard probe color');
     if(probe.customColor!==undefined && (typeof probe.customColor!=='string' || probe.customColor.length>100))throw Error('Invalid FireBoard custom color');
@@ -30,6 +37,13 @@ export function validateCook(c) {
   if (!c.events.every(e => e && typeof e.type === 'string' && typeof e.at === 'string' && Number.isFinite(Date.parse(e.at)) && typeof e.note === 'string')) throw Error('Invalid cook events');
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
+  if(c.targets!==undefined)validateTargets(c.targets);
+  for(const event of c.events){if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
+  const readings=new Set(c.temperatures.map(t=>seriesKey(t))),linked=new Set();
+  for(const probe of c.cookingDetails?.fireboardSetup?.channels || []){
+    if(probe.seriesKey){if(!readings.has(probe.seriesKey))throw Error('FireBoard link does not match an imported reading');
+      if(probe.role!=='Not used'){if(linked.has(probe.seriesKey))throw Error('An imported reading is assigned to more than one active probe');linked.add(probe.seriesKey);}}
+  }
   return c;
 }
 async function sha256(s) {

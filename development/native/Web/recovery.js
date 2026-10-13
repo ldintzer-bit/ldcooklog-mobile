@@ -1,5 +1,6 @@
-import { validateCook, planRestore, validateFireboardSetup } from './backup.js';
+import { validateCook, planRestore, validateFireboardSetup, validateTargets } from './backup.js';
 import { migrateRelationalExport, RELATIONAL_FORMAT, verifyRelationalExport } from './migration.js';
+import { cookTargets } from './cook-tools.js';
 import { attachSession } from './fireboard.js';
 
 const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
@@ -127,6 +128,17 @@ export class CookStore {
         for(const key of ['observations','changesNextTime'])if(typeof review[key]!=='string' || review[key].length>20000)throw Error('Evaluation notes are too long');
         cook.evaluationDetails={overallResult:review.overallResult,bark:review.bark,tenderness:review.tenderness,observations:review.observations,changesNextTime:review.changesNextTime};
       }
+      return state;
+    });
+  }
+  targets(id,value,note=''){
+    validateTargets(value);
+    if(typeof note!=='string' || note.length>2000)return Promise.reject(Error('Target note is too long'));
+    return this.mutate(state=>{
+      const cook=state.records.find(c=>c.id===id);if(!cook)throw Error('Cook not found');
+      if(cook.phase==='Finished' || cook.finishedAt)throw Error('This cook is finished');
+      const previousTargets=structuredClone(cookTargets(cook));cook.targets=structuredClone(value);
+      cook.events.push({id:crypto.randomUUID(),at:new Date().toISOString(),type:'Target Change',note,previousTargets,targets:structuredClone(value)});
       return state;
     });
   }

@@ -2,6 +2,7 @@ import { CookStore, unseal, availableActions } from './recovery.js';
 import { RELATIONAL_FORMAT } from './migration.js';
 import { seriesKey, comparisonSeries } from './fireboard.js';
 import { originalCookingDetails, reviewValues } from './history-details.js';
+import { cookTargets, targetText, cookTimers, elapsedText, assignedProbeLabel } from './cook-tools.js';
 const $ = id => document.getElementById(id);
 const call = (operation, args = {}) => (window.ldcooklogHost || window.webkit.messageHandlers.recovery).postMessage({operation, ...args});
 const store = new CookStore({ read: () => call('read'), commit: (text, expectedRevision) => call('commit', {text, expectedRevision}) });
@@ -24,11 +25,16 @@ function addFireboardRow(channel){
     ['CustomColor','Other wireless color / name',null,100,'Color or identifier'],
     ['Measurement','Wireless reading',['Not recorded','Internal / meat','External / ambient']],
     ['Label','Probe label',null,250,'Pit, brisket flat, pork butt 1…'],
-    ['Placement','Placement',null,500,'Grate position or location in the meat']
+    ['Placement','Placement',null,500,'Grate position or location in the meat'],
+    ['Series','Link to imported reading',[]]
   ]){
     const wrapper=document.createElement('label');wrapper.append('Probe '+channel+' — '+label);wrapper.id='fbField'+field+channel;
     const input=document.createElement(options?'select':'input');input.id='fb'+field+channel;
-    if(options)for(const choice of options)input.append(new Option(choice,choice));
+    if(field==='Series'){
+      input.append(new Option('Not linked',''));
+      const samples=new Map((journal.find(c=>c.id===current)?.temperatures || []).map(t=>[seriesKey(t),t]));
+      for(const [key,t] of samples)input.append(new Option(`${t.channel} · session ${t.sessionId || 'unrecorded'} · device ${t.deviceUUID || 'unrecorded'} · sensor ${t.channelId ?? t.channel}`,key));
+    }else if(options)for(const choice of options)input.append(new Option(choice,choice));
     else{input.maxLength=limit;input.placeholder=placeholder;}
     wrapper.append(input);row.append(wrapper);
   }
@@ -63,14 +69,14 @@ function loadFireboardSetup(value){
     for(const [field,key,fallback] of [['Role','role','Not used'],['Probe','probeType','Not recorded'],['Label','label',''],['Placement','placement','']])$('fb'+field+channel).value=field==='Probe'?fbConnection(probe?.[key] ?? fallback):probe?.[key] ?? fallback;
     $('fbPort'+channel).value=String(probe?.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe?.probeType)?channel:'Not recorded'));
     $('fbCustomColor'+channel).value=probe?.customColor || '';
-    $('fbColor'+channel).value=probe?.color || 'Not recorded';$('fbMeasurement'+channel).value=probe?.measurement || 'Not recorded';
+    $('fbColor'+channel).value=probe?.color || 'Not recorded';$('fbMeasurement'+channel).value=probe?.measurement || 'Not recorded';$('fbSeries'+channel).value=probe?.seriesKey || '';
   }
   refreshFireboardSetup();
 }
 function fireboardSetupValue(){
   if(!$('fbModel').value)return null;
   return {version:2,model:$('fbModel').value,deviceName:$('fbDeviceName').value,accessories:$('fbAccessories').value,
-    channels:fbEntries.map(channel=>({channel,role:$('fbRole'+channel).value,probeType:$('fbProbe'+channel).value,label:$('fbLabel'+channel).value,placement:$('fbPlacement'+channel).value,
+    channels:fbEntries.map(channel=>({channel,seriesKey:$('fbSeries'+channel).value,role:$('fbRole'+channel).value,probeType:$('fbProbe'+channel).value,label:$('fbLabel'+channel).value,placement:$('fbPlacement'+channel).value,
       wiredPort:$('fbProbe'+channel).value==='Wired' && $('fbPort'+channel).value!=='Not recorded'?Number($('fbPort'+channel).value):null,
       color:$('fbProbe'+channel).value==='Wireless'?$('fbColor'+channel).value:'Not recorded',
       customColor:$('fbProbe'+channel).value==='Wireless' && $('fbColor'+channel).value==='Other'?$('fbCustomColor'+channel).value:'',
@@ -84,6 +90,7 @@ function renderProbeGuide(setup){
     const parts=[probe.label || 'Probe '+probe.channel,probe.role,connection];
     if(connection==='Wired'){const port=probe.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe.probeType)?probe.channel:null);if(port)parts.push('port '+port);}
     if(connection==='Wireless'){if(probe.color && probe.color!=='Not recorded')parts.push(probe.color==='Other'?probe.customColor || 'Other':probe.color);if(probe.measurement && probe.measurement!=='Not recorded')parts.push(probe.measurement);}
+    if(probe.seriesKey)parts.push('Linked to imported reading');
     if(probe.placement)parts.push(probe.placement);item.textContent=parts.join(' · ');
     if(connection==='Wireless' && ['Orange','Silver'].includes(probe.color))item.className='probe-'+probe.color.toLowerCase();
     $('probeGuideList').append(item);
@@ -91,7 +98,7 @@ function renderProbeGuide(setup){
 }
 let view = 'cook';
 const drafts = new Map();
-const editForms = ['event','profileForm','reviewForm'];
+const editForms = ['event','profileForm','reviewForm','targetsForm'];
 function showView(next, scroll = true) {
   view = next;
   for (const name of ['cook','history','backups']) {
@@ -138,6 +145,8 @@ function cookingActions(cook) {
     button.onclick=()=>saveEvent(type);$('quickActions').append(button);
   }
   $('event').querySelector('button').disabled=busy || options.length===0;
+  $('targetsForm').querySelector('button').disabled=busy || options.length===0;
+  for(const id of ['pitTarget','meatTarget','targetNote'])$(id).disabled=busy || options.length===0;
   $('type').disabled=options.length===0;
   $('note').disabled=busy || options.length===0;
 }
@@ -185,6 +194,7 @@ async function render() {
     open.textContent = 'Open cook'; open.onclick = () => openCook(cook.id);
     article.append(title,text,open); $('history').append(article);
   }
+  if(!current && !damaged)current=state.records.filter(c=>c.source==='LDCookLog 2.0' && !c.isTestCook && !c.finishedAt && c.phase!=='Finished').sort((a,b)=>b.startedAt.localeCompare(a.startedAt))[0]?.id || null;
   const cook = state.records.find(c => c.id === current);
   $('cookEmpty').hidden = !!cook;
   $('active').hidden = !cook;
@@ -194,10 +204,12 @@ async function render() {
     $('title').textContent = `${cook.food} · ${cook.cooker}`;
     const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
     $('phase').textContent = `${phase} · started ${fmt(cook.startedAt)}${cook.finishedAt ? ' · finished '+fmt(cook.finishedAt) : ''}`;
+    updateTimers();
+    const targets=cookTargets(cook);$('targetSummary').textContent=targetText(targets);$('pitTarget').value=targets.pitF ?? '';$('meatTarget').value=targets.meatF ?? '';$('targetNote').value='';
     $('note').value='';
     cookingActions(cook);
     $('timeline').replaceChildren();
-    for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}`; $('timeline').append(li); }
+    for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}${event.targets?' · '+targetText(event.targets):''}`; $('timeline').append(li); }
     const channels = [...new Set(cook.temperatures.map(t => `${t.channel} (${t.unit || 'unknown unit'})`))];
     $('temperatures').textContent = `${cook.temperatures.length} retained readings. ${channels.join(', ')}${channels.length ? '.' : ''}`;
     const related = cook.legacy?.related || {};
@@ -228,7 +240,7 @@ async function render() {
 function fillProbes(select,cook,previous=select.value) {
   select.replaceChildren();
   const series = new Map((cook?.temperatures || []).map(t=>[seriesKey(t),t]));
-  for (const [key,t] of series) select.append(new Option(`${t.channel} · ${t.unit || 'unknown'} · session ${t.sessionId || 'unrecorded'} · probe ${t.channelId || t.channel}`,key));
+  for (const [key,t] of series) select.append(new Option(`${assignedProbeLabel(cook,t)} · ${t.unit || 'unknown'} · session ${t.sessionId || 'unrecorded'} · probe ${t.channelId || t.channel}`,key));
   if (series.has(previous)) select.value = previous;
 }
 function captureComparison() {
@@ -259,7 +271,7 @@ function drawChart() {
     const first = journal.find(c=>c.id===current);
     if (!first || !$('probe').value) { $('chartSummary').textContent = 'No temperature readings attached yet.'; return; }
     const selected=[{cook:first,key:$('probe').value},...comparisonSlots.map(([cook,probe])=>({cook:journal.find(c=>c.id===$(cook).value),key:$(probe).value})).filter(row=>row.cook && row.key)];
-    const series=selected.map((row,i)=>({name:row.cook.food,label:chartColors[i][0],color:chartColors[i][1],probe:row.cook.temperatures.find(t=>seriesKey(t)===row.key)?.channel || '',points:comparisonSeries(row.cook,row.key)}));
+    const series=selected.map((row,i)=>({name:row.cook.food,label:chartColors[i][0],color:chartColors[i][1],probe:assignedProbeLabel(row.cook,row.cook.temperatures.find(t=>seriesKey(t)===row.key)),points:comparisonSeries(row.cook,row.key)}));
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
     for (const row of series) for (const p of row.points) { minX=Math.min(minX,p.minutes);maxX=Math.max(maxX,p.minutes);minY=Math.min(minY,p.fahrenheit);maxY=Math.max(maxY,p.fahrenheit); }
     if (!Number.isFinite(minX)) { $('chartSummary').textContent='No usable readings.';return; }
@@ -279,6 +291,13 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
+function updateTimers(){
+  const cook=journal.find(c=>c.id===current);if(!cook){$('timers').textContent='';return;}
+  const timers=cookTimers(cook),phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
+  const text=timers.waiting?'Timers start at the recorded start time.':`${phase==='Preparation'?'Preparation elapsed':'Total elapsed'} ${elapsedText(timers.totalMs)}${phase!=='Finished'?' · '+phase+' '+elapsedText(timers.phaseMs):''} · Rest total ${elapsedText(timers.restMs)} · Hold total ${elapsedText(timers.holdMs)}`;
+  if($('timers').textContent!==text)$('timers').textContent=text;
+}
+$('targetsForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.targets(current,{unit:'F',pitF:$('pitTarget').value===''?null:Number($('pitTarget').value),meatF:$('meatTarget').value===''?null:Number($('meatTarget').value)},$('targetNote').value),'targetsForm');};
 $('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value,fireboardSetup:fireboardSetupValue()};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}),'reviewForm');};
@@ -317,6 +336,7 @@ $('new').onsubmit = e => { e.preventDefault(); if (!damaged) action(async () => 
   showView('cook');
 },'new'); };
 function saveEvent(type) {
+  if(type==='Target Change'){$('targetsPanel').open=true;$('pitTarget').focus();return;}
   if(current)action(async()=>{await store.event(current,type,$('note').value);$('note').value='';},'event');
 }
 $('event').onsubmit = e => { e.preventDefault();saveEvent($('type').value); };
@@ -353,7 +373,8 @@ $('import').onchange = e => {
   if (!window.ldcooklogHost && !window.webkit?.messageHandlers?.recovery) { status('Open this development app through its iPhone host. Browser storage cannot provide automatic iCloud backups.',true); document.querySelectorAll('button,input,select').forEach(e => e.disabled = true); return; }
   try { await render(); status('Journal ready. Offline cooking pilot.'); }
   catch (e) { damaged = true;showView('backups',false);$('recoveryTools').open=true; $('new').querySelector('button').disabled = true; status('Journal could not open. Choose a recovery snapshot; no data was reset. '+e.message,true); }
+  setInterval(updateTimers,1000);
   await protection();
   setInterval(() => { if (!busy && !document.hidden) protection(); },30000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && !busy) protection(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden){updateTimers();if(!busy)protection();} });
 })();
