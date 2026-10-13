@@ -1,3 +1,17 @@
+### Journal-first launch verification
+
+Source 9abcd3ceac57beb0c47e4f754d1d688576d2cb8c, Actions run 38402927111:
+regression passed: 71 JavaScript tests; 58 Python passes with two Mac-only
+Linux skips; artifact reproducibility/security/CSP checks; all three browser
+integrations. Actual generated Scriptable launcher accepted deferred protection,
+offline lifecycle, isolated restoration with original bytes preserved, damaged
+journal recovery and 30-cook/18,000-reading opening. Browser host APIs are
+simulated; iPhone launch timing and native Scriptable presentation acceptance
+remain unmeasured. Actual Mac tests, native storage, iPhone and Mac compilation
+also passed; simulator integration was still running at this checkpoint.
+Install into the existing LDCookLog-2-Backup-Status.js without renaming or changing
+journal/shortcut. Other UI proposals remain discussion items only.
+
 ## 2026-10-13 — Journal-first launch and UI review
 
 Owner reports the Home Screen Shortcut works but opens the Scriptable Scripts
