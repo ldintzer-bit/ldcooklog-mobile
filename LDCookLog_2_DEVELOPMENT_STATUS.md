@@ -1,3 +1,27 @@
+## 2026-10-13 — Real scheduled backup resumed; backup-readiness decision
+
+Owner's current --status returned AUTOMATIC MAC CHECK PASS for revision 8,
+with recent scheduled execution verified and independent bytes revalidated.
+Managed Mac storage was 48 MiB of 1024 MiB with six retained copies. This closes
+the overnight scheduled-worker check; it is distinct from synthetic rehearsals.
+
+Backup readiness supports a controlled real-cook pilot in the existing offline
+journal: source history reconciled exactly, private full-history Mac-file restore
+accepted, offline persistence and feature checks accepted, real completed-session
+import/deduplication accepted, and Mac/phone retention rehearsals plus resumed
+scheduled execution accepted. Routine manual exports of unchanged Supabase data
+are unnecessary; preserve the original October 11 dump and relational export.
+If Supabase is edited again, those changes need a new export/reconciliation.
+New offline saves need current Mac verification before being regarded as
+independently protected. Copying waits for connectivity and Mac awake/sign-in.
+
+This is not a full production release/cutover: the installed interface remains
+labelled development; physical replacement-phone/reinstall recovery, proactive
+failure alerts and remaining feature parity are unverified/incomplete. No
+production branch merge/deployment or Supabase deletion occurred. Next milestone
+is a controlled first real cook and resulting current independent backup, with
+clear acknowledgement that the application remains a development candidate.
+
 ## 2026-10-13 — Owner iPhone retention and recovery rehearsal accepted
 
 Owner confirmed both PHYSICAL IPHONE checks: 26 synthetic saves reduced to

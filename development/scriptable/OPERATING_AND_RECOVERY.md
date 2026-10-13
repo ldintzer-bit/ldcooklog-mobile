@@ -4,8 +4,12 @@ Development candidate. Owner phone tests cover historical migration/restoration,
 offline reopening, lifecycle events, notes/evaluation/setup, method/equipment
 choices, temperature comparisons, completed-session import and duplicate
 protection. Physical Mac and isolated phone retention rehearsals passed.
-Actual phone loss/reinstall/new-device recovery and final cutover acceptance
-remain unverified. Keep the original PostgreSQL archive permanently.
+Actual phone loss/reinstall/new-device recovery and full production cutover
+remain unverified. On October 13 the owner also verified resumed real scheduled
+backup of revision 8 after the overnight interval. Backup evidence supports a
+controlled real-cook pilot; the application remains a development candidate.
+Routine manual exports of unchanged Supabase data are unnecessary. Keep the
+original PostgreSQL archive permanently.
 
 ## Use the correct script
 
