@@ -1,3 +1,69 @@
+## 2026-10-13 — Complete cooking setup parity and Traeger Pro 780
+
+Installable source `020e6172bae2520c2dc568fe45778f33084e434b` on the separate
+`development/2.0-offline-recovery` branch. No production merge/deployment.
+
+Implemented the owner's approved remaining cooking-feature batch:
+
+- Traeger Pro 780 in New cook's Cooker list and Equipment / fuel presets,
+  alongside Ironwood 885 and Weber kettle options.
+- Optional individual meat pieces: cut, package/cook weights and lb/kg/g/oz or
+  unrecorded unit, bone status, brand/producer, store/source, grade, notes,
+  dollar price and price per lb. Up to 32 entries; add/remove and edit independently.
+- Saved locations and methods/recipes from preserved catalogs and non-test saved
+  cooks. Editable location and recipe/reference fields; custom values remain valid.
+- Named rub application details with Not recorded/Light/Normal/Heavy and notes,
+  up to 64 entries. Add saved rub creates a matching detail entry when absent.
+- Spritz records note/time without changing phase. Serve / Slice / Pull moves
+  Cooking/Resting/Keeping Warm to Serving and ends that rest/hold interval;
+  Cook Finished remains available. Duplicate serving transitions are rejected.
+
+Original relational rows and archives remain immutable. Imported piece/rub values
+populate the editors; successful Save cook setup stores a separate editable copy.
+Empty edited arrays intentionally suppress fallback after removing all entries.
+Zero remains zero, blank numeric values remain unknown, and missing historical
+units stay Not recorded. New pieces default to lb without converting weights.
+The existing general weight/pieces and rub text remain independent of their
+structured detail lists. No automatic price calculation or total-weight rewrite.
+Source recipe references are displayed/edited as text; no network fetch occurs.
+
+[Actions run 38462597986](https://github.com/ldintzer-bit/ldcooklog-mobile/actions/runs/38462597986)
+regression job 115521327986 passed: 87 JavaScript tests, 58 Python passes with two
+Mac-only Linux skips, generated-source reproducibility, security/CSP and all three
+browser suites. New pure tests cover legacy ordering/zero/unit conversion into
+editable metadata without source mutation, bounded metadata validation before
+writes, explicit clearing, exact fresh-journal recovery, recipe privacy boundaries,
+Spritz/Serve/Finish and timer semantics. Browser tests cover Pro 780, two pieces,
+remove/add, rub notes, in-session draft filtering, save and offline reopening.
+The actual generated Scriptable fixture selects archived locations/recipes,
+retains imported zero-weight kg pieces and rub notes, and preserves every archived
+table and all 18,000 original synthetic readings. Synthetic mobile layout reviewed.
+Host APIs in the Scriptable browser tests remain simulated.
+
+The initial run failed because newly added synthetic relational cells used numeric
+JSON values rather than the export's required string-or-null representation. The
+fixture was corrected and validated/imported locally before the passing rerun;
+archive validation was not relaxed. A separate review also preserved unrecorded
+historical weight units instead of assigning lb to them.
+
+Current native job 115521327918 passed actual Mac recovery/storage and both
+platform compiles and was running iPhone WKWebView simulator integration at this
+checkpoint. Previous run 38458820891 completed successfully in both jobs.
+
+Install the reviewed source once as LDCookLog-2-Backup-Status.js; keep the existing
+shortcut and working journal namespace. No re-import, backup-worker update or
+repeat retention rehearsal is requested. New optional metadata uses the existing
+immutable snapshots and independent Mac-copy process. See
+[the feature behavior notes](development/native/COOKING_EVENTS_AND_LIBRARIES.md).
+
+The approved cooking-feature batch is complete and ready to document in the full
+user instructions. Remaining physical acceptance is the next real cook with a
+current verified independent Mac copy, plus replacement-phone/reinstall recovery.
+Direct completed-session retrieval on iPhone and catalog administration remain
+later convenience enhancements; the existing private Mac export/import works.
+Keep the original verified database archive and leave the old Supabase app frozen.
+No new manual export of unchanged Supabase history is required for this update.
+
 ## 2026-10-13 — Reusable setup catalogs, lid events and wrap methods
 
 Installable source: `1e55b652c9c34ec37efa1863d4c62ff7d42e5e1c` on
