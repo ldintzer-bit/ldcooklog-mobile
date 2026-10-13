@@ -1,3 +1,28 @@
+## 2026-10-13 — Owner Mac rehearsal passed; isolated iPhone candidate
+
+Owner ran the synthetic Mac rehearsal: 50 saves, 31 normal-policy copies,
+five budget-limited copies, first/newest three retained; capacity/corruption
+failure preservation and exact revision 50 fresh-folder recovery all passed.
+This is filesystem evidence on the owner Mac, not an iPhone/new-device test.
+
+Added a generated Scriptable retention rehearsal using the shared storage and
+checksum/schema validator. Each run creates unique local/iCloud folders under
+LDCookLog-2-Synthetic-Rehearsals, containing only a tiny synthetic journal.
+It creates 26 saves, proves no cleanup without receipt, injects an explicitly
+simulated matching Mac receipt inside the isolated roots, checks 21 retained
+snapshots (first/newest 20), reopens the latest, selects a retained synthetic
+cloud copy, restores into a fresh synthetic local journal and reopens exact
+state. Success removes only the uniquely owned synthetic folders. Failure keeps
+those folders for diagnosis. Working journals, private backups, original source
+archives, credentials and the scheduled Mac agent are not accessed.
+
+This is an explicit isolated file-API test, not evidence of a real Mac copy or
+actual iCloud server upload. A generated-script browser integration asserts
+scope isolation, proof-gated cleanup, exact restore/reopen and cleanup; CI runs
+that integration and checks artifact reproducibility. Owner iPhone execution
+follows browser verification. Remaining new-device/cloud-loss and operational
+acceptance gates are still open; no manual Supabase backup retirement clearance.
+
 ### Rehearsal CI checkpoint
 
 Checkpoint 92a84908dd61ec7ab1c82d11ead15002221242c7, run 38390268508:

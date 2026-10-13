@@ -297,3 +297,15 @@ Official references checked October 11, 2026:
 - https://developer.apple.com/help/account/membership/program-enrollment/
 - https://webkit.org/blog/12257/the-file-system-access-api-with-origin-private-file-system/
 - https://webkit.org/blog/14403/updates-to-storage-policy/
+
+## Isolated iPhone retention rehearsal
+
+`LDCookLog-2-Retention-Rehearsal.js` is generated from the shared validator and
+storage implementation. Install it as a separate Scriptable script. It creates
+only unique synthetic folders under `LDCookLog-2-Synthetic-Rehearsals` in local
+and Scriptable iCloud documents. There is no import of real history. It checks
+26 saves, cleanup to first/newest 20 (21 total), reopening and restoration into
+a fresh synthetic journal. A simulated receipt exercises the cleanup condition;
+the output explicitly distinguishes this from real Mac verification. Successful
+runs remove their synthetic folders; failures keep them for diagnosis. Do not
+run it as the working journal or rename any private journal folders.

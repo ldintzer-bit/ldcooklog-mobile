@@ -49,3 +49,22 @@ trial_html = trial_html.replace('Development build — keep using your current a
 trial_launcher = (root / 'launcher.js').read_text().replace("const LDC_NAMESPACE = 'development';", "const LDC_NAMESPACE = 'restore-check';")
 (root / 'LDCookLog-2-Restore-Check.js').write_text(header + 'const LDC_HTML = ' + json.dumps(trial_html, ensure_ascii=True) + ';\n' + storage + '\n' + trial_launcher)
 (root / 'restore-check.html').write_text(trial_html)
+
+# Isolated physical-device retention rehearsal uses the same validators/store.
+import re
+validation = []
+for name in ['backup.js','migration.js','fireboard.js','recovery.js']:
+    part = (web / name).read_text()
+    part = re.sub(r'^import .*?;\s*$', '', part, flags=re.M)
+    validation.append(re.sub(r'\bexport (?=(?:async )?(?:function|class|const))', '', part))
+validation_script = "'use strict';\n(() => {\n" + '\n'.join(validation) + '''
+window.__rehearsal = {
+  verify: async text => unseal(JSON.parse(text)),
+  seal: async (state,revision) => JSON.stringify(await seal(state,revision)),
+  reseal: async (text,revision) => JSON.stringify(await seal((await unseal(JSON.parse(text))).state,revision))
+};
+})();
+'''
+validation_html = '<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'none\'; script-src ' + hash_source(validation_script) + '; connect-src \'none\'; base-uri \'none\'"><title>Synthetic retention validation</title><script>' + validation_script + '</script>'
+(root / 'retention-check.html').write_text(validation_html)
+(root / 'LDCookLog-2-Retention-Rehearsal.js').write_text('// Isolated synthetic rehearsal; never operates on real cooking journals.\nconst LDC_RETENTION_HTML = ' + json.dumps(validation_html,ensure_ascii=True) + ';\n' + storage + '\n' + (root / 'retention-rehearsal.js').read_text())
