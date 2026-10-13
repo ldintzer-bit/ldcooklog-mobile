@@ -1,7 +1,7 @@
-import { CookStore, unseal, availableActions } from './recovery.js';
+import { CookStore, unseal, availableActions, lidIsOpen } from './recovery.js';
 import { RELATIONAL_FORMAT } from './migration.js';
 import { seriesKey, comparisonSeries } from './fireboard.js';
-import { originalCookingDetails, reviewValues } from './history-details.js';
+import { originalCookingDetails, reviewValues, setupChoices } from './history-details.js';
 import { cookTargets, targetText, cookTimers, elapsedText, assignedProbeLabel } from './cook-tools.js';
 const $ = id => document.getElementById(id);
 const call = (operation, args = {}) => (window.ldcooklogHost || window.webkit.messageHandlers.recovery).postMessage({operation, ...args});
@@ -98,7 +98,7 @@ function renderProbeGuide(setup){
 }
 let view = 'cook';
 const drafts = new Map();
-const editForms = ['event','profileForm','reviewForm','targetsForm'];
+const editForms = ['event','profileForm','reviewForm','targetsForm','wrapForm'];
 function showView(next, scroll = true) {
   view = next;
   for (const name of ['cook','history','backups']) {
@@ -132,7 +132,7 @@ function restoreDrafts() {
     feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
   }
   for(const kind of ['method','equipment'])$(kind+'Custom').hidden=$(kind+'Choice').value!=='__custom__';
-  refreshFireboardSetup();
+  refreshFireboardSetup();refreshWrap();
   updateDraftNotice();
 }
 function cookingActions(cook) {
@@ -145,6 +145,9 @@ function cookingActions(cook) {
     button.onclick=()=>saveEvent(type);$('quickActions').append(button);
   }
   $('event').querySelector('button').disabled=busy || options.length===0;
+  $('lidState').textContent=(cook.events || []).some(e=>['Lid Open','Lid Closed'].includes(e.type))?(lidIsOpen(cook)?'Lid: open':'Lid: closed'):'Lid: not recorded';
+  $('wrapForm').querySelector('button').disabled=busy || (cook.phase || (cook.finishedAt?'Finished':'Cooking'))!=='Cooking';
+  for(const id of ['wrapMethod','wrapDetail','wrapNote'])$(id).disabled=busy || (cook.phase || (cook.finishedAt?'Finished':'Cooking'))!=='Cooking';
   $('targetsForm').querySelector('button').disabled=busy || options.length===0;
   for(const id of ['pitTarget','meatTarget','targetNote'])$(id).disabled=busy || options.length===0;
   $('type').disabled=options.length===0;
@@ -205,15 +208,17 @@ async function render() {
     const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
     $('phase').textContent = `${phase} · started ${fmt(cook.startedAt)}${cook.finishedAt ? ' · finished '+fmt(cook.finishedAt) : ''}`;
     updateTimers();
+    const lastWrap=cook.events.filter(e=>e.wrapMethod).at(-1);$('wrapMethod').value=lastWrap?.wrapMethod || 'Foil';$('wrapDetail').value=lastWrap?.wrapDetail || '';$('wrapNote').value='';refreshWrap();
     const targets=cookTargets(cook);$('targetSummary').textContent=targetText(targets);$('pitTarget').value=targets.pitF ?? '';$('meatTarget').value=targets.meatF ?? '';$('targetNote').value='';
     $('note').value='';
     cookingActions(cook);
     $('timeline').replaceChildren();
-    for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}${event.targets?' · '+targetText(event.targets):''}`; $('timeline').append(li); }
+    for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}${event.targets?' · '+targetText(event.targets):''}${event.wrapMethod?' · Wrap: '+(event.wrapMethod==='Other'?event.wrapDetail:event.wrapMethod):''}`; $('timeline').append(li); }
     const channels = [...new Set(cook.temperatures.map(t => `${t.channel} (${t.unit || 'unknown unit'})`))];
     $('temperatures').textContent = `${cook.temperatures.length} retained readings. ${channels.join(', ')}${channels.length ? '.' : ''}`;
     const related = cook.legacy?.related || {};
     $('details').textContent = `${cook.notes || 'No notes recorded.'} ${Object.entries(related).filter(([,rows]) => rows.length).map(([name,rows]) => `${name.replaceAll('_',' ')}: ${rows.length}`).join(' · ')}`;
+    for(const kind of ['equipment','rubs','sauces']){const select=$(kind+'Library');select.replaceChildren(new Option('Choose saved '+kind+'…',''));for(const name of setupChoices(state,kind))select.append(new Option(name,name));}
     $('editFood').value=cook.food;$('editCooker').value=cook.cooker;
     $('editStart').value=localDate(cook.startedAt);$('editFinish').value=localDate(cook.finishedAt);$('editTest').checked=!!cook.isTestCook;
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
@@ -291,6 +296,21 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
+for(const kind of ['equipment','rubs','sauces'])$(kind+'Library').onchange=e=>{
+  e.stopPropagation();const select=e.target,name=select.value;select.value='';if(!name)return;
+  const input=$('edit'+kind[0].toUpperCase()+kind.slice(1)),parts=input.value.split(';').map(s=>s.trim()).filter(Boolean);
+  if(!parts.some(s=>s.toLocaleLowerCase()===name.toLocaleLowerCase()))parts.push(name);
+  const value=parts.join('; ');if(value.length>input.maxLength){feedback('profileForm','This list is too long. Shorten it before adding another item.',true);return;}
+  input.value=value;if(kind==='equipment'){$('equipmentChoice').value='__custom__';$('equipmentCustom').hidden=false;}
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+};
+function refreshWrap(){$('wrapOther').hidden=$('wrapMethod').value!=='Other';$('wrapDetail').required=!$('wrapOther').hidden;}
+$('wrapMethod').onchange=refreshWrap;
+$('wrapForm').onsubmit=e=>{e.preventDefault();if(current)action(async()=>{
+  const note=$('wrapNote').value,fromAction=$('type').value==='Wrapped' && $('note').value===note;
+  await store.event(current,'Wrapped',note,{wrapMethod:$('wrapMethod').value,wrapDetail:$('wrapMethod').value==='Other'?$('wrapDetail').value:''});
+  if(fromAction){drafts.delete(draftKey('event'));$('note').value='';}
+},'wrapForm');};
 function updateTimers(){
   const cook=journal.find(c=>c.id===current);if(!cook){$('timers').textContent='';return;}
   const timers=cookTimers(cook),phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
@@ -340,6 +360,11 @@ $('new').onsubmit = e => { e.preventDefault(); if (!damaged) action(async () => 
   showView('cook');
 },'new'); };
 function saveEvent(type) {
+  if(type==='Wrapped'){
+    $('type').value='Wrapped';$('event').dispatchEvent(new Event('input',{bubbles:true}));$('wrapPanel').open=true;
+    if(!$('wrapNote').value && $('note').value){$('wrapNote').value=$('note').value;$('wrapForm').dispatchEvent(new Event('input',{bubbles:true}));}
+    $('wrapMethod').focus();return;
+  }
   if(type==='Target Change'){
     $('targetsPanel').open=true;
     if(!$('targetNote').value && $('note').value){$('targetNote').value=$('note').value;$('targetsForm').dispatchEvent(new Event('input',{bubbles:true}));}

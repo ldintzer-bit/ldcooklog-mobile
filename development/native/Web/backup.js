@@ -3,6 +3,10 @@ import { seriesKey } from './fireboard.js';
 export const BACKUP_FORMAT = 'ldcooklog-local-backup';
 export const BACKUP_VERSION = 1;
 
+export function validateWrap(value){
+  if(!value || !['Foil','Butcher Paper','Foil Boat','Other'].includes(value.wrapMethod) || typeof value.wrapDetail!=='string' || value.wrapDetail.length>300 || (value.wrapMethod==='Other' && !value.wrapDetail.trim()))throw Error('Select a wrap method; describe Other in 300 characters or fewer');
+  return value;
+}
 export function validateTargets(value){
   if(!value || typeof value!=='object' || value.unit!=='F')throw Error('Invalid temperature targets');
   for(const key of ['pitF','meatF'])if(value[key]!==null && (!Number.isFinite(value[key]) || value[key]<0 || value[key]>1000))throw Error('Targets must be between 0 and 1000°F, or blank');
@@ -38,7 +42,7 @@ export function validateCook(c) {
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
   if(c.targets!==undefined)validateTargets(c.targets);
-  for(const event of c.events){if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
+  for(const event of c.events){if(event.wrapMethod!==undefined)validateWrap(event);if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
   const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);
   const readings=bindings.length?new Set(c.temperatures.map(t=>seriesKey(t))):new Set(),linked=new Set();
   for(const probe of bindings){

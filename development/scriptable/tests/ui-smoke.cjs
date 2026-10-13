@@ -150,6 +150,7 @@ function manager(root) {
     const migration=await import(pathToFileURL(path.resolve(__dirname,'../../native/Web/migration.js')).href);
     const recovery=await import(pathToFileURL(path.resolve(__dirname,'../../native/Web/recovery.js')).href);
     const tables=Object.fromEntries([...migration.REQUIRED_TABLES].sort().map(name=>[name,{columns:['id'],rows:[]}]));
+    for(const kind of ['equipment','rubs','sauces'])tables[kind]={columns:['id','name'],rows:[{id:'synthetic-'+kind,name:'Synthetic archive '+kind}]};
     tables.cooks={columns:['id','food','start_time'],rows:[]};
     tables.events={columns:['id','cook_id','event_type','event_time','note'],rows:[]};
     tables.cook_fireboard_sessions={columns:['id','cook_id'],rows:[]};
@@ -196,6 +197,7 @@ function manager(root) {
     await page.locator('#fbModel').selectOption('FireBoard 2');await expand('fbChannel1');
     await page.locator('#fbRole1').selectOption('Pit / ambient');await page.locator('#fbProbe1').selectOption('Wired');await page.locator('#fbPort1').selectOption('6');await page.locator('#fbLabel1').fill('Named synthetic pit');
     const link=await page.locator('#fbSeries1 option').nth(1).getAttribute('value');await page.locator('#fbSeries1').selectOption(link);
+    await page.locator('#equipmentLibrary').selectOption('Synthetic archive equipment');await page.locator('#rubsLibrary').selectOption('Synthetic archive rubs');await page.locator('#saucesLibrary').selectOption('Synthetic archive sauces');
     await page.locator('#profileForm button[type=submit]').click();await page.locator('#profileFormFeedback').filter({hasText:'Saved on this device'}).waitFor();
     assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);assert.match(await page.locator('#chartLegend').innerText(),/Named synthetic pit/);
     await expand('targetsPanel');await page.locator('#pitTarget').fill('250');await page.locator('#meatTarget').fill('203');await page.locator('#targetsForm button').click();
@@ -211,6 +213,8 @@ function manager(root) {
     assert.match(await page.locator('#targetSummary').innerText(),/250°F.*203°F/);
     assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);
     const latest=JSON.parse(JSON.parse(fs.readFileSync(path.join(journal,fs.readdirSync(journal).sort().at(-1)),'utf8')).payload);
+    assert.deepEqual(latest.state.relationalArchives,JSON.parse(JSON.parse(originalLarge).payload).state.relationalArchives,'Catalog choices preserve every archived table exactly');
+    assert.match(latest.state.records.map(c=>c.cookingDetails?.rubs || '').join(';'),/Synthetic archive rubs/);
     const previous=JSON.parse(JSON.parse(originalLarge).payload);assert.deepEqual(latest.state.records.map(c=>c.temperatures),previous.state.records.map(c=>c.temperatures),'Links/targets leave every original reading unchanged');
     console.log('PASS: saved clock-based timers/active cook reopening, numeric target history and exact probe links/chart labels survive offline reopen without changing original readings.');
     console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration, delayed startup checksum and 30-cook/18,000-reading relational-history reopening. Host APIs simulated.');

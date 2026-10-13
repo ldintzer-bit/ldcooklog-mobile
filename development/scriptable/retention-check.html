@@ -1,10 +1,14 @@
-<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-5pPWjlNy7AQjjAURyUSfR9zeEwtsnntH9sK7y7IsUQw='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
+<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-60QZRvu61g+/orRLsU5EZjwIuNbkQg44pQBdJ76k84c='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
 (() => {
 
 /* Pure, independently testable backup and restore planning. */
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
 const BACKUP_VERSION = 1;
 
+function validateWrap(value){
+  if(!value || !['Foil','Butcher Paper','Foil Boat','Other'].includes(value.wrapMethod) || typeof value.wrapDetail!=='string' || value.wrapDetail.length>300 || (value.wrapMethod==='Other' && !value.wrapDetail.trim()))throw Error('Select a wrap method; describe Other in 300 characters or fewer');
+  return value;
+}
 function validateTargets(value){
   if(!value || typeof value!=='object' || value.unit!=='F')throw Error('Invalid temperature targets');
   for(const key of ['pitF','meatF'])if(value[key]!==null && (!Number.isFinite(value[key]) || value[key]<0 || value[key]>1000))throw Error('Targets must be between 0 and 1000°F, or blank');
@@ -40,7 +44,7 @@ function validateCook(c) {
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
   if(c.targets!==undefined)validateTargets(c.targets);
-  for(const event of c.events){if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
+  for(const event of c.events){if(event.wrapMethod!==undefined)validateWrap(event);if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
   const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);
   const readings=bindings.length?new Set(c.temperatures.map(t=>seriesKey(t))):new Set(),linked=new Set();
   for(const probe of bindings){
@@ -285,12 +289,13 @@ function comparisonSeries(cook, key) {
 
 
 const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+function lidIsOpen(cook){return (cook.events || []).filter(e=>e.type==='Lid Open' || e.type==='Lid Closed').at(-1)?.type==='Lid Open';}
 function availableActions(cook) {
   const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
   if(phase==='Finished')return [];
   const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
-  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note']);
-  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Target Change','Note'].filter(type=>allowed.has(type));
+  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Note']);
+  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
 }
 const FORMAT = 'ldcooklog-recovery';
 const emptyState = () => ({ records: [], relationalArchives: [] });
@@ -423,16 +428,20 @@ class CookStore {
       return state;
     });
   }
-  event(id, type, note = '') {
+  event(id, type, note = '', detail = null) {
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
       if (phase === 'Finished') throw Error('This cook is finished');
+      if(type==='Lid Open' && lidIsOpen(cook))throw Error('Lid is already open');
+      if(type==='Lid Closed' && !lidIsOpen(cook))throw Error('Lid is already closed');
+      if(type==='Wrapped' && phase!=='Cooking')throw Error('Wrapping is available during cooking');
+      if(detail!==null){if(type!=='Wrapped')throw Error('Wrap details require a Wrapped event');validateWrap(detail);}
       const transition = cookTransitions[type];
       if (transition && !transition[0].includes(phase)) throw Error(`Cannot ${type.toLowerCase()} during ${phase.toLowerCase()}`);
       const at = new Date().toISOString();
-      cook.events.push({ id: crypto.randomUUID(), at, type, note });
+      cook.events.push({ id: crypto.randomUUID(), at, type, note,...(detail?{wrapMethod:detail.wrapMethod,wrapDetail:detail.wrapDetail}: {}) });
       if (transition) cook.phase = transition[1];
       if (type === 'Meat On') cook.startedAt = at;
       if (type === 'Cook Finished') cook.finishedAt = at;

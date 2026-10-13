@@ -5,6 +5,10 @@
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
 const BACKUP_VERSION = 1;
 
+function validateWrap(value){
+  if(!value || !['Foil','Butcher Paper','Foil Boat','Other'].includes(value.wrapMethod) || typeof value.wrapDetail!=='string' || value.wrapDetail.length>300 || (value.wrapMethod==='Other' && !value.wrapDetail.trim()))throw Error('Select a wrap method; describe Other in 300 characters or fewer');
+  return value;
+}
 function validateTargets(value){
   if(!value || typeof value!=='object' || value.unit!=='F')throw Error('Invalid temperature targets');
   for(const key of ['pitF','meatF'])if(value[key]!==null && (!Number.isFinite(value[key]) || value[key]<0 || value[key]>1000))throw Error('Targets must be between 0 and 1000°F, or blank');
@@ -40,7 +44,7 @@ function validateCook(c) {
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
   if(c.targets!==undefined)validateTargets(c.targets);
-  for(const event of c.events){if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
+  for(const event of c.events){if(event.wrapMethod!==undefined)validateWrap(event);if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
   const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);
   const readings=bindings.length?new Set(c.temperatures.map(t=>seriesKey(t))):new Set(),linked=new Set();
   for(const probe of bindings){
@@ -285,12 +289,13 @@ function comparisonSeries(cook, key) {
 
 
 const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+function lidIsOpen(cook){return (cook.events || []).filter(e=>e.type==='Lid Open' || e.type==='Lid Closed').at(-1)?.type==='Lid Open';}
 function availableActions(cook) {
   const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
   if(phase==='Finished')return [];
   const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
-  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note']);
-  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Target Change','Note'].filter(type=>allowed.has(type));
+  const allowed=new Set([...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),lidIsOpen(cook)?'Lid Closed':'Lid Open','Note']);
+  return ['Meat On','Wrapped','Rest Start','Keep Warm','Cook Finished','Lid Open','Lid Closed','Target Change','Note'].filter(type=>allowed.has(type));
 }
 const FORMAT = 'ldcooklog-recovery';
 const emptyState = () => ({ records: [], relationalArchives: [] });
@@ -423,16 +428,20 @@ class CookStore {
       return state;
     });
   }
-  event(id, type, note = '') {
+  event(id, type, note = '', detail = null) {
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
       if (phase === 'Finished') throw Error('This cook is finished');
+      if(type==='Lid Open' && lidIsOpen(cook))throw Error('Lid is already open');
+      if(type==='Lid Closed' && !lidIsOpen(cook))throw Error('Lid is already closed');
+      if(type==='Wrapped' && phase!=='Cooking')throw Error('Wrapping is available during cooking');
+      if(detail!==null){if(type!=='Wrapped')throw Error('Wrap details require a Wrapped event');validateWrap(detail);}
       const transition = cookTransitions[type];
       if (transition && !transition[0].includes(phase)) throw Error(`Cannot ${type.toLowerCase()} during ${phase.toLowerCase()}`);
       const at = new Date().toISOString();
-      cook.events.push({ id: crypto.randomUUID(), at, type, note });
+      cook.events.push({ id: crypto.randomUUID(), at, type, note,...(detail?{wrapMethod:detail.wrapMethod,wrapDetail:detail.wrapDetail}: {}) });
       if (transition) cook.phase = transition[1];
       if (type === 'Meat On') cook.startedAt = at;
       if (type === 'Cook Finished') cook.finishedAt = at;
@@ -470,6 +479,15 @@ function reviewValues(cook) {
   if(cook.evaluationDetails)return cook.evaluationDetails;
   const row=cook.legacy?.related?.cook_evaluations?.[0] || {};
   return {overallResult:row.overall_result || '',bark:row.bark || '',tenderness:row.tenderness || '',observations:row.observations || '',changesNextTime:row.changes_next_time || ''};
+}
+
+function setupChoices(state,kind){
+  if(!['equipment','rubs','sauces'].includes(kind))throw Error('Unsupported setup library');
+  const names=new Map();
+  const add=value=>{if(typeof value!=='string')return;const name=value.trim();if(name && name.length<=1000 && !names.has(name.toLocaleLowerCase()))names.set(name.toLocaleLowerCase(),name);};
+  for(const archive of state.relationalArchives || [])for(const row of archive.tables?.[kind]?.rows || [])add(row.name);
+  for(const cook of state.records || [])if(!cook.isTestCook)for(const name of (typeof cook.cookingDetails?.[kind]==='string'?cook.cookingDetails[kind]:'').split(';'))add(name);
+  return [...names.values()].sort((a,b)=>a.localeCompare(b));
 }
 
 
@@ -606,7 +624,7 @@ function renderProbeGuide(setup){
 }
 let view = 'cook';
 const drafts = new Map();
-const editForms = ['event','profileForm','reviewForm','targetsForm'];
+const editForms = ['event','profileForm','reviewForm','targetsForm','wrapForm'];
 function showView(next, scroll = true) {
   view = next;
   for (const name of ['cook','history','backups']) {
@@ -640,7 +658,7 @@ function restoreDrafts() {
     feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
   }
   for(const kind of ['method','equipment'])$(kind+'Custom').hidden=$(kind+'Choice').value!=='__custom__';
-  refreshFireboardSetup();
+  refreshFireboardSetup();refreshWrap();
   updateDraftNotice();
 }
 function cookingActions(cook) {
@@ -653,6 +671,9 @@ function cookingActions(cook) {
     button.onclick=()=>saveEvent(type);$('quickActions').append(button);
   }
   $('event').querySelector('button').disabled=busy || options.length===0;
+  $('lidState').textContent=(cook.events || []).some(e=>['Lid Open','Lid Closed'].includes(e.type))?(lidIsOpen(cook)?'Lid: open':'Lid: closed'):'Lid: not recorded';
+  $('wrapForm').querySelector('button').disabled=busy || (cook.phase || (cook.finishedAt?'Finished':'Cooking'))!=='Cooking';
+  for(const id of ['wrapMethod','wrapDetail','wrapNote'])$(id).disabled=busy || (cook.phase || (cook.finishedAt?'Finished':'Cooking'))!=='Cooking';
   $('targetsForm').querySelector('button').disabled=busy || options.length===0;
   for(const id of ['pitTarget','meatTarget','targetNote'])$(id).disabled=busy || options.length===0;
   $('type').disabled=options.length===0;
@@ -713,15 +734,17 @@ async function render() {
     const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
     $('phase').textContent = `${phase} · started ${fmt(cook.startedAt)}${cook.finishedAt ? ' · finished '+fmt(cook.finishedAt) : ''}`;
     updateTimers();
+    const lastWrap=cook.events.filter(e=>e.wrapMethod).at(-1);$('wrapMethod').value=lastWrap?.wrapMethod || 'Foil';$('wrapDetail').value=lastWrap?.wrapDetail || '';$('wrapNote').value='';refreshWrap();
     const targets=cookTargets(cook);$('targetSummary').textContent=targetText(targets);$('pitTarget').value=targets.pitF ?? '';$('meatTarget').value=targets.meatF ?? '';$('targetNote').value='';
     $('note').value='';
     cookingActions(cook);
     $('timeline').replaceChildren();
-    for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}${event.targets?' · '+targetText(event.targets):''}`; $('timeline').append(li); }
+    for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}${event.targets?' · '+targetText(event.targets):''}${event.wrapMethod?' · Wrap: '+(event.wrapMethod==='Other'?event.wrapDetail:event.wrapMethod):''}`; $('timeline').append(li); }
     const channels = [...new Set(cook.temperatures.map(t => `${t.channel} (${t.unit || 'unknown unit'})`))];
     $('temperatures').textContent = `${cook.temperatures.length} retained readings. ${channels.join(', ')}${channels.length ? '.' : ''}`;
     const related = cook.legacy?.related || {};
     $('details').textContent = `${cook.notes || 'No notes recorded.'} ${Object.entries(related).filter(([,rows]) => rows.length).map(([name,rows]) => `${name.replaceAll('_',' ')}: ${rows.length}`).join(' · ')}`;
+    for(const kind of ['equipment','rubs','sauces']){const select=$(kind+'Library');select.replaceChildren(new Option('Choose saved '+kind+'…',''));for(const name of setupChoices(state,kind))select.append(new Option(name,name));}
     $('editFood').value=cook.food;$('editCooker').value=cook.cooker;
     $('editStart').value=localDate(cook.startedAt);$('editFinish').value=localDate(cook.finishedAt);$('editTest').checked=!!cook.isTestCook;
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
@@ -799,6 +822,21 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
+for(const kind of ['equipment','rubs','sauces'])$(kind+'Library').onchange=e=>{
+  e.stopPropagation();const select=e.target,name=select.value;select.value='';if(!name)return;
+  const input=$('edit'+kind[0].toUpperCase()+kind.slice(1)),parts=input.value.split(';').map(s=>s.trim()).filter(Boolean);
+  if(!parts.some(s=>s.toLocaleLowerCase()===name.toLocaleLowerCase()))parts.push(name);
+  const value=parts.join('; ');if(value.length>input.maxLength){feedback('profileForm','This list is too long. Shorten it before adding another item.',true);return;}
+  input.value=value;if(kind==='equipment'){$('equipmentChoice').value='__custom__';$('equipmentCustom').hidden=false;}
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+};
+function refreshWrap(){$('wrapOther').hidden=$('wrapMethod').value!=='Other';$('wrapDetail').required=!$('wrapOther').hidden;}
+$('wrapMethod').onchange=refreshWrap;
+$('wrapForm').onsubmit=e=>{e.preventDefault();if(current)action(async()=>{
+  const note=$('wrapNote').value,fromAction=$('type').value==='Wrapped' && $('note').value===note;
+  await store.event(current,'Wrapped',note,{wrapMethod:$('wrapMethod').value,wrapDetail:$('wrapMethod').value==='Other'?$('wrapDetail').value:''});
+  if(fromAction){drafts.delete(draftKey('event'));$('note').value='';}
+},'wrapForm');};
 function updateTimers(){
   const cook=journal.find(c=>c.id===current);if(!cook){$('timers').textContent='';return;}
   const timers=cookTimers(cook),phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
@@ -848,6 +886,11 @@ $('new').onsubmit = e => { e.preventDefault(); if (!damaged) action(async () => 
   showView('cook');
 },'new'); };
 function saveEvent(type) {
+  if(type==='Wrapped'){
+    $('type').value='Wrapped';$('event').dispatchEvent(new Event('input',{bubbles:true}));$('wrapPanel').open=true;
+    if(!$('wrapNote').value && $('note').value){$('wrapNote').value=$('note').value;$('wrapForm').dispatchEvent(new Event('input',{bubbles:true}));}
+    $('wrapMethod').focus();return;
+  }
   if(type==='Target Change'){
     $('targetsPanel').open=true;
     if(!$('targetNote').value && $('note').value){$('targetNote').value=$('note').value;$('targetsForm').dispatchEvent(new Event('input',{bubbles:true}));}
