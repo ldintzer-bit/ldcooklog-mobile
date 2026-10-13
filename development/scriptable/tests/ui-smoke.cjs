@@ -72,6 +72,9 @@ function manager(root) {
     if(damaged) assert.equal(await page.locator('#new button').isDisabled(),true);
     assert.deepEqual(errors,[]);
   }
+  async function expand(id){if(!await page.locator('#'+id).evaluate(e=>e.open))await page.locator('#'+id+' > summary').click();}
+  async function showHistory(){await page.locator('#navHistory').click();}
+  async function showBackups(){await page.locator('#navBackups').click();await expand('backupDetails');await expand('recoveryTools');}
   async function close(){assert.equal(typeof closeView,'function','Wait for native presentation before dismissal');closeView();await running;await page.close()}
   try {
     await open();
@@ -79,18 +82,20 @@ function manager(root) {
     await page.locator('#food').fill('Synthetic Scriptable ribs');
     progress('save initial cook');
     await page.locator('#new button').click();
-    await page.locator('#count').filter({hasText:'1 of 1'}).waitFor();
-    await page.locator('#history button').click();
+    await page.locator('#title').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
+    assert.equal(await page.locator('#cookView').isVisible(),true);
+    await page.locator('#count').filter({hasText:'1 of 1'}).waitFor({state:'attached'});
+    await showHistory();await page.locator('#history button').click();await expand('setupPanel');
     await page.locator('#type').selectOption('Meat On');
     progress('save Meat On');
     await page.locator('#event button').click();
     await page.locator('#phase').filter({hasText:'Cooking'}).waitFor();
-    await page.locator('#protection').filter({hasText:'2 pending'}).waitFor();
+    await page.locator('#protection').filter({hasText:'2 pending'}).waitFor({state:'attached'});
     await close();await open();
-    await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
+    await showHistory();await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     progress('stage original cloud copies');
-    cloudAvailable=true;await page.locator('#retry').click();
-    await page.locator('#protection').filter({hasText:'2 copies staged'}).waitFor();
+    cloudAvailable=true;await showBackups();await page.locator('#retry').click();
+    await page.locator('#protection').filter({hasText:'2 copies staged'}).waitFor({state:'attached'});
     assert.match(await page.locator('#protection').innerText(),/0 confirmed uploaded/);
     // Restore into a physically separate local folder, using only staged
     // cloud source copies. Preserve the working journal and all source bytes.
@@ -100,12 +105,13 @@ function manager(root) {
     progress('copy on Mac and display independently verified metadata');
     const reportRoot=path.join(root,'cloud/LDCookLog-2-Development-Recovery');
     require('node:child_process').execFileSync('python3',['-c',"import sys;from pathlib import Path;from maintain_verified_recovery import protect;assert protect(Path(sys.argv[1]),Path(sys.argv[2]),scheduled=True)['reportPublished']",reportRoot,path.join(root,'independentMac')],{cwd:path.resolve(__dirname,'../mac')});
-    await page.locator('#retry').click();
-    await page.locator('#protection').filter({hasText:'Mac independent copy verified for this revision (2)'}).waitFor();
+    await showBackups();await page.locator('#retry').click();
+    await page.locator('#protection').filter({hasText:'Mac independent copy verified for this revision (2)'}).waitFor({state:'attached'});
     assert.match(await page.locator('#protection').innerText(),/0 confirmed uploaded/);
+    assert.equal(await page.locator('#backupBrief').innerText(),'Mac copy verified · revision 2');
     await close();await open(false,true);
-    await page.locator('#count').filter({hasText:'0 of 0'}).waitFor();
-    await page.locator('#browse').click();
+    await page.locator('#count').filter({hasText:'0 of 0'}).waitFor({state:'attached'});
+    await showBackups();await page.locator('#browse').click();
     await page.locator('#snapshots button').filter({hasText:'iCloud copy (upload unconfirmed) · revision 2'}).click();
     await page.locator('#ldc-confirm-yes').waitFor();
     progress('cancel isolated restore');
@@ -116,18 +122,18 @@ function manager(root) {
     progress('accept restore');
     await page.locator('#ldc-confirm-yes').click();
     await page.locator('#status').filter({hasText:'Saved on this device'}).waitFor();
-    await page.locator('#history button').click();
+    await showHistory();await page.locator('#history button').click();await expand('setupPanel');
     await page.locator('#phase').filter({hasText:'Cooking'}).waitFor();
     await page.locator('#timeline').filter({hasText:'Meat On'}).waitFor();
     assert.deepEqual(fs.readdirSync(originalJournal).sort().map(n=>fs.readFileSync(path.join(originalJournal,n),'utf8')),originalBytes);
     await close();await open(false,true);
-    await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
+    await showHistory();await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     await close();await open();
-    await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
+    await showHistory();await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     const journal=path.join(root,'local/LDCookLog-2-Development/journal');
     fs.writeFileSync(path.join(journal,fs.readdirSync(journal).sort().at(-1)),'broken');
     await close();await open(true);
-    await page.locator('#browse').click();
+    await showBackups();await page.locator('#browse').click();
     await page.locator('#snapshots button').filter({hasText:'This iPhone · revision 1'}).click();
     progress('accept restore');
     await page.locator('#ldc-confirm-yes').click();
@@ -156,12 +162,12 @@ function manager(root) {
     const snapshot=path.join(journal,'0000000000000004-'+randomUUID()+'.recovery.json');
     const originalLarge=JSON.stringify(envelope);fs.writeFileSync(snapshot,originalLarge);
     await open();
-    await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor();
-    await page.locator('#history button').first().click();
+    await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor({state:'attached'});
+    await showHistory();await page.locator('#history button').first().click();
     await page.locator('#temperatures').filter({hasText:'600 retained readings'}).waitFor();
     await page.locator('#timeline').filter({hasText:'Meat On'}).waitFor();
     progress('compare four full-history cooks and preserve choices through filtering');
-    await page.locator('#compareCook').selectOption('synthetic-large-1');
+    await expand('comparisonPanel');await page.locator('#compareCook').selectOption('synthetic-large-1');
     await page.locator('#compareCook2').selectOption('synthetic-large-2');
     await page.locator('#compareCook3').selectOption('synthetic-large-3');
     assert.equal(await page.locator('#chart polyline').count(),4);
@@ -170,18 +176,18 @@ function manager(root) {
     const duplicateOption=await page.locator('#compareCook2 option[value="synthetic-large-1"]').evaluate(option=>({disabled:option.disabled,html:option.outerHTML}));
     assert.equal(duplicateOption.disabled,true,JSON.stringify(duplicateOption));
     const selectedProbe=await page.locator('#compareProbe2').inputValue();
-    await page.locator('#search').fill('Synthetic large history 29');
-    await page.locator('#count').filter({hasText:'1 of 30'}).waitFor();
+    await showHistory();await page.locator('#search').fill('Synthetic large history 29');
+    await page.locator('#count').filter({hasText:'1 of 30'}).waitFor({state:'attached'});
     assert.equal(await page.locator('#compareCook').inputValue(),'synthetic-large-1');
     assert.equal(await page.locator('#compareCook2').inputValue(),'synthetic-large-2');
     assert.equal(await page.locator('#compareCook3').inputValue(),'synthetic-large-3');
     assert.equal(await page.locator('#compareProbe2').inputValue(),selectedProbe);
     assert.equal(await page.locator('#chart polyline').count(),4);
     assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Comparisons never mutate cooking data');
-    await page.locator('#search').fill('');
-    await page.locator('#count').filter({hasText:'30 of 30'}).waitFor();
+    await showHistory();await page.locator('#search').fill('');
+    await page.locator('#count').filter({hasText:'30 of 30'}).waitFor({state:'attached'});
     await close();await open();
-    await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor();
+    await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor({state:'attached'});
     assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Opening large history never rewrites the journal');
     console.log('PASS: generated Scriptable launcher, event-driven WebView bridge, local files, offline save/reopen, cloud retry/unconfirmed status, isolated fresh-journal cloud restoration/reopen with original bytes preserved, explicit damaged-journal restoration, delayed startup checksum and 30-cook/18,000-reading relational-history reopening. Host APIs simulated.');
     await close();

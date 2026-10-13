@@ -1,3 +1,20 @@
+## October 13 approved interface
+
+Use Cook for current cooking actions, setup and review; History to find/open
+records; Backups for verification details and explicit restoration/import.
+Creating a cook opens it automatically and expands setup. Tap section headings
+to show preparation, review, completed-session import or comparisons. Large
+buttons offer actions allowed in the current phase. Save feedback appears beside
+the edited form. The compact backup bar links to diagnostics; pending uploads
+remain unconfirmed even when a matching independent Mac copy has been verified.
+
+Unsaved edits survive switching views/cooks, filtering history and saving other
+forms while this journal remains open. They are in-memory drafts, not backups:
+**save before closing/reloading the app**. Failed saves retain the edits. Restore
+explicitly replaces the current journal and clears drafts after successful
+confirmation. The existing Home Screen icon and LDCookLog-2-Backup-Status.js
+filename continue to work; no data re-import is required.
+
 ## October 13 journal-first startup
 
 The working Home Screen URL remains `scriptable:///run/LDCookLog-2-Backup-Status`.

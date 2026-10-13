@@ -2,6 +2,13 @@ import { validateCook, planRestore } from './backup.js';
 import { migrateRelationalExport, RELATIONAL_FORMAT, verifyRelationalExport } from './migration.js';
 import { attachSession } from './fireboard.js';
 
+const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+export function availableActions(cook) {
+  const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
+  if(phase==='Finished')return [];
+  const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
+  return [...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note'];
+}
 export const FORMAT = 'ldcooklog-recovery';
 export const emptyState = () => ({ records: [], relationalArchives: [] });
 async function digest(text) {
@@ -122,13 +129,12 @@ export class CookStore {
     });
   }
   event(id, type, note = '') {
-    const transitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
       if (phase === 'Finished') throw Error('This cook is finished');
-      const transition = transitions[type];
+      const transition = cookTransitions[type];
       if (transition && !transition[0].includes(phase)) throw Error(`Cannot ${type.toLowerCase()} during ${phase.toLowerCase()}`);
       const at = new Date().toISOString();
       cook.events.push({ id: crypto.randomUUID(), at, type, note });

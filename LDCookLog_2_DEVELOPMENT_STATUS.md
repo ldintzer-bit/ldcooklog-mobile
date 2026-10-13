@@ -1,3 +1,35 @@
+## 2026-10-13 — Approved cooking interface update
+
+Owner physically accepted the journal-first update as a little faster and
+approved all five UI proposals. Implemented separate Cook, History and Backups
+views; sticky accessible navigation; compact current-proof backup summary with
+expandable diagnostics and restore/import tools; automatic opening of newly
+created cooks; large phase-valid action buttons with shared store transition
+rules; collapsible setup, review, session import and comparison panels; save/error
+feedback beside each form; and per-cook in-memory drafts. Navigation, history
+filters, opening another cook, and saving another form preserve those drafts.
+Failed saves retain edits and do not clear the unsaved indicator. Inputs lock
+while a save is committing to prevent typing into fields about to re-render.
+Drafts are not recovery snapshots: save before closing Scriptable; closing or
+reloading discards unsaved in-memory edits. Existing cooking data and original
+archives need no migration or schema change. Backup work still runs automatically
+regardless of selected view; pending iCloud upload is never equated to verified
+Mac protection. Failures/storage warnings remain visible in the compact summary.
+Damaged journals open directly in Backups with recovery tools expanded.
+
+Replaced stale synthetic-only/use-old-app interface advice with controlled-pilot
+wording; restore confirmation still explicitly warns it replaces the journal
+and discards unsaved edits. Numeric rating is labeled 1–5 and qualitative result
+is labeled separately. Working filename, shortcut URL, journal namespace and
+backup policy are unchanged. Production was not changed.
+
+Added browser coverage for all navigation/disclosures, automatic opening, quick
+actions, compact current-Mac proof, and drafts through filtering, cook switching,
+other-form saves and simulated disk-full failures. A pure lifecycle test commits
+every offered phase action through the actual store. Updated native simulator
+navigation/relaunch checks. Local tests/security pass; CI results follow.
+All fixtures and UI screenshots are synthetic. No private history was accessed.
+
 ### Journal-first launch verification
 
 Source 9abcd3ceac57beb0c47e4f754d1d688576d2cb8c, Actions run 38402927111:

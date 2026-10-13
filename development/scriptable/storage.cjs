@@ -108,7 +108,7 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
     let bytes = 0;
     for (const name of files) { try { bytes += encodeURIComponent(local.readString(local.joinPath(journal,name))).replace(/%[A-F0-9]{2}/g,'x').length; } catch {} }
     const capacity = `Local snapshots use about ${Math.ceil(bytes/1048576)} MiB.` + (bytes >= 128*1048576 ? ' Storage warning: over 128 MiB. Keep the Mac awake for verification and cleanup.' : '');
-    return {local: files.length, uploaded: 0, pending: files.length, mac,
+    return {local: files.length, uploaded: 0, pending: files.length, failed, storageWarning:bytes >= 128*1048576, mac,
       message: `${staged} copies staged in iCloud Drive; ${failed} could not be staged. Upload completion is unconfirmed. ${mac.message} ${retention} ${capacity}`};
   }
   async function retainSnapshots(files) {
@@ -155,7 +155,7 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
           !['verified','failed'].includes(report.health) || !['manual','scheduled'].includes(report.trigger) || !safeRev(report.revision) ||
           typeof report.sha256!=='string' || !/^[a-f0-9]{64}$/.test(report.sha256) || !timestamp(report.checkedAt) || !timestamp(report.verifiedAt) || !Number.isFinite(checked) || !Number.isFinite(verified) ||
           checked>Date.now()+300000 || verified>Date.now()+300000 || verified>checked+300000) throw Error('Invalid report');
-      if (report.health==='failed') return {verified:false,revision:report.revision,message:`Mac reported a failed backup attempt. Last independently verified copy: revision ${report.revision}.`};
+      if (report.health==='failed') return {verified:false,health:'failed',revision:report.revision,message:`Mac reported a failed backup attempt. Last independently verified copy: revision ${report.revision}.`};
       if (Date.now()-checked>900000) return {verified:false,revision:report.revision,message:`Mac report is over 15 minutes old. Last verified copy: revision ${report.revision}. Keep the Mac awake to refresh it.`};
       if (!current || report.revision!==current.revision || report.sha256!==current.sha256)
         return {verified:false,revision:report.revision,message:`Mac last verified revision ${report.revision}. This journal is awaiting an independent Mac copy.`};

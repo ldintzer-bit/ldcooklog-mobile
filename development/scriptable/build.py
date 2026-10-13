@@ -31,9 +31,9 @@ html = html.replace("style-src 'self'", 'style-src ' + hash_source(style))
 html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + style + '</style>')
 html = html.replace('<script src="app.bundle.js"></script>', '<script>' + script + '</script>')
 html = html.replace('iCloud uploads need connectivity and a signed app.', 'Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification.')
-html = html.replace('LDCookLog <small>2.0 Dev</small>', 'LDCookLog <small>2.0 Scriptable Dev · faster opening 1</small>')
+html = html.replace('LDCookLog <small>2.0 Dev</small>', 'LDCookLog <small>2.0 · cooking pilot</small>')
 storage = (root / 'storage.cjs').read_text().replace('module.exports = {createStorage};', '')
-header = '// LDCookLog 2.0 experimental offline host — synthetic testing only.\n'
+header = '// LDCookLog 2.0 offline cooking pilot — keep the original migration archive.\n'
 output = header + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';\n' + storage + '\n' + (root / 'launcher.js').read_text()
 (root / 'LDCookLog-2-Development.js').write_text(output)
 # Test harness renders exactly the generated page, never private journal data.
@@ -44,8 +44,8 @@ output = header + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';
     + (root / 'interface-check.js').read_text())
 
 # A separate local/cloud destination; source recovery copies are read-only.
-trial_html = html.replace('2.0 Scriptable Dev · faster opening 1', '2.0 Restore Check')
-trial_html = trial_html.replace('Development build — keep using your current app for real cooks.', 'Separate restore-test journal. Your working development journal stays in its own folder.')
+trial_html = html.replace('2.0 · cooking pilot', '2.0 Restore Check')
+trial_html = trial_html.replace('Pilot build · offline cooking with automatic recovery copies.', 'Separate restore-test journal. Your working development journal stays in its own folder.')
 trial_launcher = (root / 'launcher.js').read_text().replace("const LDC_NAMESPACE = 'development';", "const LDC_NAMESPACE = 'restore-check';")
 (root / 'LDCookLog-2-Restore-Check.js').write_text(header + 'const LDC_HTML = ' + json.dumps(trial_html, ensure_ascii=True) + ';\n' + storage + '\n' + trial_launcher)
 (root / 'restore-check.html').write_text(trial_html)

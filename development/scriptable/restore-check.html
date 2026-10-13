@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MJBbZxUUT8w2z/ZxBOi698qlRYMJGo9/YJGkJNq3Zw0='; style-src 'sha256-S9NeeF+iuzyZmmq8TCduU0pa0QsvfUZVkIG0fNuLAoE='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-Sqvy8rMkviqe00yr/H/fDRFHwlq3s23Y/YOkF0FoiPU='; style-src 'sha256-nrKrfP8akPZy3iB/PzXifg2Tn6iFhzRMyniP5Oncfqo='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
 
 input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-align:middle;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}summary{padding:12px 0;cursor:pointer}
 
@@ -9,15 +9,18 @@ input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-al
 
 dt{font-weight:600;margin-top:12px}dd{margin:4px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
 
+nav{display:flex;gap:8px;position:sticky;top:0;background:#15201c;padding:10px 0;z-index:2}nav button{flex:1;margin:0;background:#213029;color:#efeee5}nav button[aria-pressed=true]{background:#daba7c;color:#192218}.backup-summary{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;text-align:left;background:#213029;color:#efeee5;font-weight:500}.backup-summary .hint{flex-shrink:0}.backup-summary[data-warning=true]{border-color:#ffad82}#draftNotice{padding:12px;border:1px solid #daba7c;border-radius:8px}section>details>summary{font-weight:650;font-size:1.15rem;min-height:48px}#quickActions{display:flex;flex-wrap:wrap;gap:8px}#quickActions button{flex:1 1 140px;min-height:56px;margin:4px 0}.form-feedback{padding:10px;border-left:3px solid #daba7c;white-space:pre-wrap}.form-feedback[data-error=true]{border-color:#ff8f7a}.form-feedback:empty{display:none}#newCookSection{border-style:dashed}#cookEmpty{padding:8px 0}#backupDetails p{overflow-wrap:anywhere}
+
 #ldc-confirm{position:fixed;inset:0;z-index:1000;margin:0;border:0;border-radius:0;padding:24px 18px;overflow:auto;background:#15201cf5;display:flex;align-items:flex-start;justify-content:center}#ldc-confirm .ldc-confirm-card{max-width:680px;width:100%;margin:24px 0;padding:22px;background:#213029;border:2px solid #daba7c;border-radius:14px}#ldc-confirm p{white-space:pre-wrap}#ldc-confirm button{display:block;width:100%;margin-top:14px}
 </style></head><body>
 <header><p class="eyebrow">OFFLINE COOKING JOURNAL</p><h1>LDCookLog <small>2.0 Restore Check</small></h1><p>Separate restore-test journal. Your working development journal stays in its own folder.</p></header>
 <p id="status" role="status">Opening your journal…</p>
-<section><h2>Recovery protection</h2><p id="protection">Checking automatic backups…</p><button id="retry">Check / retry iCloud</button><button id="browse">Find recovery snapshots</button><div id="snapshots"></div><label>Migration or recovery file<input id="import" type="file" accept=".json,application/json"></label><p class="hint">Import the private .relational.json made on your Mac. Your original database archive stays untouched.</p></section>
-<section><h2>New cook</h2><form id="new"><label>Food / cut<input id="food" required maxlength="300" placeholder="Pork butt"></label><label>Cooker<select id="cooker"><option>Traeger Ironwood 885</option><option>Weber 22-inch kettle / Slow ’N Sear</option></select></label><button type="submit">Create cook</button></form></section>
-<section><h2>Cooking history</h2><label>Find similar cooks<input id="search" type="search" placeholder="Food or cooker"></label><label><input id="showTests" type="checkbox"> Show test cooks</label><p id="count"></p><div id="history"></div></section>
-<section id="active" hidden><h2 id="title"></h2><p id="phase"></p><form id="event"><label>Action<select id="type"><option>Meat On</option><option>Target Change</option><option>Wrapped</option><option>Rest Start</option><option>Keep Warm</option><option>Cook Finished</option><option>Note</option></select></label><label>Note<input id="note" maxlength="2000"></label><button type="submit">Save action</button></form><h3>Timeline</h3><ol id="timeline"></ol><h3>Historical temperatures</h3><p id="temperatures"></p><h3>Preserved details</h3><p id="details"></p></section>
-<section id="profile" hidden><h2>Cook setup and preparation</h2><form id="profileForm">
+<nav aria-label="Journal views"><button id="navCook" aria-pressed="true">Cook</button><button id="navHistory" aria-pressed="false">History</button><button id="navBackups" aria-pressed="false">Backups</button></nav>
+<button id="backupSummary" class="backup-summary"><span id="backupBrief">Checking automatic backups…</span><span class="hint">View backups ›</span></button>
+<p id="draftNotice" role="status" hidden>Unsaved edits are kept while this journal is open. Save before closing the app.</p>
+<main>
+<div id="cookView"><p id="cookEmpty" class="hint">Choose a cook from History or start one here.</p><section id="active" hidden><h2 id="title"></h2><p id="phase"></p><div id="quickActions" aria-label="Cooking actions"></div><form id="event"><label>Action / note<select id="type"><option>Meat On</option><option>Target Change</option><option>Wrapped</option><option>Rest Start</option><option>Keep Warm</option><option>Cook Finished</option><option>Note</option></select></label><label>Note<input id="note" maxlength="2000"></label><button type="submit">Save action</button></form><h3>Timeline</h3><ol id="timeline"></ol><h3>Historical temperatures</h3><p id="temperatures"></p><h3>Preserved details</h3><p id="details"></p></section>
+<section id="profile" hidden><details id="setupPanel"><summary>Cook setup and preparation</summary><form id="profileForm">
 <label>Food / cut<input id="editFood" required maxlength="300"></label><label>Cooker<input id="editCooker" required maxlength="300"></label>
 <label>Start date and time<input id="editStart" type="datetime-local" required></label><label>Finish date and time (optional)<input id="editFinish" type="datetime-local"></label>
 <label><input id="editTest" type="checkbox"> Test cook — exclude from comparisons</label>
@@ -26,9 +29,16 @@ dt{font-weight:600;margin-top:12px}dd{margin:4px 0 8px;white-space:pre-wrap;over
 <label>Equipment / fuel<select id="equipmentChoice"><option value="">Not recorded</option><option>Weber kettle, lump charcoal</option><option>Weber kettle, charcoal briquettes</option><option>Weber kettle, Slow ’N Sear, lump charcoal</option><option>Weber kettle, Slow ’N Sear, charcoal briquettes</option><option>Traeger Ironwood 885, wood pellets</option><option value="__custom__">Other / custom combination</option></select></label><label id="equipmentCustom" hidden>Custom equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Include accessories, fuel and probes"></label>
 <label>Trim<select id="editTrim"><option value="">Not recorded</option><option>None</option><option>Light</option><option>Moderate</option><option>Heavy</option></select></label><label>Brine / marinade<select id="editBrine"><option value="">Not recorded</option><option>None</option><option>Dry brine</option><option>Wet brine</option><option>Marinade</option></select></label><label>Injection<select id="editInjection"><option value="">Not recorded</option><option>No</option><option>Yes</option></select></label><label>Binder<input id="editBinder" maxlength="500"></label><label>Preparation notes<textarea id="editPreparation" maxlength="4000"></textarea></label>
 <label>Rubs<input id="editRubs" maxlength="1000"></label><label>Sauces<input id="editSauces" maxlength="1000"></label>
-<label>Overall rating<select id="editRating"><option value="">Not rated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
-<button type="submit">Save cook setup</button></form><details><summary>Original imported cooking details</summary><div id="legacyDetails"></div></details></section>
-<section id="review" hidden><h2>Cook notes and evaluation</h2><form id="reviewForm"><label>Notes<textarea id="cookNotes" maxlength="20000"></textarea></label><label>General evaluation notes<textarea id="evaluation" maxlength="20000"></textarea></label><label>Overall result<select id="reviewOverall"><option value="">Not recorded</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></label><label>Bark<select id="reviewBark"><option value="">Not recorded</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></label><label>Tenderness<select id="reviewTenderness"><option value="">Not recorded</option><option>Tough</option><option>Slightly Tough</option><option>Just Right</option><option>Too Tender</option></select></label><label>Observations<textarea id="reviewObservations" maxlength="20000"></textarea></label><label>Changes next time<textarea id="reviewChanges" maxlength="20000"></textarea></label><button type="submit">Save review</button></form><label>Attach completed FireBoard session<input id="sessionFile" type="file" accept=".json,application/json"></label><p class="hint">Use the private completed-session export made by the Mac helper. Original readings and units are retained.</p><h2>Compare temperature history</h2><label>This cook’s probe<select id="probe"></select></label><label>Comparison cook 2<select id="compareCook"></select></label><label>Cook 2 probe<select id="compareProbe"></select></label><label>Comparison cook 3<select id="compareCook2"></select></label><label>Cook 3 probe<select id="compareProbe2"></select></label><label>Comparison cook 4<select id="compareCook3"></select></label><label>Cook 4 probe<select id="compareProbe3"></select></label><div id="chartLegend" aria-label="Comparison legend"></div><div id="chart"></div><p id="chartSummary"></p></section>
+<label>Rating (1–5)<select id="editRating"><option value="">Not rated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
+<button type="submit">Save cook setup</button></form><details><summary>Original imported cooking details</summary><div id="legacyDetails"></div></details></details></section>
+<section id="review" hidden><details id="reviewPanel"><summary>Cook notes and evaluation</summary><form id="reviewForm"><label>Notes<textarea id="cookNotes" maxlength="20000"></textarea></label><label>General evaluation notes<textarea id="evaluation" maxlength="20000"></textarea></label><label>Overall result (words)<select id="reviewOverall"><option value="">Not recorded</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></label><label>Bark<select id="reviewBark"><option value="">Not recorded</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></label><label>Tenderness<select id="reviewTenderness"><option value="">Not recorded</option><option>Tough</option><option>Slightly Tough</option><option>Just Right</option><option>Too Tender</option></select></label><label>Observations<textarea id="reviewObservations" maxlength="20000"></textarea></label><label>Changes next time<textarea id="reviewChanges" maxlength="20000"></textarea></label><button type="submit">Save review</button></form></details><details id="sessionPanel"><summary>Import completed FireBoard session</summary><label>Attach completed FireBoard session<input id="sessionFile" type="file" accept=".json,application/json"></label><p class="hint">Use the private completed-session export made by the Mac helper. Original readings and units are retained.</p></details><details id="comparisonPanel"><summary>Compare temperature history</summary><label>This cook’s probe<select id="probe"></select></label><label>Comparison cook 2<select id="compareCook"></select></label><label>Cook 2 probe<select id="compareProbe"></select></label><label>Comparison cook 3<select id="compareCook2"></select></label><label>Cook 3 probe<select id="compareProbe2"></select></label><label>Comparison cook 4<select id="compareCook3"></select></label><label>Cook 4 probe<select id="compareProbe3"></select></label><div id="chartLegend" aria-label="Comparison legend"></div><div id="chart"></div><p id="chartSummary"></p></details></section>
+<section id="newCookSection"><h2>New cook</h2><form id="new"><label>Food / cut<input id="food" required maxlength="300" placeholder="Pork butt"></label><label>Cooker<select id="cooker"><option>Traeger Ironwood 885</option><option>Weber 22-inch kettle / Slow ’N Sear</option></select></label><button type="submit">Create cook</button></form></section>
+</div>
+<div id="historyView" hidden><section><h2>Cooking history</h2><label>Find similar cooks<input id="search" type="search" placeholder="Food or cooker"></label><label><input id="showTests" type="checkbox"> Show test cooks</label><p id="count"></p><div id="history"></div></section>
+</div>
+<div id="backupsView" hidden><section><h2>Recovery protection</h2><details id="backupDetails"><summary>Backup details</summary><p id="protection">Checking automatic backups…</p></details><button id="retry">Check / retry iCloud</button><details id="recoveryTools"><summary>Restore or import data</summary><button id="browse">Find recovery snapshots</button><div id="snapshots"></div><label>Migration or recovery file<input id="import" type="file" accept=".json,application/json"></label><p class="hint">Import the private .relational.json made on your Mac. Your original database archive stays untouched.</p></details></section>
+</div>
+</main>
 <footer>Every save creates a separate recovery file. Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification. Live temperatures stay in FireBoard.</footer><script>// Embedded before the app; no native credentials or private files in the page.
 (() => {
   const queue = [], pending = new Map();
@@ -343,6 +353,13 @@ function comparisonSeries(cook, key) {
 
 
 
+const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+function availableActions(cook) {
+  const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
+  if(phase==='Finished')return [];
+  const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
+  return [...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note'];
+}
 const FORMAT = 'ldcooklog-recovery';
 const emptyState = () => ({ records: [], relationalArchives: [] });
 async function digest(text) {
@@ -463,13 +480,12 @@ class CookStore {
     });
   }
   event(id, type, note = '') {
-    const transitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
       if (phase === 'Finished') throw Error('This cook is finished');
-      const transition = transitions[type];
+      const transition = cookTransitions[type];
       if (transition && !transition[0].includes(phase)) throw Error(`Cannot ${type.toLowerCase()} during ${phase.toLowerCase()}`);
       const at = new Date().toISOString();
       cook.events.push({ id: crypto.randomUUID(), at, type, note });
@@ -524,6 +540,62 @@ const comparisonSelections=new Map();
 const comparisonSlots=[['compareCook','compareProbe'],['compareCook2','compareProbe2'],['compareCook3','compareProbe3']];
 const chartColors=[['gold','#daba7c'],['blue','#91c8e8'],['coral','#f3a28b'],['lavender','#c5a9f0']];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
+let view = 'cook';
+const drafts = new Map();
+const editForms = ['event','profileForm','reviewForm'];
+function showView(next, scroll = true) {
+  view = next;
+  for (const name of ['cook','history','backups']) {
+    $(name+'View').hidden = name !== view;
+    $('nav'+name[0].toUpperCase()+name.slice(1)).setAttribute('aria-pressed', String(name === view));
+  }
+  if (scroll) window.scrollTo({top:0,behavior:'smooth'});
+}
+for (const name of ['Cook','History','Backups']) $('nav'+name).onclick=()=>showView(name.toLowerCase());
+$('backupSummary').onclick=()=>showView('backups');
+function draftKey(form) { return (form === 'new' ? 'new' : current) + ':' + form; }
+function fields(form) { return [...$(form).querySelectorAll('input,select,textarea')].filter(e=>e.id && e.type!=='file'); }
+function feedback(form, text, error = false) {
+  const output=$(form+'Feedback');output.textContent=text;output.dataset.error=String(error);
+}
+function updateDraftNotice() { $('draftNotice').hidden = drafts.size === 0; }
+for (const form of ['new',...editForms]) {
+  const output=document.createElement('p');output.id=form+'Feedback';output.className='form-feedback';output.setAttribute('role','status');$(form).append(output);
+  const changed=()=>{
+    if(busy || (form!=='new' && !current))return;
+    drafts.set(draftKey(form),Object.fromEntries(fields(form).map(e=>[e.id,e.type==='checkbox'?e.checked:e.value])));
+    feedback(form,'Unsaved changes. Save before closing the app.');updateDraftNotice();
+  };
+  $(form).addEventListener('input',changed);$(form).addEventListener('change',changed);
+}
+function restoreDrafts() {
+  for(const form of editForms){
+    const draft=drafts.get(draftKey(form));
+    if(draft)for(const [id,value] of Object.entries(draft)){const e=$(id);if(e.type==='checkbox')e.checked=value;else e.value=value;}
+    feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
+  }
+  for(const kind of ['method','equipment'])$(kind+'Custom').hidden=$(kind+'Choice').value!=='__custom__';
+  updateDraftNotice();
+}
+function cookingActions(cook) {
+  const options=availableActions(cook),previous=$('type').value;
+  $('type').replaceChildren(...options.map(value=>new Option(value,value)));
+  if(options.includes(previous))$('type').value=previous;
+  $('quickActions').replaceChildren();
+  for(const type of options.filter(t=>!['Note','Target Change'].includes(t))){
+    const button=document.createElement('button');button.textContent=type;
+    button.onclick=()=>saveEvent(type);$('quickActions').append(button);
+  }
+  $('event').querySelector('button').disabled=busy || options.length===0;
+  $('type').disabled=options.length===0;
+  $('note').disabled=busy || options.length===0;
+}
+async function openCook(id) {
+  if(busy)return;
+  const previous=current;current=id;
+  try {await render();showView('cook');}
+  catch(e){current=previous;status(e.message,true);}
+}
 const fmt = at => new Date(at).toLocaleString();
 const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
 function loadSetupChoice(kind, value) {
@@ -540,8 +612,14 @@ for (const kind of ['method','equipment']) $(kind+'Choice').onchange=()=>{
   else input.focus();
 };
 async function protection() {
-  try { const result = await call('backupStatus'); $('protection').textContent = `${result.message} ${result.local} local snapshots; ${result.uploaded} confirmed uploaded; ${result.pending} pending.`; }
-  catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; }
+  try {
+    const result = await call('backupStatus');
+    $('protection').textContent = `${result.message} ${result.local} local snapshots; ${result.uploaded} confirmed uploaded; ${result.pending} pending.`;
+    const warning=!!result.failed || !!result.storageWarning || result.mac?.health==='failed';
+    $('backupSummary').dataset.warning=String(warning);
+    $('backupBrief').textContent = !result.local ? 'No cooking saves yet' : warning ? 'Saved locally · backup needs attention' : result.mac?.verified ? `Mac copy verified · revision ${result.mac.revision}` : result.uploaded===result.local ? 'iCloud reports copies uploaded' : 'Saved locally · independent verification pending';
+  }
+  catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; $('backupBrief').textContent='Backup check unavailable · see details';$('backupSummary').dataset.warning='true'; }
 }
 async function render() {
   const {state} = await store.read(), query = $('search').value.toLowerCase();
@@ -553,10 +631,11 @@ async function render() {
     const article = document.createElement('article'), title = document.createElement('strong'), text = document.createElement('p'), open = document.createElement('button');
     title.textContent = `${cook.food}${cook.isTestCook ? ' · Test cook' : ''}`;
     text.textContent = `${cook.cooker} · ${fmt(cook.startedAt)} · ${cook.events.length} events · ${cook.temperatures.length} readings`;
-    open.textContent = 'Open cook'; open.onclick = () => { current = cook.id; render().then(() => $('active').scrollIntoView({behavior:'smooth'})).catch(e => status(e.message, true)); };
+    open.textContent = 'Open cook'; open.onclick = () => openCook(cook.id);
     article.append(title,text,open); $('history').append(article);
   }
   const cook = state.records.find(c => c.id === current);
+  $('cookEmpty').hidden = !!cook;
   $('active').hidden = !cook;
   $('review').hidden = !cook;
   $('profile').hidden = !cook;
@@ -564,7 +643,8 @@ async function render() {
     $('title').textContent = `${cook.food} · ${cook.cooker}`;
     const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
     $('phase').textContent = `${phase} · started ${fmt(cook.startedAt)}${cook.finishedAt ? ' · finished '+fmt(cook.finishedAt) : ''}`;
-    $('event').querySelector('button').disabled = phase === 'Finished';
+    $('note').value='';
+    cookingActions(cook);
     $('timeline').replaceChildren();
     for (const event of cook.events) { const li = document.createElement('li'); li.textContent = `${fmt(event.at)} — ${event.type}${event.note ? ': '+event.note : ''}`; $('timeline').append(li); }
     const channels = [...new Set(cook.temperatures.map(t => `${t.channel} (${t.unit || 'unknown unit'})`))];
@@ -588,6 +668,7 @@ async function render() {
     const review=reviewValues(cook);$('reviewOverall').value=review.overallResult;$('reviewBark').value=review.bark;$('reviewTenderness').value=review.tenderness;$('reviewObservations').value=review.observations;$('reviewChanges').value=review.changesNextTime;
     $('cookNotes').value = cook.notes || '';
     $('evaluation').value = cook.evaluation || '';
+    restoreDrafts();
     refreshComparison();
   }
 }
@@ -645,25 +726,47 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
-$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
-$('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}));};
+$('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}),'reviewForm');};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};
-async function action(work) {
+async function action(work, form = null) {
+  const key=form?draftKey(form):null;
   if (busy) return;
   busy = true; document.querySelectorAll('button').forEach(b => b.disabled = true);
-  try { const changed = await work(); await render(); damaged = false; status(changed === false ? 'Cancelled. Your journal was unchanged.' : 'Saved on this device. A recovery snapshot was created automatically.'); }
-  catch (e) { status(e.message, true); }
-  finally { busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false); if (damaged) $('new').querySelector('button').disabled = true; const selected=journal.find(c=>c.id===current); if(selected && (selected.phase==='Finished' || selected.finishedAt)) $('event').querySelector('button').disabled=true; await protection(); }
+  const lockedFields=[...document.querySelectorAll('input,select,textarea')].map(e=>[e,e.disabled]);
+  for(const [e] of lockedFields)e.disabled=true;
+  try {
+    const changed = await work();
+    if(changed!==false){if(key)drafts.delete(key);damaged=false;}
+    await render();
+    const text=changed===false?'Cancelled. Your journal was unchanged.':'Saved on this device. A recovery snapshot was created automatically.';
+    status(text);if(form)feedback(form,text);updateDraftNotice();
+  }
+  catch (e) { status(e.message, true);if(form)feedback(form,e.message,true); }
+  finally {
+    busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false);
+    for(const [e,disabled] of lockedFields)e.disabled=disabled;
+    if (damaged) $('new').querySelector('button').disabled = true;
+    const selected=journal.find(c=>c.id===current);if(selected){cookingActions(selected);refreshComparison();}
+    await protection();
+  }
 }
 async function restore(envelope) {
   const body = await unseal(envelope);
-  if (!await window.__ldcConfirm(`Restore ${body.state.records.length} cooks from ${fmt(body.createdAt)}? This replaces the current journal. Existing recovery snapshots are kept. Use only synthetic data until iPhone acceptance testing is complete.`)) return false;
+  if (!await window.__ldcConfirm(`Restore ${body.state.records.length} cooks from ${fmt(body.createdAt)}? This replaces the current journal. Existing recovery snapshots are kept. Unsaved edits will be discarded. Keep your original database archive.`)) return false;
   if (damaged) await call('repair', {text:JSON.stringify(envelope)}); else await store.restore(envelope);
-  current = null;
+  current = null;drafts.clear();showView('history');
 }
-$('new').onsubmit = e => { e.preventDefault(); if (!damaged) action(async () => { await store.add($('food').value,$('cooker').value); $('food').value = ''; }); };
-$('event').onsubmit = e => { e.preventDefault(); if (current) action(async () => { await store.event(current,$('type').value,$('note').value); $('note').value = ''; }); };
+$('new').onsubmit = e => { e.preventDefault(); if (!damaged) action(async () => {
+  const state=await store.add($('food').value,$('cooker').value);
+  current=state.records.at(-1).id;$('food').value='';$('setupPanel').open=true;
+  showView('cook');
+},'new'); };
+function saveEvent(type) {
+  if(current)action(async()=>{await store.event(current,type,$('note').value);$('note').value='';},'event');
+}
+$('event').onsubmit = e => { e.preventDefault();saveEvent($('type').value); };
 $('search').oninput = () => render().catch(e => status(e.message,true));
 $('retry').onclick = protection;
 $('browse').onclick = async () => {
@@ -695,8 +798,8 @@ $('import').onchange = e => {
 };
 (async () => {
   if (!window.ldcooklogHost && !window.webkit?.messageHandlers?.recovery) { status('Open this development app through its iPhone host. Browser storage cannot provide automatic iCloud backups.',true); document.querySelectorAll('button,input,select').forEach(e => e.disabled = true); return; }
-  try { await render(); status('Journal ready. Development build — use synthetic test cooks.'); }
-  catch (e) { damaged = true; $('new').querySelector('button').disabled = true; status('Journal could not open. Choose a recovery snapshot; no data was reset. '+e.message,true); }
+  try { await render(); status('Journal ready. Offline cooking pilot.'); }
+  catch (e) { damaged = true;showView('backups',false);$('recoveryTools').open=true; $('new').querySelector('button').disabled = true; status('Journal could not open. Choose a recovery snapshot; no data was reset. '+e.message,true); }
   window.__ldcResolveStartup(document.getElementById("status").textContent);
   await protection();
   setInterval(() => { if (!busy && !document.hidden) protection(); },30000);

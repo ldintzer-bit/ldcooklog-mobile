@@ -1,4 +1,4 @@
-<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-PT6l1MDVrWLgJtx1VC/CzaFVso/rfT9nq2Gn8yC3tyk='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
+<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mZUCzJpfZjchrg1fT40u4qYjS8bnkTOYCI2jZNFaj5g='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
 (() => {
 /* Pure, independently testable backup and restore planning. */
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
@@ -248,6 +248,13 @@ function comparisonSeries(cook, key) {
 
 
 
+const cookTransitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
+function availableActions(cook) {
+  const phase=cook.phase || (cook.finishedAt?'Finished':'Cooking');
+  if(phase==='Finished')return [];
+  const steps=Object.keys(cookTransitions).filter(type=>cookTransitions[type][0].includes(phase));
+  return [...steps,...(phase==='Cooking'?['Wrapped','Target Change']:[]),'Note'];
+}
 const FORMAT = 'ldcooklog-recovery';
 const emptyState = () => ({ records: [], relationalArchives: [] });
 async function digest(text) {
@@ -368,13 +375,12 @@ class CookStore {
     });
   }
   event(id, type, note = '') {
-    const transitions = { 'Meat On': [['Preparation'], 'Cooking'], 'Rest Start': [['Cooking','Keeping Warm'], 'Resting'], 'Keep Warm': [['Cooking','Resting'], 'Keeping Warm'], 'Cook Finished': [['Cooking','Resting','Keeping Warm'], 'Finished'] };
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       const phase = cook.phase || (cook.finishedAt ? 'Finished' : 'Cooking');
       if (phase === 'Finished') throw Error('This cook is finished');
-      const transition = transitions[type];
+      const transition = cookTransitions[type];
       if (transition && !transition[0].includes(phase)) throw Error(`Cannot ${type.toLowerCase()} during ${phase.toLowerCase()}`);
       const at = new Date().toISOString();
       cook.events.push({ id: crypto.randomUUID(), at, type, note });

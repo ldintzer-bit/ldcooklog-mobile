@@ -22,12 +22,14 @@ final class JournalUITests: XCTestCase {
         let create = web.buttons["Create cook"]
         if !create.isHittable { app.swipeUp() }
         create.tap()
-        let history = web.staticTexts["Synthetic simulator ribs"]
+        let history = web.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Synthetic simulator ribs")).firstMatch
         if !history.isHittable { app.swipeUp() }
         XCTAssertTrue(history.waitForExistence(timeout: 20))
         app.terminate()
         app.launch()
-        app.swipeUp()
+        let historyTab = app.webViews.buttons["History"]
+        XCTAssertTrue(historyTab.waitForExistence(timeout: 20))
+        historyTab.tap()
         XCTAssertTrue(app.webViews.staticTexts["Synthetic simulator ribs"].firstMatch.waitForExistence(timeout: 20))
     }
 }
