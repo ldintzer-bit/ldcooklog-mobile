@@ -1,3 +1,47 @@
+## 2026-10-13 — Reusable setup catalogs, lid events and wrap methods
+
+Installable source: `1e55b652c9c34ec37efa1863d4c62ff7d42e5e1c` on
+`development/2.0-offline-recovery`. Production main remains
+`e0ba05f6043b15d79a9ac053002137366a1105c3`; nothing was merged or deployed.
+
+Implemented Add saved equipment/rub/sauce choices using preserved source catalogs
+and saved non-test cooks. Custom values remain editable; semicolon-separated
+selections deduplicate without modifying any archived rows. Lid Open/Closed
+alternate, reject duplicate writes and preserve phase. With no recorded lid event,
+the interface says not recorded. Wrapped opens a method editor for Foil, Butcher
+Paper, Foil Boat or Other with required description; Save wrap records the actual
+method/note without changing the planned method. Existing historical Wrapped
+notes are preserved without invented method metadata. Finished cooks are protected.
+
+Actions run [38458820891](https://github.com/ldintzer-bit/ldcooklog-mobile/actions/runs/38458820891)
+regression job 115508346511 passed: 82 JavaScript tests, 58 Python passes with two
+Mac-only Linux skips, reproducible generated artifacts, security/CSP and all three
+browser suites. New unit tests verify catalog privacy/non-mutation boundaries,
+queued duplicate lid saves, invalid wrap rejection without writing and exact
+fresh-journal recovery. Browser tests verify actual generated Scriptable catalog
+selection, offline wrap/lid reopening, duplicate selection handling and unchanged
+archived tables and all 18,000 original synthetic readings. Synthetic 390-pixel
+layout reviewed. Host APIs are simulated in the Scriptable browser tests.
+
+The prior timers/targets/links run 38441742800 completed successfully, including
+actual native Mac recovery/storage tests, both platform compiles and iPhone
+WKWebView simulator integration. Current native job 115508345946 was still running
+at this checkpoint; its eventual outcome is not claimed here.
+
+Use the same working filename LDCookLog-2-Backup-Status.js and existing Home Screen
+shortcut; update the script once, then close/reopen after iCloud sync. No migration,
+backup-worker change or repeat retention rehearsal is requested for this batch.
+See [event and catalog behavior](development/native/COOKING_EVENTS_AND_LIBRARIES.md).
+
+The agreed next step remains a controlled real cook and verification that its
+current revision reaches an independent Mac copy. Replacement-phone/reinstall
+recovery remains a separate physical check. Keep the original verified archive
+and leave the old Supabase application frozen; unchanged Supabase history requires
+no further routine manual exports. Do not delete Supabase or the original archive.
+Earlier acceptance entries below are a chronology, not requests to repeat passed
+checks. Further development can address structured meat-piece editing and catalog
+administration without waiting for the real cook.
+
 ### Timers, targets and reading links verification checkpoint
 
 Installable source cdc474c961c2e59ff4b1678b65e13c2d77c2573d (Scriptable runtime
