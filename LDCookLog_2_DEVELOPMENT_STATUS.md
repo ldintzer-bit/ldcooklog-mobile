@@ -1,3 +1,63 @@
+## 2026-10-13 — Finish confirmation and durable private drafts accepted by automated checks
+
+Installable source `a6f5d49eb09bb230d8d804c8b45b1c4530226095` on the separate
+`development/2.0-offline-recovery` branch. Production was not merged or deployed.
+
+Both requested safeguards are implemented:
+
+- Cook Finished requires explicit confirmation with Cancel initially focused.
+  Entering a new finish time in setup also requires confirmation. Cancel preserves
+  journal bytes, events, revision, snapshot count and unsaved notes. Accept saves
+  one ordinary cooking snapshot. Native hosts now implement confirmation dialogs;
+  Scriptable continues to use the tested visible in-page confirmation.
+- Private draft fields survive closing/reopening offline: New cook, setup/probes/
+  meat pieces/rub details, action notes, targets, wrap and evaluation. The UI
+  acknowledges only completed, read-back-checked local writes. Drafts stay separate
+  from the cooking journal, iCloud snapshots and independent Mac verification.
+  Tap the appropriate Save button to commit edits and include them in backups.
+
+Draft copies use checksums, bounded generations, namespace isolation and stale
+saved-state checks. Successful form saves clear that draft while preserving other
+forms. Untouched draft start/finish fields follow actual cooking transitions.
+Failed writes preserve prior copies and report a warning; a damaged latest copy
+can recover an older validated copy. Discard requires confirmation and keeps saved
+cooking data. Empty acknowledged caches remove obsolete private draft copies.
+Limits: 2 MiB per document, up to 200 forms/2,000 fields per form, three recent
+copies (one when empty); failed cleanup stops further growth at ten copies.
+Drafts are local to this device and are not replacement-phone recovery data.
+
+[Actions run 38479270151](https://github.com/ldintzer-bit/ldcooklog-mobile/actions/runs/38479270151)
+completed successfully in both jobs. Regression 115577568046 passed 94 JavaScript
+tests, 58 Python passes with two Mac-only Linux skips, generated-source/security/
+CSP checks and all three browser suites. Actual generated Scriptable tests passed
+Finish Cancel/acceptance and setup/action/review draft reopening; full archived
+history and all original synthetic readings stayed unchanged. Native-bridge browser
+also verified New cook drafts, per-form clearing and unchanged snapshot counts.
+Reviewed the updated synthetic phone layout.
+
+Native job 115577568185 passed actual Mac recovery tests, nine Swift storage tests
+including private-draft reopening without journal changes, both platform builds,
+and actual iPhone WKWebView/native bridge creation and relaunch integration.
+
+The first simulator run did not find a cook after typing and tapping Create.
+Draft-status text changes could shift controls; the status area now reserves a
+stable height. The simulator test verifies the entered text and waits for the
+native draft acknowledgement before tapping Create, with detailed failure output.
+The rerun passed; the cooking assertion was retained rather than waived.
+
+Update the same working LDCookLog-2-Backup-Status.js filename and existing shortcut;
+no source re-import or backup-worker change is needed. On an unfinished test cook,
+cancel Cook Finished and verify it stays open. Type an unsaved note, wait for
+Drafts saved on this phone, close and reopen that same cook from History; the note
+should return. These physical checks of the two new safeguards remain owner work.
+See [behavior and limits](development/native/DRAFT_AND_FINISH_SAFEGUARDS.md).
+
+The next real cook and replacement-phone/reinstall recovery remain the pilot
+acceptance checks. Keep the original verified archive and the old Supabase app
+frozen. No new manual export of unchanged Supabase history is requested. Complete
+updated user instructions can now describe the finished cooking-feature batch
+and both safeguards.
+
 ## 2026-10-13 — Complete cooking setup parity and Traeger Pro 780
 
 Installable source `020e6172bae2520c2dc568fe45778f33084e434b` on the separate
