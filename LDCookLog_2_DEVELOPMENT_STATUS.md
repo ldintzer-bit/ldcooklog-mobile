@@ -1,3 +1,20 @@
+### Operational-maintenance verification checkpoint
+
+Source 35f29c23d21246357a4fcbc92ab490c4564d8223, run 38396288785:
+regression job passed (68 JavaScript tests, 58 Python passes with two Mac-only
+Linux skips, security checks, generated-artifact reproducibility and three
+browser integrations). Actual macOS recovery/maintenance suite passed all 43
+tests, including compilation of fixed notification scripts without delivering
+notices, and native storage tests passed. Remaining unchanged native build/
+simulator steps were still running when recorded. Notification display itself
+is not proven: OS settings control visibility, and command acceptance is only
+request evidence. Existing scheduled helper remains at its installed checkpoint
+until --install is run with the updated generated worker. The updated exporter
+also requires replacing its downloaded script to get automatic certificate roots.
+No new phone install or repetitive rehearsal is needed for this batch. Owner
+can perform the two-tool Mac update once; no response/approval loop is required.
+No production merge/deployment or external messaging occurred.
+
 ## 2026-10-13 — Autonomous development; operational backup maintenance
 
 Owner authorizes continued independent development and requests batched device
