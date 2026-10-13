@@ -1,3 +1,18 @@
+### Structured-history verification checkpoint
+
+Source 856853dfd1b39e9a564daa363516059498ac159e, run 38397701385:
+regression job passed (71 JavaScript tests, 58 Python passes with two Mac-only
+Linux skips, security/CSP checks, artifact reproducibility and all three browser
+integrations). New browser checks accepted trim/brine/injection/binder and
+structured overall/bark/tenderness/changes-next-time surviving offline reopen.
+Pure tests accepted original-record non-mutation, identifier/account-access
+exclusion, zero-weight handling, exact structured restoration and invalid-choice
+rollback. Actual macOS maintenance/native storage tests and iPhone compilation
+also passed; Mac compile/simulator steps continued at this update. Source data
+and backup schema did not need migration. Ready as one reviewed working-script
+update; no additional owner rehearsal requested for the incremental fields.
+The next real cook remains the practical pilot checkpoint.
+
 ## 2026-10-13 — Structured preparation/review and readable imported history
 
 Continued independent development while the owner waits for the next real cook.
