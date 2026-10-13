@@ -1,4 +1,4 @@
-<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-krdr3cK68/dGh/1vGCKtxfhr9AV/j3NoGFKPH+JTXg8='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
+<!doctype html><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-gHaKrjq7AZ3f0g3/8t5Y56VCF9a0x9drtb6FzKqv/Qk='; connect-src 'none'; base-uri 'none'"><title>Synthetic retention validation</title><script>'use strict';
 (() => {
 /* Pure, independently testable backup and restore planning. */
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
@@ -6,16 +6,17 @@ const BACKUP_VERSION = 1;
 
 function validateFireboardSetup(value) {
   if(value===null)return value;
-  if(!value || typeof value!=='object' || Array.isArray(value) || value.version!==1 || value.model!=='FireBoard 2')throw Error('Invalid FireBoard setup');
+  if(!value || typeof value!=='object' || Array.isArray(value) || ![1,2].includes(value.version) || value.model!=='FireBoard 2')throw Error('Invalid FireBoard setup');
   for(const [key,limit] of [['deviceName',160],['accessories',1000]])if(typeof value[key]!=='string' || value[key].length>limit)throw Error('Invalid FireBoard '+key);
-  if(!Array.isArray(value.channels) || value.channels.length!==6)throw Error('FireBoard 2 setup needs six channel entries');
+  if(!Array.isArray(value.channels) || (value.version===1?value.channels.length!==6:value.channels.length>32))throw Error('Invalid FireBoard setup entry count');
   const seen=new Set();
   for(const probe of value.channels){
-    if(!probe || !Number.isInteger(probe.channel) || probe.channel<1 || probe.channel>6 || seen.has(probe.channel))throw Error('Invalid or duplicate FireBoard channel');
+    if(!probe || !Number.isInteger(probe.channel) || probe.channel<1 || probe.channel>(value.version===1?6:32) || seen.has(probe.channel))throw Error('Invalid or duplicate FireBoard channel');
     seen.add(probe.channel);
     if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired','Wireless','Other','Wired ambient probe','Wired food probe'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
     if(probe.wiredPort!==undefined && probe.wiredPort!==null && (!Number.isInteger(probe.wiredPort) || probe.wiredPort<1 || probe.wiredPort>6))throw Error('Invalid FireBoard wired port');
     if(probe.color!==undefined && !['Not recorded','Orange','Silver','Other'].includes(probe.color))throw Error('Invalid FireBoard probe color');
+    if(probe.customColor!==undefined && (typeof probe.customColor!=='string' || probe.customColor.length>100))throw Error('Invalid FireBoard custom color');
     if(probe.measurement!==undefined && !['Not recorded','Internal / meat','External / ambient'].includes(probe.measurement))throw Error('Invalid FireBoard wireless reading');
     for(const [key,limit] of [['label',250],['placement',500]])if(typeof probe[key]!=='string' || probe[key].length>limit)throw Error('Invalid FireBoard probe '+key);
   }

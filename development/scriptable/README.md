@@ -1,3 +1,13 @@
+## Adding more probes
+
+Inside FireBoard 2 and probes, select Add probe to add another reading entry.
+Use Other wireless color to enter a new color/name. Expand an entry and select
+Remove entry when it is no longer needed, then Save cook setup. Up to 32 entries
+can be configured; separate Internal/External entries may share a physical
+probe's color/name. Setup changes do not delete any imported temperature data.
+Older six-entry setup snapshots remain readable with this update. Use current
+working/restore scripts for version-2 probe setup recovery.
+
 ## Probe connection and wireless colors
 
 Role describes what is measured; Connection describes Wired or Wireless. Select

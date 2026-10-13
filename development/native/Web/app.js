@@ -13,13 +13,15 @@ const status = (text, error = false) => { $('status').textContent = text; $('sta
 const fbRoles=['Not used','Pit / ambient','Meat','Other'];
 const fbProbes=['Not recorded','Wired','Wireless','Other'];
 const fbConnection=value=>['Wired ambient probe','Wired food probe'].includes(value)?'Wired':value;
-for(let channel=1;channel<=6;channel++){
+let fbEntries=[];
+function addFireboardRow(channel){
   const row=document.createElement('details');row.id='fbChannel'+channel;
   const summary=document.createElement('summary');summary.id='fbSummary'+channel;summary.textContent='Probe '+channel+' · Not used';row.append(summary);
   for(const [field,label,options,limit,placeholder] of [
     ['Role','Role',fbRoles],['Probe','Connection',fbProbes],
     ['Port','Wired port',['Not recorded','1','2','3','4','5','6']],
     ['Color','Wireless color',['Not recorded','Orange','Silver','Other']],
+    ['CustomColor','Other wireless color / name',null,100,'Color or identifier'],
     ['Measurement','Wireless reading',['Not recorded','Internal / meat','External / ambient']],
     ['Label','Probe label',null,250,'Pit, brisket flat, pork butt 1…'],
     ['Placement','Placement',null,500,'Grate position or location in the meat']
@@ -30,33 +32,49 @@ for(let channel=1;channel<=6;channel++){
     else{input.maxLength=limit;input.placeholder=placeholder;}
     wrapper.append(input);row.append(wrapper);
   }
+  const remove=document.createElement('button');remove.type='button';remove.textContent='Remove entry';remove.id='fbRemove'+channel;
+  remove.onclick=()=>{if(busy)return;row.remove();fbEntries=fbEntries.filter(id=>id!==channel);refreshFireboardSetup();$('profileForm').dispatchEvent(new Event('input',{bubbles:true}));};row.append(remove);
   $('fbChannels').append(row);
+  for(const field of ['Role','Probe','Color','CustomColor'])$('fb'+field+channel).onchange=refreshFireboardSetup;
+  return row;
 }
+function rebuildFireboardRows(ids){fbEntries=[...ids];$('fbChannels').replaceChildren();for(const id of ids)addFireboardRow(id);}
 function refreshFireboardSetup(){
   $('fbSettings').hidden=$('fbModel').value!=='FireBoard 2';
-  for(let channel=1;channel<=6;channel++){
+  for(const channel of fbEntries){
     const connection=$('fbProbe'+channel).value;
     $('fbFieldPort'+channel).hidden=connection!=='Wired';
-    $('fbFieldColor'+channel).hidden=connection!=='Wireless';$('fbFieldMeasurement'+channel).hidden=connection!=='Wireless';
-    $('fbSummary'+channel).textContent=['Probe '+channel,$('fbRole'+channel).value,connection==='Wireless'?$('fbColor'+channel).value:connection].join(' · ');
+    $('fbFieldColor'+channel).hidden=connection!=='Wireless';$('fbFieldCustomColor'+channel).hidden=connection!=='Wireless' || $('fbColor'+channel).value!=='Other';$('fbFieldMeasurement'+channel).hidden=connection!=='Wireless';
+    $('fbSummary'+channel).textContent=['Probe '+channel,$('fbRole'+channel).value,connection==='Wireless'?($('fbColor'+channel).value==='Other'?$('fbCustomColor'+channel).value || 'Other':$('fbColor'+channel).value):connection].join(' · ');
   }
+  $('fbAdd').disabled=busy || fbEntries.length>=32;
 }
 $('fbModel').onchange=refreshFireboardSetup;
-for(let channel=1;channel<=6;channel++)for(const field of ['Role','Probe','Color'])$('fb'+field+channel).onchange=refreshFireboardSetup;
+$('fbAdd').onclick=()=>{
+  if(busy || fbEntries.length>=32)return;
+  const channel=Array.from({length:32},(_,i)=>i+1).find(id=>!fbEntries.includes(id));fbEntries.push(channel);
+  const row=addFireboardRow(channel);row.open=true;refreshFireboardSetup();$('profileForm').dispatchEvent(new Event('input',{bubbles:true}));row.scrollIntoView({behavior:'smooth'});
+};
 function loadFireboardSetup(value){
   $('fbModel').value=value?.model || '';$('fbDeviceName').value=value?.deviceName || '';$('fbAccessories').value=value?.accessories || '';
-  for(let channel=1;channel<=6;channel++){
+  rebuildFireboardRows(value?.channels.map(p=>p.channel) || [1,2,3,4,5,6]);
+  for(const channel of fbEntries){
     const probe=value?.channels?.find(p=>p.channel===channel);
     for(const [field,key,fallback] of [['Role','role','Not used'],['Probe','probeType','Not recorded'],['Label','label',''],['Placement','placement','']])$('fb'+field+channel).value=field==='Probe'?fbConnection(probe?.[key] ?? fallback):probe?.[key] ?? fallback;
     $('fbPort'+channel).value=String(probe?.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe?.probeType)?channel:'Not recorded'));
+    $('fbCustomColor'+channel).value=probe?.customColor || '';
     $('fbColor'+channel).value=probe?.color || 'Not recorded';$('fbMeasurement'+channel).value=probe?.measurement || 'Not recorded';
   }
   refreshFireboardSetup();
 }
 function fireboardSetupValue(){
   if(!$('fbModel').value)return null;
-  return {version:1,model:$('fbModel').value,deviceName:$('fbDeviceName').value,accessories:$('fbAccessories').value,
-    channels:Array.from({length:6},(_,i)=>({channel:i+1,role:$('fbRole'+(i+1)).value,probeType:$('fbProbe'+(i+1)).value,label:$('fbLabel'+(i+1)).value,placement:$('fbPlacement'+(i+1)).value,wiredPort:$('fbProbe'+(i+1)).value==='Wired' && $('fbPort'+(i+1)).value!=='Not recorded'?Number($('fbPort'+(i+1)).value):null,color:$('fbProbe'+(i+1)).value==='Wireless'?$('fbColor'+(i+1)).value:'Not recorded',measurement:$('fbProbe'+(i+1)).value==='Wireless'?$('fbMeasurement'+(i+1)).value:'Not recorded'}))};
+  return {version:2,model:$('fbModel').value,deviceName:$('fbDeviceName').value,accessories:$('fbAccessories').value,
+    channels:fbEntries.map(channel=>({channel,role:$('fbRole'+channel).value,probeType:$('fbProbe'+channel).value,label:$('fbLabel'+channel).value,placement:$('fbPlacement'+channel).value,
+      wiredPort:$('fbProbe'+channel).value==='Wired' && $('fbPort'+channel).value!=='Not recorded'?Number($('fbPort'+channel).value):null,
+      color:$('fbProbe'+channel).value==='Wireless'?$('fbColor'+channel).value:'Not recorded',
+      customColor:$('fbProbe'+channel).value==='Wireless' && $('fbColor'+channel).value==='Other'?$('fbCustomColor'+channel).value:'',
+      measurement:$('fbProbe'+channel).value==='Wireless'?$('fbMeasurement'+channel).value:'Not recorded'}))};
 }
 function renderProbeGuide(setup){
   $('probeGuideList').replaceChildren();
@@ -65,7 +83,7 @@ function renderProbeGuide(setup){
     const item=document.createElement('p'),connection=fbConnection(probe.probeType);
     const parts=[probe.label || 'Probe '+probe.channel,probe.role,connection];
     if(connection==='Wired'){const port=probe.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe.probeType)?probe.channel:null);if(port)parts.push('port '+port);}
-    if(connection==='Wireless'){if(probe.color && probe.color!=='Not recorded')parts.push(probe.color);if(probe.measurement && probe.measurement!=='Not recorded')parts.push(probe.measurement);}
+    if(connection==='Wireless'){if(probe.color && probe.color!=='Not recorded')parts.push(probe.color==='Other'?probe.customColor || 'Other':probe.color);if(probe.measurement && probe.measurement!=='Not recorded')parts.push(probe.measurement);}
     if(probe.placement)parts.push(probe.placement);item.textContent=parts.join(' · ');
     if(connection==='Wireless' && ['Orange','Silver'].includes(probe.color))item.className='probe-'+probe.color.toLowerCase();
     $('probeGuideList').append(item);
@@ -102,6 +120,7 @@ for (const form of ['new',...editForms]) {
 function restoreDrafts() {
   for(const form of editForms){
     const draft=drafts.get(draftKey(form));
+    if(draft && form==='profileForm')rebuildFireboardRows(Object.keys(draft).filter(id=>/^fbRole\d+$/.test(id)).map(id=>Number(id.slice(6))));
     if(draft)for(const [id,value] of Object.entries(draft)){const e=$(id);if(e.type==='checkbox')e.checked=value;else e.value=value;}
     feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
   }
@@ -282,7 +301,7 @@ async function action(work, form = null) {
     busy = false; document.querySelectorAll('button').forEach(b => b.disabled = false);
     for(const [e,disabled] of lockedFields)e.disabled=disabled;
     if (damaged) $('new').querySelector('button').disabled = true;
-    const selected=journal.find(c=>c.id===current);if(selected){cookingActions(selected);refreshComparison();}
+    const selected=journal.find(c=>c.id===current);if(selected){cookingActions(selected);refreshComparison();refreshFireboardSetup();}
     await protection();
   }
 }

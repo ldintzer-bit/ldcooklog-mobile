@@ -42,3 +42,14 @@ test('wired port and wireless color/internal-external settings restore exactly; 
  const before=f.bytes();for(const change of [{color:'Invalid'},{measurement:'Invalid'},{wiredPort:7}]){const bad=structuredClone(config);Object.assign(bad.channels[0],change);await assert.rejects(f.store.profile(f.id,{...f.profile,fireboardSetup:bad}),/FireBoard/);assert.equal(f.bytes(),before);}
  await f.store.profile(f.id,{...f.profile,fireboardSetup:setup()});assert.equal((await f.store.read()).state.records[0].cookingDetails.fireboardSetup.channels[0].probeType,'Wired ambient probe');
 });
+
+test('flexible version 2 supports more probes, sparse IDs and custom colors without losing older snapshots',async()=>{
+ const f=await fixture(),config={...setup(),version:2};
+ for(let i=7;i<=12;i++)config.channels.push({channel:i,role:'Meat',probeType:'Wireless',label:'Extra '+i,placement:'Meat center',wiredPort:null,color:'Other',customColor:'Green '+i,measurement:'Internal / meat'});
+ await f.store.profile(f.id,{...f.profile,fireboardSetup:config});const snapshot=JSON.parse(f.bytes());
+ const other=await fixture();await other.store.restore(snapshot);assert.deepEqual((await other.store.read()).state.records[0].cookingDetails.fireboardSetup,config);
+ const smaller={...config,channels:config.channels.filter(p=>p.channel!==7)};await f.store.profile(f.id,{...f.profile,fireboardSetup:smaller});assert.equal((await f.store.read()).state.records[0].cookingDetails.fireboardSetup.channels.length,11);
+ await f.store.restore(snapshot);assert.deepEqual((await f.store.read()).state.records[0].cookingDetails.fireboardSetup,config);
+ const before=f.bytes(),tooMany={...config,channels:Array.from({length:33},(_,i)=>({...config.channels[0],channel:i+1}))};await assert.rejects(f.store.profile(f.id,{...f.profile,fireboardSetup:tooMany}),/FireBoard/);assert.equal(f.bytes(),before);
+ await f.store.profile(f.id,{...f.profile,fireboardSetup:{...config,channels:[]}});assert.deepEqual((await f.store.read()).state.records[0].cookingDetails.fireboardSetup.channels,[]);
+});

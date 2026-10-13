@@ -1,3 +1,26 @@
+## 2026-10-13 — Owner requests expandable probe setup
+
+Removed the fixed six-entry setup limit. Add probe and Remove entry support up
+to 32 named reading entries per cook, with stable entry IDs, separate physical
+wired ports, wireless preset/custom identifiers and Internal/External choices.
+Version 2 accepts 0–32 unique entries; version 1 six-entry snapshots remain valid
+and readable without writes. Editing/saving uses version 2. Add/remove and custom
+color fields join the existing per-cook drafts and recovery commit. Removal
+changes only saved setup upon Save cook setup, never imported readings or source
+archives; earlier snapshots preserve prior configuration. Orange/Silver remain
+preset identifiers and Other exposes a bounded custom color/name field.
+Future compatible probes/identifiers require configuration rather than code;
+new vendor export formats or live integrations remain separate development.
+The 32-entry bound is an app safeguard, not a hardware capability statement.
+Earlier six-entry notes below describe previous checkpoints.
+
+Tests cover >6 entries, sparse IDs, exact fresh restoration, removal/recovery of
+older configuration, empty setup, bound rejection, custom names and browser
+add/remove seventh entry, draft filtering and offline reopening. CI follows.
+Existing Mac backup policy and original archives are unchanged. Older scripts
+cannot validate new version-2 setup: use the current generated working/restore
+scripts for restoration; an outdated reader fails safely without resetting data.
+
 ## 2026-10-13 — Distinct probe role, connection and wireless identifiers
 
 Owner accepted setup layout but identified redundant ambient/food probe types
