@@ -1,3 +1,22 @@
+## 2026-10-13 — Owner iPhone retention and recovery rehearsal accepted
+
+Owner confirmed both PHYSICAL IPHONE checks: 26 synthetic saves reduced to
+21 retained snapshots, and exact synthetic cook/readings/notes/setup recovered
+and reopened in a fresh isolated journal. The Mac receipt used in that rehearsal
+was simulated and is not evidence of actual iCloud upload or real Mac protection.
+The real working journal separately has owner-reported revision 8 independent
+Mac verification, dated October 12, plus prior fresh unattended capture of a
+new revision and full private-history restoration/reconciliation acceptance.
+
+Mac filesystem retention/failure/recovery and phone FileManager cleanup/reopen
+are now physically accepted. Source recency: owner reports no added or edited
+real Supabase cooks after the October 11 archive. Preserve that original archive
+permanently; no new export is needed for unchanged source data. No real-cook
+cutover, production deployment or merge is recorded. Fresh scheduled-worker
+status after the overnight interval remains unconfirmed; actual loss/reinstall
+or new physical iPhone restore and operating/cutover acceptance remain open.
+Operating and recovery steps are in development/scriptable/OPERATING_AND_RECOVERY.md.
+
 ### iPhone rehearsal CI checkpoint
 
 Source fa8caf75fffb521bc8ed55e65ea6e463071da559, run 38391106170:
