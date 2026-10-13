@@ -1,3 +1,15 @@
+### iPhone rehearsal CI checkpoint
+
+Source fa8caf75fffb521bc8ed55e65ea6e463071da559, run 38391106170:
+regression job completed successfully, including all 68 JavaScript tests,
+Python regressions, security checks, generated-artifact reproducibility and
+three browser integrations. The new integration executes the generated
+Scriptable rehearsal against the actual shared browser validator with mocked
+FileManager APIs, asserting unique synthetic scope, simulated-proof cleanup,
+exact fresh-journal recovery/reopen and removal of test folders. Actual macOS
+recovery and native storage tests also passed; unchanged native build/simulator
+steps continued at this update. Owner physical iPhone execution is next.
+
 ## 2026-10-13 — Owner Mac rehearsal passed; isolated iPhone candidate
 
 Owner ran the synthetic Mac rehearsal: 50 saves, 31 normal-policy copies,
