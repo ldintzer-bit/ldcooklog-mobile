@@ -340,19 +340,30 @@ class CookStore {
       if (end!==null) cook.phase='Finished';
       else if (cook.phase==='Finished') cook.phase='Cooking';
       cook.isTestCook=value.isTestCook;
-      cook.cookingDetails=Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]));
+      cook.cookingDetails={...cook.cookingDetails,...Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]))};
       cook.cookingDetails.rating=value.rating;
+      for(const [key,options] of Object.entries({trim:['','None','Light','Moderate','Heavy'],brineMarinade:['','None','Dry brine','Wet brine','Marinade'],injection:['','No','Yes']})){
+        if(value[key]!==undefined){if(!options.includes(value[key]))throw Error('Invalid preparation choice');cook.cookingDetails[key]=value[key]}
+      }
+      if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });
   }
-  details(id, notes, evaluation) {
+  details(id, notes, evaluation, review) {
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       if (typeof notes !== 'string' || notes.length > 20000 || typeof evaluation !== 'string' || evaluation.length > 20000) throw Error('Notes are too long');
       cook.notes = notes;
       cook.evaluation = evaluation;
+      if(review!==undefined){
+        if(!review || typeof review!=='object' || Array.isArray(review))throw Error('Invalid evaluation');
+        for(const key of ['overallResult','bark'])if(!['','Excellent','Good','Fair','Poor'].includes(review[key]))throw Error('Invalid evaluation choice');
+        if(!['','Tough','Slightly Tough','Just Right','Too Tender'].includes(review.tenderness))throw Error('Invalid tenderness choice');
+        for(const key of ['observations','changesNextTime'])if(typeof review[key]!=='string' || review[key].length>20000)throw Error('Evaluation notes are too long');
+        cook.evaluationDetails={overallResult:review.overallResult,bark:review.bark,tenderness:review.tenderness,observations:review.observations,changesNextTime:review.changesNextTime};
+      }
       return state;
     });
   }
@@ -374,6 +385,38 @@ class CookStore {
     });
   }
 }
+
+// Read-only, explicitly selected cooking fields. Account-access rows and raw
+// database identifiers are never part of this presentation.
+function originalCookingDetails(cook) {
+  const legacy=cook.legacy || {}, related=legacy.related || {}, lookups=legacy.lookups || {}, groups=[];
+  const fields=(row,labels)=>labels.filter(([key])=>row?.[key]!==null && row?.[key]!==undefined && row?.[key]!=='').map(([key,label])=>({label,value:String(row[key])}));
+  function group(title,items){if(items.length)groups.push({title,items})}
+  group('Original setup',[
+    ...fields(legacy.cook,[['binder','Binder']]),
+    ...['locations','cook_methods','equipment'].flatMap(key=>(lookups[key] || []).flatMap(row=>fields(row,[['name',{locations:'Location',cook_methods:'Method / recipe',equipment:'Equipment'}[key]],...(key==='cook_methods'?[['source_reference','Recipe / reference']]:[])])))
+  ]);
+  for(const row of related.cook_preparation || [])group('Original preparation',fields(row,[['trim_level','Trim'],['brine_marinade','Brine / marinade'],['injection','Injection'],['prep_notes','Preparation notes']]));
+  for(const row of [...(related.cook_meat_pieces || [])].sort((a,b)=>a.piece_number-b.piece_number)){
+    const items=fields(row,[['meat_cut','Cut'],['bone_status','Bone'],['brand_producer','Brand / producer'],['store_source','Store / source'],['grade_type','Grade'],['meat_note','Notes']]);
+    for(const [key,label] of [['package_weight','Package weight'],['cook_weight','Cook weight']])if(row[key]!==null && row[key]!==undefined)items.push({label,value:`${row[key]} ${row.weight_unit || ''}`.trim()});
+    for(const [key,label] of [['total_price','Total price'],['price_per_lb','Price per lb']])if(row[key]!==null && row[key]!==undefined)items.push({label,value:String(row[key])});
+    group(`Original meat piece ${row.piece_number || ''}`.trim(),items);
+  }
+  for(const [table,lookup,key,title] of [['cook_rubs','rubs','rub_id','Original rub'],['cook_sauces','sauces','sauce_id','Original sauce']])for(const row of related[table] || []){
+    const ref=(lookups[lookup] || []).find(value=>value.id===row[key]);
+    group(title,[...fields(ref,[['name','Name']]),...fields(row,[['application_level','Application'],['notes','Notes']])]);
+  }
+  for(const row of related.cook_evaluations || [])group('Original evaluation',fields(row,[['overall_result','Overall result'],['bark','Bark'],['tenderness','Tenderness'],['observations','Observations'],['changes_next_time','Changes next time']]));
+  for(const row of related.weather || [])group('Original weather',fields(row,[['temperature','Temperature'],['temperature_f','Temperature °F'],['conditions','Conditions'],['wind_speed','Wind speed'],['humidity','Humidity'],['notes','Notes']]));
+  return groups;
+}
+function reviewValues(cook) {
+  if(cook.evaluationDetails)return cook.evaluationDetails;
+  const row=cook.legacy?.related?.cook_evaluations?.[0] || {};
+  return {overallResult:row.overall_result || '',bark:row.bark || '',tenderness:row.tenderness || '',observations:row.observations || '',changesNextTime:row.changes_next_time || ''};
+}
+
 
 
 
@@ -438,10 +481,16 @@ async function render() {
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
     for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
     $('editRating').value=cook.cookingDetails?.rating || '';
-    const preserved={};
-    for (const key of ['cook_meat_pieces','cook_methods','cook_preparation','cook_equipment','cook_rubs','cook_sauces','cook_evaluations','weather']) if (related[key]?.length) preserved[key]=related[key];
-    for (const key of ['equipment','rubs','sauces','locations','cook_methods']) if (cook.legacy?.lookups?.[key]?.length) preserved[key]=cook.legacy.lookups[key];
-    $('legacyDetails').textContent=Object.keys(preserved).length ? JSON.stringify(preserved,null,2) : 'No original structured details recorded. New details are saved above.';
+    const originalPrep=related.cook_preparation?.[0] || {};
+    $('editTrim').value=cook.cookingDetails?.trim ?? originalPrep.trim_level ?? '';
+    $('editBrine').value=cook.cookingDetails?.brineMarinade ?? originalPrep.brine_marinade ?? '';
+    $('editInjection').value=cook.cookingDetails?.injection ?? originalPrep.injection ?? '';
+    $('editBinder').value=cook.cookingDetails?.binder ?? cook.legacy?.cook?.binder ?? '';
+    $('legacyDetails').replaceChildren();
+    const preserved=originalCookingDetails(cook);
+    for(const group of preserved){const heading=document.createElement('h3');heading.textContent=group.title;$('legacyDetails').append(heading);const list=document.createElement('dl');for(const item of group.items){const label=document.createElement('dt'),value=document.createElement('dd');label.textContent=item.label;value.textContent=item.value;list.append(label,value)}$('legacyDetails').append(list)}
+    if(!preserved.length)$('legacyDetails').textContent='No original structured cooking details recorded.';
+    const review=reviewValues(cook);$('reviewOverall').value=review.overallResult;$('reviewBark').value=review.bark;$('reviewTenderness').value=review.tenderness;$('reviewObservations').value=review.observations;$('reviewChanges').value=review.changesNextTime;
     $('cookNotes').value = cook.notes || '';
     $('evaluation').value = cook.evaluation || '';
     refreshComparison();
@@ -501,9 +550,9 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
-$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
-$('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value));};
+$('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}));};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};
 async function action(work) {
   if (busy) return;

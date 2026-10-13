@@ -115,3 +115,18 @@ commit alone does not update the running agent. Continue using Recovery
 protection as evidence for the current revision. Notices contain no private
 cooking information and do not go to anyone else. No routine Terminal checks
 are required when current Mac verification appears in the phone journal.
+
+## Preparation and post-cook review
+
+Updated candidates provide Trim, Brine/marinade, Injection and Binder in Cook
+setup and preparation. Save cook setup creates an ordinary recovery snapshot.
+Preparation notes remain available for custom details. Cook notes and evaluation
+adds Overall result, Bark, Tenderness, Observations and Changes next time. Save
+review creates a recovery snapshot; existing general notes and numeric rating
+are retained separately. Original imported values are shown when no newer
+structured value has been saved, and the original source records stay intact.
+
+Expand Original imported cooking details to read original setup, meat pieces,
+preparation, seasonings and evaluations by their normal names and labels. This
+view omits database IDs and account-access data. Original source extensions
+remain preserved in the archive even if they do not have a display label.

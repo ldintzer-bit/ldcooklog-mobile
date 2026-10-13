@@ -1,3 +1,32 @@
+## 2026-10-13 — Structured preparation/review and readable imported history
+
+Continued independent development while the owner waits for the next real cook.
+Reviewed original production preparation schema, evaluation choices and history
+presentation. Added original choices for trim, brine/marinade, injection, binder,
+overall result, bark and tenderness, plus observations and changes-next-time.
+Existing general notes, general evaluation text and numeric rating are retained.
+New structured fields are saved through the normal immutable recovery path;
+invalid choices reject before commit, and original relational records/archives
+remain unchanged. Existing saved cookingDetails extension fields are retained
+when updating setup. Imported original preparation/evaluation values are shown
+as defaults when no newer structured values have been saved.
+
+Original imported details now use explicit readable groups: setup/name lookups,
+preparation, ordered meat pieces with units and zero values preserved, rubs,
+sauces, evaluations and supported weather fields. Identifiers/account-access
+rows are excluded from presentation; all source rows remain in their original
+preserved data. DOM textContent renders values safely; no raw HTML is inserted.
+Viewing these details never writes data. Recipe references remain readable text
+for offline use. Some source extensions not in the display allowlist remain
+preserved without presentation; full individual meat-piece editing is still open.
+
+Local validation: all 71 JavaScript tests and security/CSP checks passed. Added
+read-only field/identity exclusion tests, exact structured-field recovery tests,
+invalid-choice rollback tests and browser offline persistence coverage for new
+preparation and review controls. CI results follow. No user testing loop is
+requested for every new field; changes will be batched into a reviewed update.
+Production remains unchanged and private cooking data/credentials are not committed.
+
 ### Operational-maintenance verification checkpoint
 
 Source 35f29c23d21246357a4fcbc92ab490c4564d8223, run 38396288785:

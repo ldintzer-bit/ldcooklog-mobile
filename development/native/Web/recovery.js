@@ -94,19 +94,30 @@ export class CookStore {
       if (end!==null) cook.phase='Finished';
       else if (cook.phase==='Finished') cook.phase='Cooking';
       cook.isTestCook=value.isTestCook;
-      cook.cookingDetails=Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]));
+      cook.cookingDetails={...cook.cookingDetails,...Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]))};
       cook.cookingDetails.rating=value.rating;
+      for(const [key,options] of Object.entries({trim:['','None','Light','Moderate','Heavy'],brineMarinade:['','None','Dry brine','Wet brine','Marinade'],injection:['','No','Yes']})){
+        if(value[key]!==undefined){if(!options.includes(value[key]))throw Error('Invalid preparation choice');cook.cookingDetails[key]=value[key]}
+      }
+      if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });
   }
-  details(id, notes, evaluation) {
+  details(id, notes, evaluation, review) {
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       if (typeof notes !== 'string' || notes.length > 20000 || typeof evaluation !== 'string' || evaluation.length > 20000) throw Error('Notes are too long');
       cook.notes = notes;
       cook.evaluation = evaluation;
+      if(review!==undefined){
+        if(!review || typeof review!=='object' || Array.isArray(review))throw Error('Invalid evaluation');
+        for(const key of ['overallResult','bark'])if(!['','Excellent','Good','Fair','Poor'].includes(review[key]))throw Error('Invalid evaluation choice');
+        if(!['','Tough','Slightly Tough','Just Right','Too Tender'].includes(review.tenderness))throw Error('Invalid tenderness choice');
+        for(const key of ['observations','changesNextTime'])if(typeof review[key]!=='string' || review[key].length>20000)throw Error('Evaluation notes are too long');
+        cook.evaluationDetails={overallResult:review.overallResult,bark:review.bark,tenderness:review.tenderness,observations:review.observations,changesNextTime:review.changesNextTime};
+      }
       return state;
     });
   }

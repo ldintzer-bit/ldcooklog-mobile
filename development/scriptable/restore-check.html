@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-O8ZLR9hxc4UACl/y2ZKeacFp7AtzS5EVPUBab+wXThA='; style-src 'sha256-gdh8EyqwijdqBvlEovWHbL78G2pyCJi5+e/w+/jh15Q='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-MJBbZxUUT8w2z/ZxBOi698qlRYMJGo9/YJGkJNq3Zw0='; style-src 'sha256-S9NeeF+iuzyZmmq8TCduU0pa0QsvfUZVkIG0fNuLAoE='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
 
 input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-align:middle;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}summary{padding:12px 0;cursor:pointer}
 
 [hidden]{display:none!important}
 
 .comparison-legend{border-left:4px solid;padding-left:10px}.legend-gold{border-color:#daba7c}.legend-blue{border-color:#91c8e8}.legend-coral{border-color:#f3a28b}.legend-lavender{border-color:#c5a9f0}
+
+dt{font-weight:600;margin-top:12px}dd{margin:4px 0 8px;white-space:pre-wrap;overflow-wrap:anywhere}
 
 #ldc-confirm{position:fixed;inset:0;z-index:1000;margin:0;border:0;border-radius:0;padding:24px 18px;overflow:auto;background:#15201cf5;display:flex;align-items:flex-start;justify-content:center}#ldc-confirm .ldc-confirm-card{max-width:680px;width:100%;margin:24px 0;padding:22px;background:#213029;border:2px solid #daba7c;border-radius:14px}#ldc-confirm p{white-space:pre-wrap}#ldc-confirm button{display:block;width:100%;margin-top:14px}
 </style></head><body>
@@ -22,11 +24,11 @@ input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-al
 <label>Method<select id="methodChoice"><option value="">Not recorded</option><option>Smoked</option><option>No wrap</option><option>Foil boat</option><option>Butcher paper wrap</option><option>Foil wrap</option><option>Grilled — direct heat</option><option>Grilled — indirect heat</option><option>Sous vide, then smoked</option><option>Smoked, then sous vide</option><option value="__custom__">Other / custom</option></select></label><label id="methodCustom" hidden>Custom method<input id="editMethod" maxlength="300" placeholder="Describe your method"></label>
 <label>Meat weight / pieces<input id="editWeight" maxlength="100" placeholder="Two 8 lb pork butts"></label>
 <label>Equipment / fuel<select id="equipmentChoice"><option value="">Not recorded</option><option>Weber kettle, lump charcoal</option><option>Weber kettle, charcoal briquettes</option><option>Weber kettle, Slow ’N Sear, lump charcoal</option><option>Weber kettle, Slow ’N Sear, charcoal briquettes</option><option>Traeger Ironwood 885, wood pellets</option><option value="__custom__">Other / custom combination</option></select></label><label id="equipmentCustom" hidden>Custom equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Include accessories, fuel and probes"></label>
-<label>Preparation<textarea id="editPreparation" maxlength="4000"></textarea></label>
+<label>Trim<select id="editTrim"><option value="">Not recorded</option><option>None</option><option>Light</option><option>Moderate</option><option>Heavy</option></select></label><label>Brine / marinade<select id="editBrine"><option value="">Not recorded</option><option>None</option><option>Dry brine</option><option>Wet brine</option><option>Marinade</option></select></label><label>Injection<select id="editInjection"><option value="">Not recorded</option><option>No</option><option>Yes</option></select></label><label>Binder<input id="editBinder" maxlength="500"></label><label>Preparation notes<textarea id="editPreparation" maxlength="4000"></textarea></label>
 <label>Rubs<input id="editRubs" maxlength="1000"></label><label>Sauces<input id="editSauces" maxlength="1000"></label>
 <label>Overall rating<select id="editRating"><option value="">Not rated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
-<button type="submit">Save cook setup</button></form><details><summary>Original imported cooking details</summary><pre id="legacyDetails"></pre></details></section>
-<section id="review" hidden><h2>Cook notes and evaluation</h2><form id="reviewForm"><label>Notes<textarea id="cookNotes" maxlength="20000"></textarea></label><label>Evaluation / next time<textarea id="evaluation" maxlength="20000"></textarea></label><button type="submit">Save review</button></form><label>Attach completed FireBoard session<input id="sessionFile" type="file" accept=".json,application/json"></label><p class="hint">Use the private completed-session export made by the Mac helper. Original readings and units are retained.</p><h2>Compare temperature history</h2><label>This cook’s probe<select id="probe"></select></label><label>Comparison cook 2<select id="compareCook"></select></label><label>Cook 2 probe<select id="compareProbe"></select></label><label>Comparison cook 3<select id="compareCook2"></select></label><label>Cook 3 probe<select id="compareProbe2"></select></label><label>Comparison cook 4<select id="compareCook3"></select></label><label>Cook 4 probe<select id="compareProbe3"></select></label><div id="chartLegend" aria-label="Comparison legend"></div><div id="chart"></div><p id="chartSummary"></p></section>
+<button type="submit">Save cook setup</button></form><details><summary>Original imported cooking details</summary><div id="legacyDetails"></div></details></section>
+<section id="review" hidden><h2>Cook notes and evaluation</h2><form id="reviewForm"><label>Notes<textarea id="cookNotes" maxlength="20000"></textarea></label><label>General evaluation notes<textarea id="evaluation" maxlength="20000"></textarea></label><label>Overall result<select id="reviewOverall"><option value="">Not recorded</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></label><label>Bark<select id="reviewBark"><option value="">Not recorded</option><option>Excellent</option><option>Good</option><option>Fair</option><option>Poor</option></select></label><label>Tenderness<select id="reviewTenderness"><option value="">Not recorded</option><option>Tough</option><option>Slightly Tough</option><option>Just Right</option><option>Too Tender</option></select></label><label>Observations<textarea id="reviewObservations" maxlength="20000"></textarea></label><label>Changes next time<textarea id="reviewChanges" maxlength="20000"></textarea></label><button type="submit">Save review</button></form><label>Attach completed FireBoard session<input id="sessionFile" type="file" accept=".json,application/json"></label><p class="hint">Use the private completed-session export made by the Mac helper. Original readings and units are retained.</p><h2>Compare temperature history</h2><label>This cook’s probe<select id="probe"></select></label><label>Comparison cook 2<select id="compareCook"></select></label><label>Cook 2 probe<select id="compareProbe"></select></label><label>Comparison cook 3<select id="compareCook2"></select></label><label>Cook 3 probe<select id="compareProbe2"></select></label><label>Comparison cook 4<select id="compareCook3"></select></label><label>Cook 4 probe<select id="compareProbe3"></select></label><div id="chartLegend" aria-label="Comparison legend"></div><div id="chart"></div><p id="chartSummary"></p></section>
 <footer>Every save creates a separate recovery file. Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification. Live temperatures stay in FireBoard.</footer><script>// Embedded before the app; no native credentials or private files in the page.
 (() => {
   const queue = [], pending = new Map();
@@ -433,19 +435,30 @@ class CookStore {
       if (end!==null) cook.phase='Finished';
       else if (cook.phase==='Finished') cook.phase='Cooking';
       cook.isTestCook=value.isTestCook;
-      cook.cookingDetails=Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]));
+      cook.cookingDetails={...cook.cookingDetails,...Object.fromEntries(Object.keys(limits).filter(key=>!['food','cooker'].includes(key)).map(key=>[key,value[key]]))};
       cook.cookingDetails.rating=value.rating;
+      for(const [key,options] of Object.entries({trim:['','None','Light','Moderate','Heavy'],brineMarinade:['','None','Dry brine','Wet brine','Marinade'],injection:['','No','Yes']})){
+        if(value[key]!==undefined){if(!options.includes(value[key]))throw Error('Invalid preparation choice');cook.cookingDetails[key]=value[key]}
+      }
+      if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });
   }
-  details(id, notes, evaluation) {
+  details(id, notes, evaluation, review) {
     return this.mutate(state => {
       const cook = state.records.find(c => c.id === id);
       if (!cook) throw Error('Cook not found');
       if (typeof notes !== 'string' || notes.length > 20000 || typeof evaluation !== 'string' || evaluation.length > 20000) throw Error('Notes are too long');
       cook.notes = notes;
       cook.evaluation = evaluation;
+      if(review!==undefined){
+        if(!review || typeof review!=='object' || Array.isArray(review))throw Error('Invalid evaluation');
+        for(const key of ['overallResult','bark'])if(!['','Excellent','Good','Fair','Poor'].includes(review[key]))throw Error('Invalid evaluation choice');
+        if(!['','Tough','Slightly Tough','Just Right','Too Tender'].includes(review.tenderness))throw Error('Invalid tenderness choice');
+        for(const key of ['observations','changesNextTime'])if(typeof review[key]!=='string' || review[key].length>20000)throw Error('Evaluation notes are too long');
+        cook.evaluationDetails={overallResult:review.overallResult,bark:review.bark,tenderness:review.tenderness,observations:review.observations,changesNextTime:review.changesNextTime};
+      }
       return state;
     });
   }
@@ -467,6 +480,38 @@ class CookStore {
     });
   }
 }
+
+// Read-only, explicitly selected cooking fields. Account-access rows and raw
+// database identifiers are never part of this presentation.
+function originalCookingDetails(cook) {
+  const legacy=cook.legacy || {}, related=legacy.related || {}, lookups=legacy.lookups || {}, groups=[];
+  const fields=(row,labels)=>labels.filter(([key])=>row?.[key]!==null && row?.[key]!==undefined && row?.[key]!=='').map(([key,label])=>({label,value:String(row[key])}));
+  function group(title,items){if(items.length)groups.push({title,items})}
+  group('Original setup',[
+    ...fields(legacy.cook,[['binder','Binder']]),
+    ...['locations','cook_methods','equipment'].flatMap(key=>(lookups[key] || []).flatMap(row=>fields(row,[['name',{locations:'Location',cook_methods:'Method / recipe',equipment:'Equipment'}[key]],...(key==='cook_methods'?[['source_reference','Recipe / reference']]:[])])))
+  ]);
+  for(const row of related.cook_preparation || [])group('Original preparation',fields(row,[['trim_level','Trim'],['brine_marinade','Brine / marinade'],['injection','Injection'],['prep_notes','Preparation notes']]));
+  for(const row of [...(related.cook_meat_pieces || [])].sort((a,b)=>a.piece_number-b.piece_number)){
+    const items=fields(row,[['meat_cut','Cut'],['bone_status','Bone'],['brand_producer','Brand / producer'],['store_source','Store / source'],['grade_type','Grade'],['meat_note','Notes']]);
+    for(const [key,label] of [['package_weight','Package weight'],['cook_weight','Cook weight']])if(row[key]!==null && row[key]!==undefined)items.push({label,value:`${row[key]} ${row.weight_unit || ''}`.trim()});
+    for(const [key,label] of [['total_price','Total price'],['price_per_lb','Price per lb']])if(row[key]!==null && row[key]!==undefined)items.push({label,value:String(row[key])});
+    group(`Original meat piece ${row.piece_number || ''}`.trim(),items);
+  }
+  for(const [table,lookup,key,title] of [['cook_rubs','rubs','rub_id','Original rub'],['cook_sauces','sauces','sauce_id','Original sauce']])for(const row of related[table] || []){
+    const ref=(lookups[lookup] || []).find(value=>value.id===row[key]);
+    group(title,[...fields(ref,[['name','Name']]),...fields(row,[['application_level','Application'],['notes','Notes']])]);
+  }
+  for(const row of related.cook_evaluations || [])group('Original evaluation',fields(row,[['overall_result','Overall result'],['bark','Bark'],['tenderness','Tenderness'],['observations','Observations'],['changes_next_time','Changes next time']]));
+  for(const row of related.weather || [])group('Original weather',fields(row,[['temperature','Temperature'],['temperature_f','Temperature °F'],['conditions','Conditions'],['wind_speed','Wind speed'],['humidity','Humidity'],['notes','Notes']]));
+  return groups;
+}
+function reviewValues(cook) {
+  if(cook.evaluationDetails)return cook.evaluationDetails;
+  const row=cook.legacy?.related?.cook_evaluations?.[0] || {};
+  return {overallResult:row.overall_result || '',bark:row.bark || '',tenderness:row.tenderness || '',observations:row.observations || '',changesNextTime:row.changes_next_time || ''};
+}
+
 
 
 
@@ -531,10 +576,16 @@ async function render() {
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
     for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
     $('editRating').value=cook.cookingDetails?.rating || '';
-    const preserved={};
-    for (const key of ['cook_meat_pieces','cook_methods','cook_preparation','cook_equipment','cook_rubs','cook_sauces','cook_evaluations','weather']) if (related[key]?.length) preserved[key]=related[key];
-    for (const key of ['equipment','rubs','sauces','locations','cook_methods']) if (cook.legacy?.lookups?.[key]?.length) preserved[key]=cook.legacy.lookups[key];
-    $('legacyDetails').textContent=Object.keys(preserved).length ? JSON.stringify(preserved,null,2) : 'No original structured details recorded. New details are saved above.';
+    const originalPrep=related.cook_preparation?.[0] || {};
+    $('editTrim').value=cook.cookingDetails?.trim ?? originalPrep.trim_level ?? '';
+    $('editBrine').value=cook.cookingDetails?.brineMarinade ?? originalPrep.brine_marinade ?? '';
+    $('editInjection').value=cook.cookingDetails?.injection ?? originalPrep.injection ?? '';
+    $('editBinder').value=cook.cookingDetails?.binder ?? cook.legacy?.cook?.binder ?? '';
+    $('legacyDetails').replaceChildren();
+    const preserved=originalCookingDetails(cook);
+    for(const group of preserved){const heading=document.createElement('h3');heading.textContent=group.title;$('legacyDetails').append(heading);const list=document.createElement('dl');for(const item of group.items){const label=document.createElement('dt'),value=document.createElement('dd');label.textContent=item.label;value.textContent=item.value;list.append(label,value)}$('legacyDetails').append(list)}
+    if(!preserved.length)$('legacyDetails').textContent='No original structured cooking details recorded.';
+    const review=reviewValues(cook);$('reviewOverall').value=review.overallResult;$('reviewBark').value=review.bark;$('reviewTenderness').value=review.tenderness;$('reviewObservations').value=review.observations;$('reviewChanges').value=review.changesNextTime;
     $('cookNotes').value = cook.notes || '';
     $('evaluation').value = cook.evaluation || '';
     refreshComparison();
@@ -594,9 +645,9 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
-$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
-$('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value));};
+$('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}));};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};
 async function action(work) {
   if (busy) return;

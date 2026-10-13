@@ -80,3 +80,17 @@ test('cook setup changes restore exactly and preserve original relational eviden
   for(const change of [{finishedAt:'2025-01-01T00:00:00Z'},{rating:6},{equipment:'x'.repeat(1001)},{startedAt:'invalid'}]) await assert.rejects(store.profile(id,{...value,...change}));
   assert.deepEqual((await store.read()).state.records[0],cook);
 });
+
+test('structured preparation and evaluation survive restoration; rejected choices leave current state intact',async()=>{
+ const adapter=disk(),store=new CookStore(adapter);await store.add('Synthetic','Weber');const id=(await store.read()).state.records[0].id;
+ const profile={food:'Synthetic',cooker:'Weber',startedAt:'2026-01-01T10:00:00Z',finishedAt:null,isTestCook:true,method:'No wrap',weight:'8 lb',equipment:'Kettle',preparation:'Overnight',rubs:'Pepper',sauces:'None',rating:4,trim:'Light',brineMarinade:'Dry brine',injection:'No',binder:'Mustard'};
+ await store.profile(id,profile);
+ const review={overallResult:'Good',bark:'Excellent',tenderness:'Just Right',observations:'Moist',changesNextTime:'Less smoke'};
+ await store.details(id,'Notes','General review',review);
+ const saved=(await store.read()).state;
+ assert.equal(saved.records[0].cookingDetails.brineMarinade,'Dry brine');assert.deepEqual(saved.records[0].evaluationDetails,review);
+ const restored=new CookStore(disk());await restored.restore(JSON.parse(adapter.current));assert.deepEqual((await restored.read()).state,saved);
+ await assert.rejects(store.profile(id,{...profile,trim:'UNKNOWN'}),/preparation/);
+ await assert.rejects(store.details(id,'replace','replace',{...review,tenderness:'UNKNOWN'}),/tenderness/);
+ assert.deepEqual((await store.read()).state,saved);
+});
