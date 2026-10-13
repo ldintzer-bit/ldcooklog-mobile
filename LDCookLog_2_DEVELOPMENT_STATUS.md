@@ -1,3 +1,30 @@
+### Approved interface verification checkpoint
+
+Installable source: 21d49045d5c56b001c5619e982c69e5abc8c1456.
+Actions run 38417174941 regression job passed: 72 JavaScript tests; 58 Python
+passes plus two Mac-only Linux skips; generated-artifact reproducibility,
+security/CSP checks and all three browser integrations. Navigation/disclosures,
+auto-opening, quick actions, compact matching-Mac proof, per-cook drafts through
+filters/view changes/cook changes/other-form saves, and simulated disk-full save
+failure were accepted. Offline lifecycle, exact isolated restoration, corrupt
+journal recovery, large relational history and retention rehearsal still passed.
+Reviewed a synthetic full-page screenshot at 390-pixel iPhone width. Wrap is
+ordered before Rest/Finish and Finish uses a secondary button style. Fresh saves
+replace older compact-proof text with checking status until the new check returns.
+
+Earlier interface source a06c2faf6af42857127abdc527818d8495657c00 also passed
+regression plus actual macOS recovery tests, native storage and both platform
+compiles. Its iPhone simulator integration was still running; the final source
+native job was queued at this checkpoint. These additional native-host checks
+are not evidence of physical Scriptable acceptance. The owner still needs to
+install the working script update to see the layout on their iPhone. No repeat
+migration/retention rehearsal is requested. Keep saving drafts before closing.
+
+Owner accepted the preceding launch change as a little faster. All approved
+interface work is implemented and documented; actual replacement-phone recovery
+and the next real cook remain the existing pilot gates. Production remains
+unchanged and no private cooking data or credentials were published.
+
 ## 2026-10-13 — Approved cooking interface update
 
 Owner physically accepted the journal-first update as a little faster and
