@@ -39,8 +39,9 @@ export function validateCook(c) {
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
   if(c.targets!==undefined)validateTargets(c.targets);
   for(const event of c.events){if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
-  const readings=new Set(c.temperatures.map(t=>seriesKey(t))),linked=new Set();
-  for(const probe of c.cookingDetails?.fireboardSetup?.channels || []){
+  const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);
+  const readings=bindings.length?new Set(c.temperatures.map(t=>seriesKey(t))):new Set(),linked=new Set();
+  for(const probe of bindings){
     if(probe.seriesKey){if(!readings.has(probe.seriesKey))throw Error('FireBoard link does not match an imported reading');
       if(probe.role!=='Not used'){if(linked.has(probe.seriesKey))throw Error('An imported reading is assigned to more than one active probe');linked.add(probe.seriesKey);}}
   }

@@ -41,8 +41,9 @@ function validateCook(c) {
   if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
   if(c.targets!==undefined)validateTargets(c.targets);
   for(const event of c.events){if(event.targets!==undefined)validateTargets(event.targets);if(event.previousTargets!==undefined)validateTargets(event.previousTargets);}
-  const readings=new Set(c.temperatures.map(t=>seriesKey(t))),linked=new Set();
-  for(const probe of c.cookingDetails?.fireboardSetup?.channels || []){
+  const bindings=(c.cookingDetails?.fireboardSetup?.channels || []).filter(p=>p.seriesKey);
+  const readings=bindings.length?new Set(c.temperatures.map(t=>seriesKey(t))):new Set(),linked=new Set();
+  for(const probe of bindings){
     if(probe.seriesKey){if(!readings.has(probe.seriesKey))throw Error('FireBoard link does not match an imported reading');
       if(probe.role!=='Not used'){if(linked.has(probe.seriesKey))throw Error('An imported reading is assigned to more than one active probe');linked.add(probe.seriesKey);}}
   }
@@ -521,7 +522,7 @@ const status = (text, error = false) => { $('status').textContent = text; $('sta
 const fbRoles=['Not used','Pit / ambient','Meat','Other'];
 const fbProbes=['Not recorded','Wired','Wireless','Other'];
 const fbConnection=value=>['Wired ambient probe','Wired food probe'].includes(value)?'Wired':value;
-let fbEntries=[];
+let fbEntries=[],fbReadingChoices=[];
 function addFireboardRow(channel){
   const row=document.createElement('details');row.id='fbChannel'+channel;
   const summary=document.createElement('summary');summary.id='fbSummary'+channel;summary.textContent='Probe '+channel+' · Not used';row.append(summary);
@@ -539,8 +540,7 @@ function addFireboardRow(channel){
     const input=document.createElement(options?'select':'input');input.id='fb'+field+channel;
     if(field==='Series'){
       input.append(new Option('Not linked',''));
-      const samples=new Map((journal.find(c=>c.id===current)?.temperatures || []).map(t=>[seriesKey(t),t]));
-      for(const [key,t] of samples)input.append(new Option(`${t.channel} · session ${t.sessionId || 'unrecorded'} · device ${t.deviceUUID || 'unrecorded'} · sensor ${t.channelId ?? t.channel}`,key));
+      for(const [key,t] of fbReadingChoices)input.append(new Option(`${t.channel} · session ${t.sessionId || 'unrecorded'} · device ${t.deviceUUID || 'unrecorded'} · sensor ${t.channelId ?? t.channel}`,key));
     }else if(options)for(const choice of options)input.append(new Option(choice,choice));
     else{input.maxLength=limit;input.placeholder=placeholder;}
     wrapper.append(input);row.append(wrapper);
@@ -569,6 +569,7 @@ $('fbAdd').onclick=()=>{
   const row=addFireboardRow(channel);row.open=true;refreshFireboardSetup();$('profileForm').dispatchEvent(new Event('input',{bubbles:true}));row.scrollIntoView({behavior:'smooth'});
 };
 function loadFireboardSetup(value){
+  fbReadingChoices=[...new Map((journal.find(c=>c.id===current)?.temperatures || []).map(t=>[seriesKey(t),t]))];
   $('fbModel').value=value?.model || '';$('fbDeviceName').value=value?.deviceName || '';$('fbAccessories').value=value?.accessories || '';
   rebuildFireboardRows(value?.channels.map(p=>p.channel) || [1,2,3,4,5,6]);
   for(const channel of fbEntries){

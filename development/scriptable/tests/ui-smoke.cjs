@@ -206,6 +206,7 @@ function manager(root) {
     await page.locator('#count').filter({hasText:'30 of 30 cooks · 1 preserved database exports'}).waitFor({state:'attached'});
     assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Opening large history never rewrites the journal');
     await showHistory();await page.locator('#history button').first().click();
+    await page.locator('#targetSummary').filter({hasText:'Pit 250°F · Meat 203°F'}).waitFor();
     assert.match(await page.locator('#targetSummary').innerText(),/250°F.*203°F/);
     assert.match(await page.locator('#probe option:checked').innerText(),/Named synthetic pit/);
     const latest=JSON.parse(JSON.parse(fs.readFileSync(path.join(journal,fs.readdirSync(journal).sort().at(-1)),'utf8')).payload);
