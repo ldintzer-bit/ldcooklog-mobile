@@ -1,3 +1,18 @@
+### Four-cook comparison verification checkpoint
+
+Source d1bf3919acf587abf6ea6cb9b3aa2239bee74d82, run 38394638727:
+regression job passed: 68 JavaScript tests, 50 Python passes with one Mac-only
+Linux skip, security/CSP checks, artifact reproducibility and three browser
+integrations. Four-trace rendering and labels, native option-disabled duplicate
+prevention, selected cooks/probes surviving history filtering and unchanged
+recovery bytes all passed against the generated Scriptable app with a large
+synthetic history. The first run's generic disabled-control helper differed
+from HTMLOptionElement.disabled; direct browser option-state assertion confirmed
+the actual disabled property. Production code did not require a change for that
+assertion. Actual macOS recovery/native storage tests also passed; remaining
+native compilation/simulator checks were still running. Owner iPhone acceptance
+is next. No cooking-data migration, production merge or deployment occurred.
+
 ## 2026-10-13 — Four-cook temperature comparison candidate
 
 Expanded comparisons from the current cook plus one comparison to the current
