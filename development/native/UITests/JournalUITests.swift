@@ -27,8 +27,16 @@ final class JournalUITests: XCTestCase {
         XCTAssertTrue(history.waitForExistence(timeout: 20))
         app.terminate()
         app.launch()
-        let historyTab = app.webViews.buttons["History"]
-        XCTAssertTrue(historyTab.waitForExistence(timeout: 20))
+        let reopened = app.webViews.firstMatch
+        XCTAssertTrue(reopened.waitForExistence(timeout: 20))
+        XCTAssertTrue(reopened.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "Journal ready")).firstMatch.waitForExistence(timeout: 20))
+        // aria-pressed navigation can be exposed as a toggle rather than a
+        // Button by iOS WebKit. Select the named accessible control by label.
+        let historyTab = reopened.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "History")).firstMatch
+        guard historyTab.waitForExistence(timeout: 20) else {
+            XCTFail("History navigation missing: \(reopened.debugDescription)")
+            return
+        }
         historyTab.tap()
         XCTAssertTrue(app.webViews.staticTexts["Synthetic simulator ribs"].firstMatch.waitForExistence(timeout: 20))
     }

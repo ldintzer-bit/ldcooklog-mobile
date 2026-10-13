@@ -1,3 +1,27 @@
+### Expandable setup and wireless identifiers verification
+
+Installable Scriptable source 54ae460bf2acf972e4ceffe976516eba8916276d;
+Actions run 38436585389 regression passed: 76 JavaScript tests, 58 Python passes
+with two Mac-only Linux skips, artifact/security/CSP checks and all three browser
+suites. Explicit wired port and Orange Internal persisted offline and appeared
+in Saved probe guide. Added seventh probe/custom identifier survived draft
+filtering, save and reopen; removal changed only setup. Pure tests restored >6
+entries with sparse IDs exactly, recovered pre-removal configuration, accepted
+empty entries and rejected exceeding 32 without writes. Legacy wired type and
+version-1 snapshots remain valid. Original imported readings remain unchanged.
+
+Previous native run 38434367427 passed Mac maintenance/native storage/platform
+compiles but failed its simulator relaunch assertion: aria-pressed History was
+not exposed in the Button collection (the hierarchy listed backup/create buttons
+but omitted toggle controls). Native harness now waits for reopened Journal ready
+and selects the accessible History control by exact label across element kinds,
+with a diagnostic hierarchy on failure. This fix needs native CI confirmation;
+it changes no Scriptable sources or data handling. Final-source native simulator
+was still running at this checkpoint. Do not claim all native checks passed.
+Production is unchanged; all fixtures are synthetic, with no private history or
+credentials published. Only the current working script needs updating for use;
+use the current generated restore script when rehearsing version-2 setup recovery.
+
 ## 2026-10-13 — Owner requests expandable probe setup
 
 Removed the fixed six-entry setup limit. Add probe and Remove entry support up
