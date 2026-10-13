@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-s3GkC6NQ+sOMyYa9ZKyHsSvNKRgD1q8SJvPnD5duQFg='; style-src 'sha256-XLUclQER624cuK//zrNk5VfFzdEs1ZJh950iVqwYWOY='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-nPzC3YgsQAwaf83qBBznirVMEy6DVfHmKjXu2AGCHek='; style-src 'sha256-1uyh+S8GdovrbOZQ3C7e36D9DycPR2Rduu+d3+a5gOA='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
 
 input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-align:middle;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}summary{padding:12px 0;cursor:pointer}
 
@@ -15,6 +15,8 @@ nav{display:flex;gap:8px;position:sticky;top:0;background:#15201c;padding:10px 0
 
 #fireboardPanel{border:1px solid #68766a;border-radius:8px;padding:8px 12px;margin:16px 0}#fbChannels>details{border-top:1px solid #68766a;padding:4px 0}#fbChannels summary{font-weight:600}
 
+#probeGuideList p{border-left:4px solid #88998a;padding-left:10px}#probeGuideList .probe-orange{border-color:#f5a24a}#probeGuideList .probe-silver{border-color:#c3c9cf}
+
 #ldc-confirm{position:fixed;inset:0;z-index:1000;margin:0;border:0;border-radius:0;padding:24px 18px;overflow:auto;background:#15201cf5;display:flex;align-items:flex-start;justify-content:center}#ldc-confirm .ldc-confirm-card{max-width:680px;width:100%;margin:24px 0;padding:22px;background:#213029;border:2px solid #daba7c;border-radius:14px}#ldc-confirm p{white-space:pre-wrap}#ldc-confirm button{display:block;width:100%;margin-top:14px}
 </style></head><body>
 <header><p class="eyebrow">OFFLINE COOKING JOURNAL</p><h1>LDCookLog <small>2.0 · cooking pilot</small></h1><p>Pilot build · offline cooking with automatic recovery copies.</p></header>
@@ -23,7 +25,7 @@ nav{display:flex;gap:8px;position:sticky;top:0;background:#15201c;padding:10px 0
 <button id="backupSummary" class="backup-summary"><span id="backupBrief">Checking automatic backups…</span><span class="hint">View backups ›</span></button>
 <p id="draftNotice" role="status" hidden>Unsaved edits are kept while this journal is open. Save before closing the app.</p>
 <main>
-<div id="cookView"><p id="cookEmpty" class="hint">Choose a cook from History or start one here.</p><section id="active" hidden><h2 id="title"></h2><p id="phase"></p><div id="quickActions" aria-label="Cooking actions"></div><form id="event"><label>Action / note<select id="type"><option>Meat On</option><option>Target Change</option><option>Wrapped</option><option>Rest Start</option><option>Keep Warm</option><option>Cook Finished</option><option>Note</option></select></label><label>Note<input id="note" maxlength="2000"></label><button type="submit">Save action</button></form><h3>Timeline</h3><ol id="timeline"></ol><h3>Historical temperatures</h3><p id="temperatures"></p><h3>Preserved details</h3><p id="details"></p></section>
+<div id="cookView"><p id="cookEmpty" class="hint">Choose a cook from History or start one here.</p><section id="active" hidden><h2 id="title"></h2><p id="phase"></p><details id="probeGuide" hidden><summary>Saved probe guide</summary><div id="probeGuideList"></div></details><div id="quickActions" aria-label="Cooking actions"></div><form id="event"><label>Action / note<select id="type"><option>Meat On</option><option>Target Change</option><option>Wrapped</option><option>Rest Start</option><option>Keep Warm</option><option>Cook Finished</option><option>Note</option></select></label><label>Note<input id="note" maxlength="2000"></label><button type="submit">Save action</button></form><h3>Timeline</h3><ol id="timeline"></ol><h3>Historical temperatures</h3><p id="temperatures"></p><h3>Preserved details</h3><p id="details"></p></section>
 <section id="profile" hidden><details id="setupPanel"><summary>Cook setup and preparation</summary><form id="profileForm">
 <label>Food / cut<input id="editFood" required maxlength="300"></label><label>Cooker<input id="editCooker" required maxlength="300"></label>
 <label>Start date and time<input id="editStart" type="datetime-local" required></label><label>Finish date and time (optional)<input id="editFinish" type="datetime-local"></label>
@@ -31,7 +33,7 @@ nav{display:flex;gap:8px;position:sticky;top:0;background:#15201c;padding:10px 0
 <label>Method<select id="methodChoice"><option value="">Not recorded</option><option>Smoked</option><option>No wrap</option><option>Foil boat</option><option>Butcher paper wrap</option><option>Foil wrap</option><option>Grilled — direct heat</option><option>Grilled — indirect heat</option><option>Sous vide, then smoked</option><option>Smoked, then sous vide</option><option value="__custom__">Other / custom</option></select></label><label id="methodCustom" hidden>Custom method<input id="editMethod" maxlength="300" placeholder="Describe your method"></label>
 <label>Meat weight / pieces<input id="editWeight" maxlength="100" placeholder="Two 8 lb pork butts"></label>
 <label>Equipment / fuel<select id="equipmentChoice"><option value="">Not recorded</option><option>Weber kettle, lump charcoal</option><option>Weber kettle, charcoal briquettes</option><option>Weber kettle, Slow ’N Sear, lump charcoal</option><option>Weber kettle, Slow ’N Sear, charcoal briquettes</option><option>Traeger Ironwood 885, wood pellets</option><option value="__custom__">Other / custom combination</option></select></label><label id="equipmentCustom" hidden>Custom equipment / fuel<input id="editEquipment" maxlength="1000" placeholder="Include accessories, fuel and probes"></label>
-<details id="fireboardPanel"><summary>FireBoard 2 and probes</summary><label>Temperature device<select id="fbModel"><option value="">Not used / not recorded</option><option>FireBoard 2</option></select></label><div id="fbSettings" hidden><label>Device name (optional)<input id="fbDeviceName" maxlength="160" placeholder="My FireBoard 2"></label><label>Accessories / notes<textarea id="fbAccessories" maxlength="1000" placeholder="Grill clip, probe extensions or other accessories"></textarea></label><div id="fbChannels"></div></div><p class="hint">Live temperatures and alarms stay in the FireBoard app. Import a completed session after cooking.</p></details>
+<details id="fireboardPanel"><summary>FireBoard 2 and probes</summary><label>Temperature device<select id="fbModel"><option value="">Not used / not recorded</option><option>FireBoard 2</option></select></label><div id="fbSettings" hidden><label>Device name (optional)<input id="fbDeviceName" maxlength="160" placeholder="My FireBoard 2"></label><label>Accessories / notes<textarea id="fbAccessories" maxlength="1000" placeholder="Grill clip, probe extensions or other accessories"></textarea></label><div id="fbChannels"></div></div><p class="hint">Use numbered entries for wired or wireless readings; select the actual port for Wired and color/reading for Wireless. Live temperatures and alarms stay in the FireBoard app. Import a completed session after cooking.</p></details>
 <label>Trim<select id="editTrim"><option value="">Not recorded</option><option>None</option><option>Light</option><option>Moderate</option><option>Heavy</option></select></label><label>Brine / marinade<select id="editBrine"><option value="">Not recorded</option><option>None</option><option>Dry brine</option><option>Wet brine</option><option>Marinade</option></select></label><label>Injection<select id="editInjection"><option value="">Not recorded</option><option>No</option><option>Yes</option></select></label><label>Binder<input id="editBinder" maxlength="500"></label><label>Preparation notes<textarea id="editPreparation" maxlength="4000"></textarea></label>
 <label>Rubs<input id="editRubs" maxlength="1000"></label><label>Sauces<input id="editSauces" maxlength="1000"></label>
 <label>Rating (1–5)<select id="editRating"><option value="">Not rated</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></label>
@@ -123,7 +125,10 @@ function validateFireboardSetup(value) {
   for(const probe of value.channels){
     if(!probe || !Number.isInteger(probe.channel) || probe.channel<1 || probe.channel>6 || seen.has(probe.channel))throw Error('Invalid or duplicate FireBoard channel');
     seen.add(probe.channel);
-    if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired ambient probe','Wired food probe','Other'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
+    if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired','Wireless','Other','Wired ambient probe','Wired food probe'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
+    if(probe.wiredPort!==undefined && probe.wiredPort!==null && (!Number.isInteger(probe.wiredPort) || probe.wiredPort<1 || probe.wiredPort>6))throw Error('Invalid FireBoard wired port');
+    if(probe.color!==undefined && !['Not recorded','Orange','Silver','Other'].includes(probe.color))throw Error('Invalid FireBoard probe color');
+    if(probe.measurement!==undefined && !['Not recorded','Internal / meat','External / ambient'].includes(probe.measurement))throw Error('Invalid FireBoard wireless reading');
     for(const [key,limit] of [['label',250],['placement',500]])if(typeof probe[key]!=='string' || probe[key].length>limit)throw Error('Invalid FireBoard probe '+key);
   }
   return value;
@@ -564,16 +569,20 @@ const comparisonSlots=[['compareCook','compareProbe'],['compareCook2','comparePr
 const chartColors=[['gold','#daba7c'],['blue','#91c8e8'],['coral','#f3a28b'],['lavender','#c5a9f0']];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
 const fbRoles=['Not used','Pit / ambient','Meat','Other'];
-const fbProbes=['Not recorded','Wired ambient probe','Wired food probe','Other'];
+const fbProbes=['Not recorded','Wired','Wireless','Other'];
+const fbConnection=value=>['Wired ambient probe','Wired food probe'].includes(value)?'Wired':value;
 for(let channel=1;channel<=6;channel++){
   const row=document.createElement('details');row.id='fbChannel'+channel;
-  const summary=document.createElement('summary');summary.id='fbSummary'+channel;summary.textContent='Channel '+channel+' · Not used';row.append(summary);
+  const summary=document.createElement('summary');summary.id='fbSummary'+channel;summary.textContent='Probe '+channel+' · Not used';row.append(summary);
   for(const [field,label,options,limit,placeholder] of [
-    ['Role','Role',fbRoles],['Probe','Probe type',fbProbes],
+    ['Role','Role',fbRoles],['Probe','Connection',fbProbes],
+    ['Port','Wired port',['Not recorded','1','2','3','4','5','6']],
+    ['Color','Wireless color',['Not recorded','Orange','Silver','Other']],
+    ['Measurement','Wireless reading',['Not recorded','Internal / meat','External / ambient']],
     ['Label','Probe label',null,250,'Pit, brisket flat, pork butt 1…'],
     ['Placement','Placement',null,500,'Grate position or location in the meat']
   ]){
-    const wrapper=document.createElement('label');wrapper.append('Channel '+channel+' — '+label);
+    const wrapper=document.createElement('label');wrapper.append('Probe '+channel+' — '+label);wrapper.id='fbField'+field+channel;
     const input=document.createElement(options?'select':'input');input.id='fb'+field+channel;
     if(options)for(const choice of options)input.append(new Option(choice,choice));
     else{input.maxLength=limit;input.placeholder=placeholder;}
@@ -583,22 +592,42 @@ for(let channel=1;channel<=6;channel++){
 }
 function refreshFireboardSetup(){
   $('fbSettings').hidden=$('fbModel').value!=='FireBoard 2';
-  for(let channel=1;channel<=6;channel++)$('fbSummary'+channel).textContent='Channel '+channel+' · '+$('fbRole'+channel).value;
+  for(let channel=1;channel<=6;channel++){
+    const connection=$('fbProbe'+channel).value;
+    $('fbFieldPort'+channel).hidden=connection!=='Wired';
+    $('fbFieldColor'+channel).hidden=connection!=='Wireless';$('fbFieldMeasurement'+channel).hidden=connection!=='Wireless';
+    $('fbSummary'+channel).textContent=['Probe '+channel,$('fbRole'+channel).value,connection==='Wireless'?$('fbColor'+channel).value:connection].join(' · ');
+  }
 }
 $('fbModel').onchange=refreshFireboardSetup;
-for(let channel=1;channel<=6;channel++)$('fbRole'+channel).onchange=refreshFireboardSetup;
+for(let channel=1;channel<=6;channel++)for(const field of ['Role','Probe','Color'])$('fb'+field+channel).onchange=refreshFireboardSetup;
 function loadFireboardSetup(value){
   $('fbModel').value=value?.model || '';$('fbDeviceName').value=value?.deviceName || '';$('fbAccessories').value=value?.accessories || '';
   for(let channel=1;channel<=6;channel++){
     const probe=value?.channels?.find(p=>p.channel===channel);
-    for(const [field,key,fallback] of [['Role','role','Not used'],['Probe','probeType','Not recorded'],['Label','label',''],['Placement','placement','']])$('fb'+field+channel).value=probe?.[key] ?? fallback;
+    for(const [field,key,fallback] of [['Role','role','Not used'],['Probe','probeType','Not recorded'],['Label','label',''],['Placement','placement','']])$('fb'+field+channel).value=field==='Probe'?fbConnection(probe?.[key] ?? fallback):probe?.[key] ?? fallback;
+    $('fbPort'+channel).value=String(probe?.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe?.probeType)?channel:'Not recorded'));
+    $('fbColor'+channel).value=probe?.color || 'Not recorded';$('fbMeasurement'+channel).value=probe?.measurement || 'Not recorded';
   }
   refreshFireboardSetup();
 }
 function fireboardSetupValue(){
   if(!$('fbModel').value)return null;
   return {version:1,model:$('fbModel').value,deviceName:$('fbDeviceName').value,accessories:$('fbAccessories').value,
-    channels:Array.from({length:6},(_,i)=>({channel:i+1,role:$('fbRole'+(i+1)).value,probeType:$('fbProbe'+(i+1)).value,label:$('fbLabel'+(i+1)).value,placement:$('fbPlacement'+(i+1)).value}))};
+    channels:Array.from({length:6},(_,i)=>({channel:i+1,role:$('fbRole'+(i+1)).value,probeType:$('fbProbe'+(i+1)).value,label:$('fbLabel'+(i+1)).value,placement:$('fbPlacement'+(i+1)).value,wiredPort:$('fbProbe'+(i+1)).value==='Wired' && $('fbPort'+(i+1)).value!=='Not recorded'?Number($('fbPort'+(i+1)).value):null,color:$('fbProbe'+(i+1)).value==='Wireless'?$('fbColor'+(i+1)).value:'Not recorded',measurement:$('fbProbe'+(i+1)).value==='Wireless'?$('fbMeasurement'+(i+1)).value:'Not recorded'}))};
+}
+function renderProbeGuide(setup){
+  $('probeGuideList').replaceChildren();
+  const used=setup?.channels.filter(p=>p.role!=='Not used') || [];$('probeGuide').hidden=!used.length;
+  for(const probe of used){
+    const item=document.createElement('p'),connection=fbConnection(probe.probeType);
+    const parts=[probe.label || 'Probe '+probe.channel,probe.role,connection];
+    if(connection==='Wired'){const port=probe.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe.probeType)?probe.channel:null);if(port)parts.push('port '+port);}
+    if(connection==='Wireless'){if(probe.color && probe.color!=='Not recorded')parts.push(probe.color);if(probe.measurement && probe.measurement!=='Not recorded')parts.push(probe.measurement);}
+    if(probe.placement)parts.push(probe.placement);item.textContent=parts.join(' · ');
+    if(connection==='Wireless' && ['Orange','Silver'].includes(probe.color))item.className='probe-'+probe.color.toLowerCase();
+    $('probeGuideList').append(item);
+  }
 }
 let view = 'cook';
 const drafts = new Map();
@@ -718,6 +747,7 @@ async function render() {
     for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
     $('editRating').value=cook.cookingDetails?.rating || '';
     loadFireboardSetup(cook.cookingDetails?.fireboardSetup);
+    renderProbeGuide(cook.cookingDetails?.fireboardSetup);
     const originalPrep=related.cook_preparation?.[0] || {};
     $('editTrim').value=cook.cookingDetails?.trim ?? originalPrep.trim_level ?? '';
     $('editBrine').value=cook.cookingDetails?.brineMarinade ?? originalPrep.brine_marinade ?? '';

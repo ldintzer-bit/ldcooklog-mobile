@@ -1,3 +1,15 @@
+## Probe connection and wireless colors
+
+Role describes what is measured; Connection describes Wired or Wireless. Select
+Wired to record its actual FireBoard port. Select Wireless to record Orange,
+Silver or Other and its Internal / meat or External / ambient reading. For both
+readings from one Pulse, use two entries with the same color and distinct reading
+choices. Leave unused rows as Not used. Row numbers identify setup entries;
+they do not assign a wireless probe to a physical port. Save cook setup, then
+expand Saved probe guide in Cook for the compact reference while viewing live
+readings in FireBoard. Imported series identities/labels and comparison colors
+are retained independently; no guessed chart-order matching occurs.
+
 ## FireBoard 2 setup
 
 Open a cook in Cook, expand Cook setup and preparation, then FireBoard 2 and

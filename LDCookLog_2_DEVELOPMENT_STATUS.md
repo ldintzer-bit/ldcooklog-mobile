@@ -1,3 +1,32 @@
+## 2026-10-13 — Distinct probe role, connection and wireless identifiers
+
+Owner accepted setup layout but identified redundant ambient/food probe types
+and missing wireless/color support. Connection now offers Not recorded, Wired,
+Wireless and Other; Role remains Not used, Pit / ambient, Meat and Other. Earlier
+project context distinguishes physical Pulse Orange/Silver identifiers and
+Internal/External measurements. Added Orange/Silver/Other wireless identifiers
+and optional Internal / meat versus External / ambient reading; Wired exposes
+an independent optional port 1–6. Numbered rows are probe-reading entries, not
+assumed physical FireBoard ports. Two entries may record the same Pulse color
+with different measurements; color is not treated as a permanent device UUID.
+A saved probe guide in Cook lists configured roles, connections, ports,
+colors/readings and placements, with text plus Orange/Silver color accents.
+
+Existing saved Wired ambient/food values remain valid in recovery validation,
+are displayed as Wired with their prior numbered port on load, and are changed
+only upon explicit setup save. Original imports, permanent device/channel IDs,
+reading labels/units, archives and chart-trace colors are unchanged. No automatic
+binding or live telemetry/control was introduced. The known preference for a
+wired pit probe is supported by explicit Pit / ambient versus Other reference
+roles; no new pit calculations or inferred wireless pit selection were added.
+
+Tests cover exact recovery of wired port, Orange Internal/External and Silver
+Internal entries, rejected invalid port/color/measurement without writes,
+backward-compatible old types, offline browser persistence, conditional fields
+and a readable saved guide. Additional browser checks retain existing complete
+history/restoration and unsaved drafts. Results follow. No private history or
+credentials were accessed, and production remains unchanged.
+
 ### FireBoard setup verification checkpoint
 
 Installable source 51bd6f04f3493fa78b49c45770ede11c979aa309; Actions run

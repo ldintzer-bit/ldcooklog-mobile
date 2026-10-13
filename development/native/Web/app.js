@@ -11,16 +11,20 @@ const comparisonSlots=[['compareCook','compareProbe'],['compareCook2','comparePr
 const chartColors=[['gold','#daba7c'],['blue','#91c8e8'],['coral','#f3a28b'],['lavender','#c5a9f0']];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
 const fbRoles=['Not used','Pit / ambient','Meat','Other'];
-const fbProbes=['Not recorded','Wired ambient probe','Wired food probe','Other'];
+const fbProbes=['Not recorded','Wired','Wireless','Other'];
+const fbConnection=value=>['Wired ambient probe','Wired food probe'].includes(value)?'Wired':value;
 for(let channel=1;channel<=6;channel++){
   const row=document.createElement('details');row.id='fbChannel'+channel;
-  const summary=document.createElement('summary');summary.id='fbSummary'+channel;summary.textContent='Channel '+channel+' · Not used';row.append(summary);
+  const summary=document.createElement('summary');summary.id='fbSummary'+channel;summary.textContent='Probe '+channel+' · Not used';row.append(summary);
   for(const [field,label,options,limit,placeholder] of [
-    ['Role','Role',fbRoles],['Probe','Probe type',fbProbes],
+    ['Role','Role',fbRoles],['Probe','Connection',fbProbes],
+    ['Port','Wired port',['Not recorded','1','2','3','4','5','6']],
+    ['Color','Wireless color',['Not recorded','Orange','Silver','Other']],
+    ['Measurement','Wireless reading',['Not recorded','Internal / meat','External / ambient']],
     ['Label','Probe label',null,250,'Pit, brisket flat, pork butt 1…'],
     ['Placement','Placement',null,500,'Grate position or location in the meat']
   ]){
-    const wrapper=document.createElement('label');wrapper.append('Channel '+channel+' — '+label);
+    const wrapper=document.createElement('label');wrapper.append('Probe '+channel+' — '+label);wrapper.id='fbField'+field+channel;
     const input=document.createElement(options?'select':'input');input.id='fb'+field+channel;
     if(options)for(const choice of options)input.append(new Option(choice,choice));
     else{input.maxLength=limit;input.placeholder=placeholder;}
@@ -30,22 +34,42 @@ for(let channel=1;channel<=6;channel++){
 }
 function refreshFireboardSetup(){
   $('fbSettings').hidden=$('fbModel').value!=='FireBoard 2';
-  for(let channel=1;channel<=6;channel++)$('fbSummary'+channel).textContent='Channel '+channel+' · '+$('fbRole'+channel).value;
+  for(let channel=1;channel<=6;channel++){
+    const connection=$('fbProbe'+channel).value;
+    $('fbFieldPort'+channel).hidden=connection!=='Wired';
+    $('fbFieldColor'+channel).hidden=connection!=='Wireless';$('fbFieldMeasurement'+channel).hidden=connection!=='Wireless';
+    $('fbSummary'+channel).textContent=['Probe '+channel,$('fbRole'+channel).value,connection==='Wireless'?$('fbColor'+channel).value:connection].join(' · ');
+  }
 }
 $('fbModel').onchange=refreshFireboardSetup;
-for(let channel=1;channel<=6;channel++)$('fbRole'+channel).onchange=refreshFireboardSetup;
+for(let channel=1;channel<=6;channel++)for(const field of ['Role','Probe','Color'])$('fb'+field+channel).onchange=refreshFireboardSetup;
 function loadFireboardSetup(value){
   $('fbModel').value=value?.model || '';$('fbDeviceName').value=value?.deviceName || '';$('fbAccessories').value=value?.accessories || '';
   for(let channel=1;channel<=6;channel++){
     const probe=value?.channels?.find(p=>p.channel===channel);
-    for(const [field,key,fallback] of [['Role','role','Not used'],['Probe','probeType','Not recorded'],['Label','label',''],['Placement','placement','']])$('fb'+field+channel).value=probe?.[key] ?? fallback;
+    for(const [field,key,fallback] of [['Role','role','Not used'],['Probe','probeType','Not recorded'],['Label','label',''],['Placement','placement','']])$('fb'+field+channel).value=field==='Probe'?fbConnection(probe?.[key] ?? fallback):probe?.[key] ?? fallback;
+    $('fbPort'+channel).value=String(probe?.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe?.probeType)?channel:'Not recorded'));
+    $('fbColor'+channel).value=probe?.color || 'Not recorded';$('fbMeasurement'+channel).value=probe?.measurement || 'Not recorded';
   }
   refreshFireboardSetup();
 }
 function fireboardSetupValue(){
   if(!$('fbModel').value)return null;
   return {version:1,model:$('fbModel').value,deviceName:$('fbDeviceName').value,accessories:$('fbAccessories').value,
-    channels:Array.from({length:6},(_,i)=>({channel:i+1,role:$('fbRole'+(i+1)).value,probeType:$('fbProbe'+(i+1)).value,label:$('fbLabel'+(i+1)).value,placement:$('fbPlacement'+(i+1)).value}))};
+    channels:Array.from({length:6},(_,i)=>({channel:i+1,role:$('fbRole'+(i+1)).value,probeType:$('fbProbe'+(i+1)).value,label:$('fbLabel'+(i+1)).value,placement:$('fbPlacement'+(i+1)).value,wiredPort:$('fbProbe'+(i+1)).value==='Wired' && $('fbPort'+(i+1)).value!=='Not recorded'?Number($('fbPort'+(i+1)).value):null,color:$('fbProbe'+(i+1)).value==='Wireless'?$('fbColor'+(i+1)).value:'Not recorded',measurement:$('fbProbe'+(i+1)).value==='Wireless'?$('fbMeasurement'+(i+1)).value:'Not recorded'}))};
+}
+function renderProbeGuide(setup){
+  $('probeGuideList').replaceChildren();
+  const used=setup?.channels.filter(p=>p.role!=='Not used') || [];$('probeGuide').hidden=!used.length;
+  for(const probe of used){
+    const item=document.createElement('p'),connection=fbConnection(probe.probeType);
+    const parts=[probe.label || 'Probe '+probe.channel,probe.role,connection];
+    if(connection==='Wired'){const port=probe.wiredPort ?? (['Wired ambient probe','Wired food probe'].includes(probe.probeType)?probe.channel:null);if(port)parts.push('port '+port);}
+    if(connection==='Wireless'){if(probe.color && probe.color!=='Not recorded')parts.push(probe.color);if(probe.measurement && probe.measurement!=='Not recorded')parts.push(probe.measurement);}
+    if(probe.placement)parts.push(probe.placement);item.textContent=parts.join(' · ');
+    if(connection==='Wireless' && ['Orange','Silver'].includes(probe.color))item.className='probe-'+probe.color.toLowerCase();
+    $('probeGuideList').append(item);
+  }
 }
 let view = 'cook';
 const drafts = new Map();
@@ -165,6 +189,7 @@ async function render() {
     for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
     $('editRating').value=cook.cookingDetails?.rating || '';
     loadFireboardSetup(cook.cookingDetails?.fireboardSetup);
+    renderProbeGuide(cook.cookingDetails?.fireboardSetup);
     const originalPrep=related.cook_preparation?.[0] || {};
     $('editTrim').value=cook.cookingDetails?.trim ?? originalPrep.trim_level ?? '';
     $('editBrine').value=cook.cookingDetails?.brineMarinade ?? originalPrep.brine_marinade ?? '';

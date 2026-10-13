@@ -31,3 +31,14 @@ test('invalid channels and choices cannot write or restore a checksum-valid inva
  const envelope=JSON.parse(original),body=JSON.parse(envelope.payload);body.state.records[0].cookingDetails.fireboardSetup=duplicate;envelope.payload=JSON.stringify(body);envelope.sha256=createHash('sha256').update(envelope.payload).digest('hex');
  await assert.rejects(f.store.restore(envelope),/FireBoard/);assert.equal(f.bytes(),original);
 });
+test('wired port and wireless color/internal-external settings restore exactly; old probe types remain readable',async()=>{
+ const f=await fixture(),config=setup();
+ config.channels[0]={...config.channels[0],probeType:'Wired',wiredPort:6,color:'Not recorded',measurement:'Not recorded'};
+ config.channels[1]={...config.channels[1],probeType:'Wireless',wiredPort:null,color:'Orange',measurement:'Internal / meat'};
+ config.channels[2]={...config.channels[2],role:'Other',probeType:'Wireless',wiredPort:null,color:'Orange',measurement:'External / ambient',label:'Ambient reference'};
+ config.channels[3]={...config.channels[3],role:'Meat',probeType:'Wireless',wiredPort:null,color:'Silver',measurement:'Internal / meat'};
+ await f.store.profile(f.id,{...f.profile,fireboardSetup:config});
+ const other=await fixture();await other.store.restore(JSON.parse(f.bytes()));assert.deepEqual((await other.store.read()).state.records[0].cookingDetails.fireboardSetup,config);
+ const before=f.bytes();for(const change of [{color:'Invalid'},{measurement:'Invalid'},{wiredPort:7}]){const bad=structuredClone(config);Object.assign(bad.channels[0],change);await assert.rejects(f.store.profile(f.id,{...f.profile,fireboardSetup:bad}),/FireBoard/);assert.equal(f.bytes(),before);}
+ await f.store.profile(f.id,{...f.profile,fireboardSetup:setup()});assert.equal((await f.store.read()).state.records[0].cookingDetails.fireboardSetup.channels[0].probeType,'Wired ambient probe');
+});

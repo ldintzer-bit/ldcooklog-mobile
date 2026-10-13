@@ -11,7 +11,10 @@ export function validateFireboardSetup(value) {
   for(const probe of value.channels){
     if(!probe || !Number.isInteger(probe.channel) || probe.channel<1 || probe.channel>6 || seen.has(probe.channel))throw Error('Invalid or duplicate FireBoard channel');
     seen.add(probe.channel);
-    if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired ambient probe','Wired food probe','Other'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
+    if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired','Wireless','Other','Wired ambient probe','Wired food probe'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
+    if(probe.wiredPort!==undefined && probe.wiredPort!==null && (!Number.isInteger(probe.wiredPort) || probe.wiredPort<1 || probe.wiredPort>6))throw Error('Invalid FireBoard wired port');
+    if(probe.color!==undefined && !['Not recorded','Orange','Silver','Other'].includes(probe.color))throw Error('Invalid FireBoard probe color');
+    if(probe.measurement!==undefined && !['Not recorded','Internal / meat','External / ambient'].includes(probe.measurement))throw Error('Invalid FireBoard wireless reading');
     for(const [key,limit] of [['label',250],['placement',500]])if(typeof probe[key]!=='string' || probe[key].length>limit)throw Error('Invalid FireBoard probe '+key);
   }
   return value;

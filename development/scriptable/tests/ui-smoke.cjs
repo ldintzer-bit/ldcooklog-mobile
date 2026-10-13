@@ -87,7 +87,7 @@ function manager(root) {
     await page.locator('#count').filter({hasText:'1 of 1'}).waitFor({state:'attached'});
     await showHistory();await page.locator('#history button').click();await expand('setupPanel');
     await expand('fireboardPanel');await page.locator('#fbModel').selectOption('FireBoard 2');await expand('fbChannel1');
-    await page.locator('#fbRole1').selectOption('Pit / ambient');await page.locator('#fbProbe1').selectOption('Wired ambient probe');await page.locator('#fbPlacement1').fill('Synthetic grate');
+    await page.locator('#fbRole1').selectOption('Pit / ambient');await page.locator('#fbProbe1').selectOption('Wired');await page.locator('#fbPlacement1').fill('Synthetic grate');
     await page.locator('#type').selectOption('Meat On');
     progress('save Meat On');
     await page.locator('#event button').click();
