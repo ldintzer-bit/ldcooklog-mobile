@@ -1,3 +1,11 @@
+### Rehearsal CI checkpoint
+
+Checkpoint 92a84908dd61ec7ab1c82d11ead15002221242c7, run 38390268508:
+all 36 recovery/rehearsal tests passed on actual macOS, including the isolated
+standalone-worker rehearsal. Linux unit, security and reproducibility steps
+also passed; unchanged browser/native build steps were still running at this
+update. Owner Mac execution is now ready using the existing downloaded helper.
+
 ## 2026-10-13 — Pick up from revision 8; isolated retention rehearsal
 
 Owner reported independent Mac verification of working revision 8, capacity
