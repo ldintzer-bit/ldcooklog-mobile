@@ -8,7 +8,7 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 test('direct presentation stays idle; blocked wake signals drain serialized requests and stop after Close',async()=>{
   const queue=[{id:1,body:{operation:'read'}},{id:2,body:{operation:'backupStatus'}}], replies=[],calls=[];
   let view,finish,presented=false,complete=false,evaluations=0,active=0,verify;
-  const storage={read:async()=>({revision:0}),backupStatus:async()=>({pending:0}),commit:async(text,revision)=>{assert.equal(++active,1);await tick();assert.equal((await verify(text)).revision,1);calls.push([text,revision]);active--;return 'saved'}};
+  const storage={read:async()=>({revision:0}),backupStatus:async()=>{assert.equal(presented,true,'Backup staging must not delay journal presentation');return {pending:0}},commit:async(text,revision)=>{assert.equal(++active,1);await tick();assert.equal((await verify(text)).revision,1);calls.push([text,revision]);active--;return 'saved'}};
   class WebView {
     constructor(){view=this}
     async loadHTML(){}
@@ -38,10 +38,12 @@ test('direct presentation stays idle; blocked wake signals drain serialized requ
     }
     present(){presented=true;return new Promise(resolve=>{finish=resolve})}
   }
-  const Timer={schedule:(ms,repeats,callback)=>{assert.equal(ms>=15000 || ms===10,true,'Only bounded startup or signal-triggered timers');const t=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(t)}}};
+  const Timer={schedule:(ms,repeats,callback)=>{assert.equal(ms>=15000 || ms===10 || ms===250,true,'Only bounded startup, one presentation drain, or signal-triggered timers');const t=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(t)}}};
   class Alert {addAction(){}async presentAlert(){throw Error(this.message)}}
   const running=new AsyncFunction('LDC_HTML','WebView','FileManager','UUID','createStorage','Timer','Alert','Script',source)('',WebView,{local:()=>({}),iCloud:()=>({})},{string:()=>''},(options)=>{verify=options.verify;return storage},Timer,Alert,{complete:()=>{complete=true}});
   while(!presented)await tick();
+  assert.equal(replies.length,1,'Only the validated current journal is delivered before presentation');
+  while(replies.length<2)await tick();
   const idle=evaluations;await tick();await tick();assert.equal(evaluations,idle);
   assert.equal(view.shouldAllowRequest({url:'https://untrusted.invalid/'}),false);
   queue.push({id:3,body:{operation:'commit',text:'one',expectedRevision:0}},{id:4,body:{operation:'commit',text:'two',expectedRevision:1}});

@@ -32,7 +32,7 @@ function manager(root) {
     progress('open '+(trial?'restore trial':'working journal')+(damaged?' damaged':''));
     const document=trial?'restore-check.html':'page.html',source=trial?sources.trial:sources.working;
     closeView=null;
-    let announcePresentation;
+    let announcePresentation, presented=false;
     const presentationReady=new Promise(resolve=>{announcePresentation=resolve});
     page=await context.newPage();
     page.on('dialog',d=>{d.dismiss();throw Error('Scriptable restoration must use an in-page confirmation')});
@@ -55,13 +55,14 @@ function manager(root) {
           crypto.subtle.digest=async (...args)=>{await new Promise(resolve=>setTimeout(resolve,100));return digest(...args)};
         });
       }
-      present(){assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve;announcePresentation()})}
+      present(){presented=true;assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve;announcePresentation()})}
       evaluateJavaScript(code,callback) {
+        if(code.includes('window.__ldcDeliver') && code.includes('\"pending\"')) assert.equal(presented,true,'Backup results arrive after presentation');
         return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : code);
       }
     }
     const Timer={schedule:(ms,repeats,callback)=>{assert.equal(repeats,false);const timer=setTimeout(callback,ms);return {invalidate:()=>clearTimeout(timer)}}};
-    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/startup-ready-1/);return 0} }
+    class Alert { addAction(){} async presentAlert(){if(this.title!=='LDCookLog development check')throw Error(this.message);assert.match(this.message,/visible-journal-1/);return 0} }
     running=new AsyncFunction('WebView','FileManager','UUID','Script','Timer','Alert',source)(WebView,{local:()=>local,iCloud:()=>cloud},{string:randomUUID},{complete:()=>{}},Timer,Alert);
     running.catch(error=>errors.push('Host: '+error.message));
     page.on('console',message=>{if(message.type()==='error') errors.push(message.text())});

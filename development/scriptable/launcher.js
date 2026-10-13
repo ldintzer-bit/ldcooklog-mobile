@@ -1,6 +1,6 @@
 // Generated release candidate runs entirely in the Scriptable app, not a widget.
 const LDC_NAMESPACE = 'development';
-const LDC_BUILD = '2026-10-11-startup-ready-1';
+const LDC_BUILD = '2026-10-13-visible-journal-1';
 async function bounded(work, label, milliseconds = 15000) {
   let timer;
   const expired = new Promise((_, reject) => {
@@ -67,13 +67,6 @@ if (!initial || initial.body?.operation !== 'read') throw Error('The cooking int
 await bounded(() => handle(initial), 'Opening the journal', 120000);
 const initialStatus = await bounded(() => web.evaluateJavaScript(`{ const done = completion; window.__ldcStartupReady.then(text => done(text), e => done('Startup failed: ' + e.message)); } 'ldcooklog-startup-waiting';`, true), 'Validating and rendering the saved journal', 120000);
 if (!/^Journal ready|^Journal could not open/.test(initialStatus)) throw Error('The cooking interface did not finish its initial read');
-// Complete startup backup status before presentation, with signals still off.
-for (let count = 0; count < 64; count++) {
-  const request = await bounded(take, 'Reading startup operations');
-  if (!request) break;
-  await bounded(() => handle(request), 'Completing startup operations', 120000);
-  if (count === 63) throw Error('Too many startup operations');
-}
 function wake() {
   signals++;
   scheduleDrain();
@@ -98,11 +91,17 @@ function startDrain() {
       if (!dismissed && signals !== observed) scheduleDrain();
     });
 }
-// Directly await presentation. No idle polling or native evaluation starts
-// while opening the screen. Only blocked page wake signals trigger work.
+// Present the validated journal before staging/checking retained backups.
+// No callback evaluation is pending when presentation begins. A single delayed
+// drain picks up the startup backup request whose wake occurred with signals off;
+// subsequent work remains event-driven and serialized.
 await bounded(() => web.evaluateJavaScript("window.__ldcEnableSignals(); 'ldcooklog-enabled';", false), 'Enabling interface actions');
 acceptingSignals = true;
-try { await web.present(true); }
+try {
+  const presentation = web.present(true);
+  wakeTimer = Timer.schedule(250, false, () => { wakeTimer = null; startDrain(); });
+  await presentation;
+}
 finally {
   dismissed = true;
   acceptingSignals = false;

@@ -1,3 +1,16 @@
+## October 13 journal-first startup
+
+The working Home Screen URL remains `scriptable:///run/LDCookLog-2-Backup-Status`.
+Update the contents of that existing script; renaming it is unnecessary. Current
+journal validation/rendering completes before presentation. The launcher starts
+presentation, then schedules one delayed drain for the queued startup protection
+request. Retained backups and Mac receipts are checked after the screen opens;
+all storage operations remain serialized, all existing checks remain, and Close
+cancels the delayed drain. The visible protection message is pending until real
+checks complete. This change targets app work before presentation; Scriptable
+handoff/device launch timing is not yet physically measured. Additional UI
+redesign ideas are recorded in the root development status for discussion.
+
 ## October 12 private-history recovery checkpoint
 
 The owner has confirmed full-history working journal reopening offline,

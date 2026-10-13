@@ -1,3 +1,33 @@
+## 2026-10-13 — Journal-first launch and UI review
+
+Owner reports the Home Screen Shortcut works but opens the Scriptable Scripts
+screen before a slow journal launch. Kept the existing URL/underlying filename
+and journal namespace. The launcher now validates and renders the current
+journal, starts native presentation with no evaluation pending, then uses one
+250 ms startup timer to drain queued backup work. Retained-snapshot validation,
+iCloud staging, Mac receipt checks and retention still run automatically in the
+same serialized storage queue. No validation is skipped or cached. Close cancels
+the startup drain timer; later wake requests are ignored after dismissal.
+Backup status remains checking until the actual operation completes, rather
+than claiming protection while checks are pending. This reduces work before
+presentation; actual Scriptable host-transition time/iPhone timing is unmeasured.
+
+Local JavaScript checks: 71 passed. Host regression asserts only the initial
+journal read is delivered before presentation, backup staging occurs after
+presentation, serialized saves still work, idle polling is absent and dismissal
+stops requests. Generated-launcher browser regression additionally asserts backup
+results are delivered after native presentation. CI results follow.
+
+Reviewed current interface source at iPhone width. Proposed for owner discussion,
+not implemented: Cook/History/Backups navigation; compact current backup summary
+with expandable diagnostics; auto-open newly created cook with prominent valid
+next actions; collapsible setup/preparation/review/comparison sections; save
+feedback near the edited section and unsaved-draft protection. Also flag stale
+“use the current app for real cooks”/synthetic-only wording for a consistent
+controlled-pilot label, and clarify numeric rating versus qualitative result.
+The existing shortcut uses the documented Scriptable run URL; this release does
+not claim to eliminate Scriptable's host handoff. Production is unchanged.
+
 ### Structured-history verification checkpoint
 
 Source 856853dfd1b39e9a564daa363516059498ac159e, run 38397701385:
