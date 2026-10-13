@@ -1,3 +1,19 @@
+### FireBoard setup verification checkpoint
+
+Installable source 51bd6f04f3493fa78b49c45770ede11c979aa309; Actions run
+38432013702 regression passed: 74 JavaScript tests, 58 Python passes with two
+Mac-only Linux skips, artifact/security/CSP checks and all three browser suites.
+FireBoard device/accessories and six channels persisted through unsaved history
+filtering, save and offline reopening. Generated Scriptable host accepted event
+saves preserving unsaved probe configuration. Pure tests accepted exact fresh
+recovery, unchanged completed-session charts/readings/source rows, omitted-setup
+preservation and rollback of checksum-valid invalid-channel restoration.
+Actual macOS tests/native storage and iPhone compilation also passed; Mac compile
+and simulator integration were still running at this checkpoint. Scriptable
+physical setup acceptance awaits installation of this one working-script update.
+Owner has accepted the preceding interface layout while trying a test cook.
+No private history re-import or backup-agent update is required for this feature.
+
 ## 2026-10-13 — FireBoard 2 cook setup
 
 Owner found dedicated device/probe setup missing while using a test cook.
