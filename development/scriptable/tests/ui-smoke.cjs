@@ -166,7 +166,8 @@ function manager(root) {
     assert.equal(await page.locator('#chart polyline').count(),4);
     assert.equal(await page.locator('#chartLegend p').count(),4);
     assert.match(await page.locator('#chartSummary').innerText(),/Synthetic large history 3 \(lavender\): 600 readings/);
-    assert.equal(await page.locator('#compareCook2 option[value="synthetic-large-1"]').isDisabled(),true);
+    const duplicateOption=await page.locator('#compareCook2 option[value="synthetic-large-1"]').evaluate(option=>({disabled:option.disabled,html:option.outerHTML}));
+    assert.equal(duplicateOption.disabled,true,JSON.stringify(duplicateOption));
     const selectedProbe=await page.locator('#compareProbe2').inputValue();
     await page.locator('#search').fill('Synthetic large history 29');
     await page.locator('#count').filter({hasText:'1 of 30'}).waitFor();
