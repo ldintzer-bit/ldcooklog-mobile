@@ -103,3 +103,15 @@ reports without claiming current protection. Report download waits at most
 The isolated restore app uses a separate report namespace. Physical iPhone
 receipt-display acceptance is still pending. Reports are private operational
 metadata, not cryptographically signed attestations.
+
+## Isolated retention rehearsal
+
+Run `python3 LDCookLog-Retention-Rehearsal.py` after downloading the reviewed
+`rehearse_retention.py` from the development branch. It imports the existing
+standalone helper from `~/Downloads/LDCookLog-Mac-Recovery.py` (override with
+`--worker` for a reviewed helper path). It uses only automatically removed
+synthetic temporary folders, without working data, credentials or agent changes.
+It checks 50 saves, normal and capacity-limited pruning, failure preservation
+and exact latest synthetic state recovery into a fresh folder. Successful output
+is safe to report; do not attach private recovery snapshots. Physical phone
+retention and new-device recovery remain separate acceptance gates.

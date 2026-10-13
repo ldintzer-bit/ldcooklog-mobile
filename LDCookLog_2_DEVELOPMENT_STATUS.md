@@ -1,3 +1,29 @@
+## 2026-10-13 — Pick up from revision 8; isolated retention rehearsal
+
+Owner reported independent Mac verification of working revision 8, capacity
+49 MiB of 1024 MiB and eight local snapshots. The displayed verification time
+was October 12; this is evidence of that copy, not proof of current scheduled
+execution on October 13. Owner also confirmed no real cooks were added/edited
+in Supabase after the October 11 source backup, and accepted the dropdown UI.
+
+Added `development/scriptable/mac/rehearse_retention.py`, using the existing
+downloaded standalone Mac helper. It creates only disposable synthetic folders:
+50 saves, normal retention, forced capacity trimming, impossible-budget refusal,
+corrupt-newest refusal, source-byte preservation and exact latest-state recovery
+into a fresh folder. It reads no working cook/history/archive/credential files,
+uses no cloud API or scheduled agent, and removes its temporary synthetic data.
+Default helper code path is Downloads/LDCookLog-Mac-Recovery.py; no reinstall
+or update of the working helper is required when it already supports retention.
+
+Local rehearsal: 31 normal-policy copies from 50 saves, five budget-limited
+copies; first/newest three kept; failure cases preserved retained copies;
+revision 50 synthetic state recovered exactly. Mac test discovery: 35 passes,
+one macOS-only skip on Linux (36 total). A regression test asserts temporary
+source/destination isolation, no subprocess calls and cleanup of the temporary
+folders. Actual owner Mac execution is the next participation point. This does
+not substitute for actual iPhone cleanup beyond 20 snapshots or new-device
+restoration. Existing production and private backups remain in place.
+
 ### Dropdown verification checkpoint
 
 Source `106393df58e9e60df78a2988366a76de9ac39efe`, GitHub run
