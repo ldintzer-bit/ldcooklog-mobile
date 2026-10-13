@@ -2,6 +2,21 @@
 export const BACKUP_FORMAT = 'ldcooklog-local-backup';
 export const BACKUP_VERSION = 1;
 
+export function validateFireboardSetup(value) {
+  if(value===null)return value;
+  if(!value || typeof value!=='object' || Array.isArray(value) || value.version!==1 || value.model!=='FireBoard 2')throw Error('Invalid FireBoard setup');
+  for(const [key,limit] of [['deviceName',160],['accessories',1000]])if(typeof value[key]!=='string' || value[key].length>limit)throw Error('Invalid FireBoard '+key);
+  if(!Array.isArray(value.channels) || value.channels.length!==6)throw Error('FireBoard 2 setup needs six channel entries');
+  const seen=new Set();
+  for(const probe of value.channels){
+    if(!probe || !Number.isInteger(probe.channel) || probe.channel<1 || probe.channel>6 || seen.has(probe.channel))throw Error('Invalid or duplicate FireBoard channel');
+    seen.add(probe.channel);
+    if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired ambient probe','Wired food probe','Other'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
+    for(const [key,limit] of [['label',250],['placement',500]])if(typeof probe[key]!=='string' || probe[key].length>limit)throw Error('Invalid FireBoard probe '+key);
+  }
+  return value;
+}
+
 export function validateCook(c) {
   if (!c || typeof c !== 'object' || Array.isArray(c) || typeof c.id !== 'string' || !c.id.trim() || c.id.length > 160) throw Error('Invalid cook identifier');
   if (typeof c.food !== 'string' || c.food.length > 300 || typeof c.cooker !== 'string' || c.cooker.length > 300) throw Error('Invalid cook labels');
@@ -10,6 +25,7 @@ export function validateCook(c) {
   if (!Array.isArray(c.events) || c.events.length > 200000 || !Array.isArray(c.temperatures) || c.temperatures.length > 500000) throw Error('Invalid cook series');
   if (!c.events.every(e => e && typeof e.type === 'string' && typeof e.at === 'string' && Number.isFinite(Date.parse(e.at)) && typeof e.note === 'string')) throw Error('Invalid cook events');
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
+  if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
   return c;
 }
 async function sha256(s) {

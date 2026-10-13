@@ -4,6 +4,21 @@
 const BACKUP_FORMAT = 'ldcooklog-local-backup';
 const BACKUP_VERSION = 1;
 
+function validateFireboardSetup(value) {
+  if(value===null)return value;
+  if(!value || typeof value!=='object' || Array.isArray(value) || value.version!==1 || value.model!=='FireBoard 2')throw Error('Invalid FireBoard setup');
+  for(const [key,limit] of [['deviceName',160],['accessories',1000]])if(typeof value[key]!=='string' || value[key].length>limit)throw Error('Invalid FireBoard '+key);
+  if(!Array.isArray(value.channels) || value.channels.length!==6)throw Error('FireBoard 2 setup needs six channel entries');
+  const seen=new Set();
+  for(const probe of value.channels){
+    if(!probe || !Number.isInteger(probe.channel) || probe.channel<1 || probe.channel>6 || seen.has(probe.channel))throw Error('Invalid or duplicate FireBoard channel');
+    seen.add(probe.channel);
+    if(!['Not used','Pit / ambient','Meat','Other'].includes(probe.role) || !['Not recorded','Wired ambient probe','Wired food probe','Other'].includes(probe.probeType))throw Error('Invalid FireBoard probe choice');
+    for(const [key,limit] of [['label',250],['placement',500]])if(typeof probe[key]!=='string' || probe[key].length>limit)throw Error('Invalid FireBoard probe '+key);
+  }
+  return value;
+}
+
 function validateCook(c) {
   if (!c || typeof c !== 'object' || Array.isArray(c) || typeof c.id !== 'string' || !c.id.trim() || c.id.length > 160) throw Error('Invalid cook identifier');
   if (typeof c.food !== 'string' || c.food.length > 300 || typeof c.cooker !== 'string' || c.cooker.length > 300) throw Error('Invalid cook labels');
@@ -12,6 +27,7 @@ function validateCook(c) {
   if (!Array.isArray(c.events) || c.events.length > 200000 || !Array.isArray(c.temperatures) || c.temperatures.length > 500000) throw Error('Invalid cook series');
   if (!c.events.every(e => e && typeof e.type === 'string' && typeof e.at === 'string' && Number.isFinite(Date.parse(e.at)) && typeof e.note === 'string')) throw Error('Invalid cook events');
   if (!c.temperatures.every(t => t && typeof t.at === 'string' && Number.isFinite(Date.parse(t.at)) && Number.isFinite(t.value) && typeof t.channel === 'string')) throw Error('Invalid temperature samples');
+  if(c.cookingDetails?.fireboardSetup!==undefined)validateFireboardSetup(c.cookingDetails.fireboardSetup);
   return c;
 }
 async function sha256(s) {
@@ -354,6 +370,7 @@ class CookStore {
         if(value[key]!==undefined){if(!options.includes(value[key]))throw Error('Invalid preparation choice');cook.cookingDetails[key]=value[key]}
       }
       if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
+      if(value.fireboardSetup!==undefined)cook.cookingDetails.fireboardSetup=structuredClone(validateFireboardSetup(value.fireboardSetup));
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });
@@ -436,6 +453,43 @@ const comparisonSelections=new Map();
 const comparisonSlots=[['compareCook','compareProbe'],['compareCook2','compareProbe2'],['compareCook3','compareProbe3']];
 const chartColors=[['gold','#daba7c'],['blue','#91c8e8'],['coral','#f3a28b'],['lavender','#c5a9f0']];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
+const fbRoles=['Not used','Pit / ambient','Meat','Other'];
+const fbProbes=['Not recorded','Wired ambient probe','Wired food probe','Other'];
+for(let channel=1;channel<=6;channel++){
+  const row=document.createElement('details');row.id='fbChannel'+channel;
+  const summary=document.createElement('summary');summary.id='fbSummary'+channel;summary.textContent='Channel '+channel+' · Not used';row.append(summary);
+  for(const [field,label,options,limit,placeholder] of [
+    ['Role','Role',fbRoles],['Probe','Probe type',fbProbes],
+    ['Label','Probe label',null,250,'Pit, brisket flat, pork butt 1…'],
+    ['Placement','Placement',null,500,'Grate position or location in the meat']
+  ]){
+    const wrapper=document.createElement('label');wrapper.append('Channel '+channel+' — '+label);
+    const input=document.createElement(options?'select':'input');input.id='fb'+field+channel;
+    if(options)for(const choice of options)input.append(new Option(choice,choice));
+    else{input.maxLength=limit;input.placeholder=placeholder;}
+    wrapper.append(input);row.append(wrapper);
+  }
+  $('fbChannels').append(row);
+}
+function refreshFireboardSetup(){
+  $('fbSettings').hidden=$('fbModel').value!=='FireBoard 2';
+  for(let channel=1;channel<=6;channel++)$('fbSummary'+channel).textContent='Channel '+channel+' · '+$('fbRole'+channel).value;
+}
+$('fbModel').onchange=refreshFireboardSetup;
+for(let channel=1;channel<=6;channel++)$('fbRole'+channel).onchange=refreshFireboardSetup;
+function loadFireboardSetup(value){
+  $('fbModel').value=value?.model || '';$('fbDeviceName').value=value?.deviceName || '';$('fbAccessories').value=value?.accessories || '';
+  for(let channel=1;channel<=6;channel++){
+    const probe=value?.channels?.find(p=>p.channel===channel);
+    for(const [field,key,fallback] of [['Role','role','Not used'],['Probe','probeType','Not recorded'],['Label','label',''],['Placement','placement','']])$('fb'+field+channel).value=probe?.[key] ?? fallback;
+  }
+  refreshFireboardSetup();
+}
+function fireboardSetupValue(){
+  if(!$('fbModel').value)return null;
+  return {version:1,model:$('fbModel').value,deviceName:$('fbDeviceName').value,accessories:$('fbAccessories').value,
+    channels:Array.from({length:6},(_,i)=>({channel:i+1,role:$('fbRole'+(i+1)).value,probeType:$('fbProbe'+(i+1)).value,label:$('fbLabel'+(i+1)).value,placement:$('fbPlacement'+(i+1)).value}))};
+}
 let view = 'cook';
 const drafts = new Map();
 const editForms = ['event','profileForm','reviewForm'];
@@ -471,6 +525,7 @@ function restoreDrafts() {
     feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
   }
   for(const kind of ['method','equipment'])$(kind+'Custom').hidden=$(kind+'Choice').value!=='__custom__';
+  refreshFireboardSetup();
   updateDraftNotice();
 }
 function cookingActions(cook) {
@@ -552,6 +607,7 @@ async function render() {
     for (const key of ['method','weight','equipment','preparation','rubs','sauces']) $('edit'+key[0].toUpperCase()+key.slice(1)).value=cook.cookingDetails?.[key] || '';
     for(const kind of ['method','equipment']) loadSetupChoice(kind,cook.cookingDetails?.[kind] || '');
     $('editRating').value=cook.cookingDetails?.rating || '';
+    loadFireboardSetup(cook.cookingDetails?.fireboardSetup);
     const originalPrep=related.cook_preparation?.[0] || {};
     $('editTrim').value=cook.cookingDetails?.trim ?? originalPrep.trim_level ?? '';
     $('editBrine').value=cook.cookingDetails?.brineMarinade ?? originalPrep.brine_marinade ?? '';
@@ -622,7 +678,7 @@ function drawChart() {
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
 $('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
-$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
+$('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null,trim:$('editTrim').value,brineMarinade:$('editBrine').value,injection:$('editInjection').value,binder:$('editBinder').value,fireboardSetup:fireboardSetupValue()};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value),'profileForm');};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value,{overallResult:$('reviewOverall').value,bark:$('reviewBark').value,tenderness:$('reviewTenderness').value,observations:$('reviewObservations').value,changesNextTime:$('reviewChanges').value}),'reviewForm');};
 $('sessionFile').onchange=e=>{const file=e.target.files?.[0];if(!file || !current)return;action(async()=>{try{if(file.size>100*1024*1024)throw Error('Session file too large');await store.importSession(current,JSON.parse(await file.text()));}finally{e.target.value='';}});};

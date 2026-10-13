@@ -1,3 +1,15 @@
+## FireBoard 2 setup
+
+Open a cook in Cook, expand Cook setup and preparation, then FireBoard 2 and
+probes. Select FireBoard 2, optionally name the device and note accessories.
+Expand the numbered channels you use; select role/probe type and record label
+and placement. Leave unused channels as Not used. Tap Save cook setup. These
+settings travel with the cook's normal offline snapshots/restoration. Selecting
+Not used / not recorded for the device and saving clears its current setup;
+older snapshots still retain earlier setup. Live readings/alarms remain in the
+FireBoard app; completed-session import remains separate. Setup labels do not
+rewrite imported readings or imply an automatic hardware/channel association.
+
 ## October 13 approved interface
 
 Use Cook for current cooking actions, setup and review; History to find/open

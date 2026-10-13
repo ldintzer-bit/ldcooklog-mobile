@@ -1,4 +1,4 @@
-import { validateCook, planRestore } from './backup.js';
+import { validateCook, planRestore, validateFireboardSetup } from './backup.js';
 import { migrateRelationalExport, RELATIONAL_FORMAT, verifyRelationalExport } from './migration.js';
 import { attachSession } from './fireboard.js';
 
@@ -108,6 +108,7 @@ export class CookStore {
         if(value[key]!==undefined){if(!options.includes(value[key]))throw Error('Invalid preparation choice');cook.cookingDetails[key]=value[key]}
       }
       if(value.binder!==undefined){if(typeof value.binder!=='string' || value.binder.length>500)throw Error('Binder is too long');cook.cookingDetails.binder=value.binder}
+      if(value.fireboardSetup!==undefined)cook.cookingDetails.fireboardSetup=structuredClone(validateFireboardSetup(value.fireboardSetup));
       // Legacy relational rows and original archives are immutable evidence.
       return state;
     });

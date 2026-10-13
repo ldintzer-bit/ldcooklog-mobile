@@ -1,3 +1,29 @@
+## 2026-10-13 — FireBoard 2 cook setup
+
+Owner found dedicated device/probe setup missing while using a test cook.
+Added a FireBoard 2 and probes disclosure inside Cook setup and preparation:
+optional device name, accessories notes and six numbered wired channel entries
+with role, probe type, label and placement. Official FBX2 specifications confirm
+six 2.5 mm probe inputs (https://docs.fireboard.io/fb2series/fb2series-specs/).
+No channels are assumed to be pit/meat until selected. Not used / not recorded
+stores null; old cooks without setup remain valid and are not rewritten on view.
+Saved cook setup uses optional cookingDetails.fireboardSetup version 1, checked
+for six unique channels 1–6, allowed choices and bounded text in save/restore.
+Omitting setup through an older profile caller preserves an existing setup.
+No account/password, pairing, live temperature or automatic channel-to-import
+mapping was added. Imported session/raw chart/labels/units and legacy probe-role
+rows remain unchanged; setup is the owner's cook metadata. Completed-session
+imports still use the existing private exporter/file picker.
+
+All fields participate in existing per-cook drafts, offline commit, recovery
+snapshots and exact restore. Tests cover caller mutation, legacy preservation,
+completed-session non-mutation, old-caller preservation, explicit null removal,
+exact fresh-store restoration, rejected duplicate/range/choice/length data and
+checksum-valid invalid restore rollback. Browser tests cover six-channel setup,
+unsaved filtering, offline reopen and event-save draft preservation. Results
+follow; working namespace/filename/shortcut, Mac backup policy and production
+remain unchanged. No private history or credentials were accessed/published.
+
 ### Approved interface verification checkpoint
 
 Installable source: 21d49045d5c56b001c5619e982c69e5abc8c1456.
