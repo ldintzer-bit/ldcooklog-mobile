@@ -5,6 +5,9 @@ const $ = id => document.getElementById(id);
 const call = (operation, args = {}) => (window.ldcooklogHost || window.webkit.messageHandlers.recovery).postMessage({operation, ...args});
 const store = new CookStore({ read: () => call('read'), commit: (text, expectedRevision) => call('commit', {text, expectedRevision}) });
 let current = null, busy = false, damaged = false, journal = [];
+const comparisonSelections=new Map();
+const comparisonSlots=[['compareCook','compareProbe'],['compareCook2','compareProbe2'],['compareCook3','compareProbe3']];
+const chartColors=[['gold','#daba7c'],['blue','#91c8e8'],['coral','#f3a28b'],['lavender','#c5a9f0']];
 const status = (text, error = false) => { $('status').textContent = text; $('status').dataset.error = String(error); };
 const fmt = at => new Date(at).toLocaleString();
 const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
@@ -64,29 +67,44 @@ async function render() {
     $('legacyDetails').textContent=Object.keys(preserved).length ? JSON.stringify(preserved,null,2) : 'No original structured details recorded. New details are saved above.';
     $('cookNotes').value = cook.notes || '';
     $('evaluation').value = cook.evaluation || '';
-    fillProbes($('probe'),cook);
-    const selected = $('compareCook').value;
-    $('compareCook').replaceChildren(new Option('No comparison',''));
-    for (const other of journal.filter(c=>c.id!==current && !c.isTestCook && c.temperatures.length)) $('compareCook').append(new Option(`${other.food} · ${fmt(other.startedAt)}`,other.id));
-    if (journal.some(c=>c.id===selected)) $('compareCook').value = selected;
-    updateCompare();
+    refreshComparison();
   }
 }
-function fillProbes(select,cook) {
-  const previous = select.value;
+function fillProbes(select,cook,previous=select.value) {
   select.replaceChildren();
   const series = new Map((cook?.temperatures || []).map(t=>[seriesKey(t),t]));
   for (const [key,t] of series) select.append(new Option(`${t.channel} · ${t.unit || 'unknown'} · session ${t.sessionId || 'unrecorded'} · probe ${t.channelId || t.channel}`,key));
   if (series.has(previous)) select.value = previous;
 }
-function updateCompare() { fillProbes($('compareProbe'),journal.find(c=>c.id===$('compareCook').value)); drawChart(); }
+function captureComparison() {
+  if(!current)return;
+  comparisonSelections.set(current,{probe:$('probe').value,others:comparisonSlots.map(([cook,probe])=>({cook:$(cook).value,probe:$(probe).value}))});
+}
+function refreshComparison() {
+  const saved=comparisonSelections.get(current) || {probe:'',others:[]};
+  fillProbes($('probe'),journal.find(c=>c.id===current),saved.probe);
+  const choices=journal.filter(c=>c.id!==current && !c.isTestCook && c.temperatures.length).sort((a,b)=>b.startedAt.localeCompare(a.startedAt));
+  const used=new Set();
+  comparisonSlots.forEach(([cookID,probeID],i)=>{
+    const select=$(cookID),chosen=saved.others[i];
+    select.replaceChildren(new Option('No comparison',''));
+    for(const cook of choices)select.append(new Option(`${cook.food} · ${cook.cooker} · ${fmt(cook.startedAt)}`,cook.id));
+    if(chosen && choices.some(c=>c.id===chosen.cook) && !used.has(chosen.cook))select.value=chosen.cook;
+    if(select.value)used.add(select.value);
+    fillProbes($(probeID),journal.find(c=>c.id===select.value),chosen?.probe || '');
+    $(probeID).disabled=!select.value;
+  });
+  comparisonSlots.forEach(([cookID])=>{for(const option of $(cookID).options)option.disabled=!!option.value && option.value!==$(cookID).value && used.has(option.value)});
+  captureComparison();drawChart();
+}
+function updateCompare(){captureComparison();refreshComparison()}
 function drawChart() {
-  $('chart').replaceChildren();
+  $('chart').replaceChildren();$('chartLegend').replaceChildren();
   try {
-    const first = journal.find(c=>c.id===current), second = journal.find(c=>c.id===$('compareCook').value);
+    const first = journal.find(c=>c.id===current);
     if (!first || !$('probe').value) { $('chartSummary').textContent = 'No temperature readings attached yet.'; return; }
-    const series = [{name:first.food,color:'#daba7c',points:comparisonSeries(first,$('probe').value)}];
-    if (second && $('compareProbe').value) series.push({name:second.food,color:'#91c8e8',points:comparisonSeries(second,$('compareProbe').value)});
+    const selected=[{cook:first,key:$('probe').value},...comparisonSlots.map(([cook,probe])=>({cook:journal.find(c=>c.id===$(cook).value),key:$(probe).value})).filter(row=>row.cook && row.key)];
+    const series=selected.map((row,i)=>({name:row.cook.food,label:chartColors[i][0],color:chartColors[i][1],probe:row.cook.temperatures.find(t=>seriesKey(t)===row.key)?.channel || '',points:comparisonSeries(row.cook,row.key)}));
     let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
     for (const row of series) for (const p of row.points) { minX=Math.min(minX,p.minutes);maxX=Math.max(maxX,p.minutes);minY=Math.min(minY,p.fahrenheit);maxY=Math.max(maxY,p.fahrenheit); }
     if (!Number.isFinite(minX)) { $('chartSummary').textContent='No usable readings.';return; }
@@ -98,13 +116,14 @@ function drawChart() {
     for (const row of series) {
       const stride=Math.max(1,Math.ceil(row.points.length/600));
       const visible=row.points.filter((_,i)=>i%stride===0 || i===row.points.length-1);
-      add('polyline',{fill:'none',stroke:row.color,'stroke-width':2,points:visible.map(p=>`${65+(p.minutes-minX)/(maxX-minX)*590},${250-(p.fahrenheit-minY)/(maxY-minY)*220}`).join(' ')});
+      const legend=document.createElement('p');legend.textContent=`${row.label}: ${row.name} · ${row.probe} · ${row.points.length} readings`;legend.className='comparison-legend legend-'+row.label;$('chartLegend').append(legend);
+      add('polyline',{fill:'none',stroke:row.color,'stroke-dasharray':['none','8 3','3 3','10 3 2 3'][series.indexOf(row)],'stroke-width':2,points:visible.map(p=>`${65+(p.minutes-minX)/(maxX-minX)*590},${250-(p.fahrenheit-minY)/(maxY-minY)*220}`).join(' ')});
     }
     $('chart').append(svg);
-    $('chartSummary').textContent=series.map(s=>`${s.name} (${s.color==='#daba7c'?'gold':'blue'}): ${s.points.length} readings`).join(' · ')+'. Aligned by cook start; Celsius converted to Fahrenheit for display. Chart samples up to 601 points per series; all original readings are retained. Test cooks excluded from comparison choices.';
+    $('chartSummary').textContent=series.map(s=>`${s.name} (${s.label}): ${s.points.length} readings`).join(' · ')+'. Aligned by cook start; Celsius converted to Fahrenheit for display. Chart samples up to 601 points per series; all original readings are retained. Test cooks excluded from comparison choices.';
   } catch(e) { $('chartSummary').textContent=e.message; }
 }
-$('probe').onchange=drawChart;$('compareCook').onchange=updateCompare;$('compareProbe').onchange=drawChart;
+$('probe').onchange=()=>{captureComparison();drawChart()};for(const [cook,probe] of comparisonSlots){$(cook).onchange=updateCompare;$(probe).onchange=()=>{captureComparison();drawChart()}}
 $('profileForm').onsubmit=e=>{e.preventDefault();if(!current)return;const value={food:$('editFood').value,cooker:$('editCooker').value,startedAt:$('editStart').value,finishedAt:$('editFinish').value,isTestCook:$('editTest').checked,rating:$('editRating').value?Number($('editRating').value):null};for(const key of ['method','weight','equipment','preparation','rubs','sauces'])value[key]=$('edit'+key[0].toUpperCase()+key.slice(1)).value;const original=journal.find(c=>c.id===current);if(value.startedAt===localDate(original.startedAt))value.startedAt=original.startedAt;if(value.finishedAt===localDate(original.finishedAt))value.finishedAt=original.finishedAt;action(()=>store.profile(current,value));};
 $('showTests').onchange=()=>render().catch(e=>status(e.message,true));
 $('reviewForm').onsubmit=e=>{e.preventDefault();if(current)action(()=>store.details(current,$('cookNotes').value,$('evaluation').value));};

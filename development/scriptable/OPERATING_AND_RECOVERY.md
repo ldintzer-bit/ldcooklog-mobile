@@ -93,3 +93,13 @@ is used again, its changes are not backed up by this offline journal and must be
 reconciled before any cutover. Keep the verified original dump and relational
 export. No Supabase deletion, production merge/deployment or everyday-use
 cutover is authorized by a rehearsal alone.
+
+## Compare up to four cooks
+
+Open a historical cook with temperature readings. Select its probe, then choose
+up to three other cooks and a probe for each. Food, cooker and date identify each
+choice; the legend identifies the trace and reading count. Duplicate cooks and
+test cooks are excluded from additional comparison choices. History filtering
+keeps selections while the app remains open. Closing/reopening resets these
+viewing preferences. Plots align to cook start and display Fahrenheit; original
+units and all readings remain retained in the journal and its backups.

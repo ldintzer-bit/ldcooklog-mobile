@@ -1,3 +1,25 @@
+## 2026-10-13 — Four-cook temperature comparison candidate
+
+Expanded comparisons from the current cook plus one comparison to the current
+cook plus up to three others. All selectors label food, cooker and date; probes
+retain session/probe identities. Chart legend names each cook/probe with reading
+count, distinct colors and line patterns. Duplicate selections are disabled.
+Test cooks remain excluded from comparison choices; existing historical choices
+with readings remain eligible. Celsius conversion is display-only; all raw
+samples are retained. Viewing/changing comparisons writes no journal snapshots.
+
+Selections are held per current cook for the open app session and survive
+history search/filter rerenders. Invalid/removed/test-marked comparison cooks
+are dropped, and unavailable probes reset safely. Closing/reopening the app
+resets comparison preferences; cooking data remains persistent as before.
+
+Shared JavaScript regression and security/CSP checks pass locally. Generated
+Scriptable browser integration now exercises four cooks from the 30-cook,
+18,000-reading synthetic history, exact trace/legend counts, duplicate prevention,
+selection preservation through history filtering and unchanged recovery bytes.
+CI results follow. Owner iPhone comparison acceptance is next; production and
+private data remain untouched. This addresses the prior two-cook feature limit.
+
 ## 2026-10-13 — Real scheduled backup resumed; backup-readiness decision
 
 Owner's current --status returned AUTOMATIC MAC CHECK PASS for revision 8,
