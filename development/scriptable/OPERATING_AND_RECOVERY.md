@@ -71,8 +71,9 @@ accepted; do not erase the working installation to test it.
 
 ## Completed FireBoard sessions
 
-Use the private Mac exporter. On this owner's Python installation the verified
-system-certificate setting is needed:
+Use the updated private Mac exporter. On macOS it automatically loads the
+existing system certificate file when no explicit certificate setting is supplied.
+Older downloaded versions can still use the verified SSL_CERT_FILE workaround:
 
 ```bash
 SSL_CERT_FILE=/etc/ssl/cert.pem python3 "$HOME/Downloads/LDCookLog-FireBoard-Export.py" --interactive
@@ -103,3 +104,14 @@ test cooks are excluded from additional comparison choices. History filtering
 keeps selections while the app remains open. Closing/reopening resets these
 viewing preferences. Plots align to cook start and display Fahrenheit; original
 units and all readings remain retained in the journal and its backups.
+
+## Mac failure notifications
+
+After updating the managed helper, standard scheduled failures request a local
+Mac notification. A later successful scheduled copy requests a recovery notice;
+storage above 80% requests a warning. macOS settings/Focus control whether these
+are shown. Existing installations must receive the helper update; a source
+commit alone does not update the running agent. Continue using Recovery
+protection as evidence for the current revision. Notices contain no private
+cooking information and do not go to anyone else. No routine Terminal checks
+are required when current Mac verification appears in the phone journal.

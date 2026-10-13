@@ -115,3 +115,23 @@ It checks 50 saves, normal and capacity-limited pruning, failure preservation
 and exact latest synthetic state recovery into a fresh folder. Successful output
 is safe to report; do not attach private recovery snapshots. Physical phone
 retention and new-device recovery remain separate acceptance gates.
+
+## Scheduled operational notices and bounded logs
+
+Updated helpers request local Mac notifications when the standard scheduled
+backup fails, recovers after failure, or reaches 80% of its snapshot budget.
+Failure notices repeat no faster than four hours; sustained capacity notices
+no faster than daily. Text is fixed and contains no cooking records, paths or
+error details. Notification requests are bounded to eight seconds and are
+best-effort: macOS notification settings/Focus may prevent visible delivery.
+No external messaging service is used. Optional maintenance does not change
+backup health. Manual/custom checks and rehearsals do not send notices.
+
+The managed log files are trimmed when larger than 1 MiB, preserving the final
+256 KiB in a private .previous file. This only affects the two known worker logs,
+not cooking snapshots, original archives or unrelated files. The live inode is
+kept for launchd stdout/stderr. Notification cooldown state is separate private
+metadata. Update the generated helper through --install once to activate the
+new code; confirmation of visible notifications remains an owner-device check.
+Apple notification command/settings reference:
+https://developer.apple.com/library/archive/documentation/LanguagesUtilities/Conceptual/MacAutomationScriptingGuide/DisplayNotifications.html

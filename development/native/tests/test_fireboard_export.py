@@ -100,5 +100,23 @@ class DiagnosticTests(unittest.TestCase):
             self.assertIn('TLS certificate verification',out.getvalue())
             self.assertNotIn('PRIVATE',out.getvalue())
 
+class CertificateSetupTests(unittest.TestCase):
+    def test_mac_loads_system_roots_without_weakening_tls(self):
+        import ssl
+        context=ssl.create_default_context()
+        with patch.object(m.sys,'platform','darwin'), patch.dict(m.os.environ,{},clear=True), patch.object(m.Path,'is_file',return_value=True), patch.object(m.ssl,'create_default_context',return_value=context), patch.object(context,'load_verify_locations') as load, patch.object(m.urllib.request,'build_opener') as build:
+            m.https_opener()
+            load.assert_called_once_with(cafile='/etc/ssl/cert.pem')
+            self.assertTrue(context.check_hostname)
+            self.assertEqual(context.verify_mode,ssl.CERT_REQUIRED)
+            self.assertIsInstance(build.call_args.args[1],m.urllib.request.HTTPSHandler)
+
+    def test_explicit_certificate_setting_is_respected(self):
+        from unittest.mock import MagicMock
+        context=MagicMock()
+        with patch.object(m.sys,'platform','darwin'), patch.dict(m.os.environ,{'SSL_CERT_FILE':'/explicit/operator/roots.pem'}), patch.object(m.ssl,'create_default_context',return_value=context), patch.object(m.urllib.request,'build_opener'):
+            m.https_opener()
+            context.load_verify_locations.assert_not_called()
+
 if __name__ == '__main__':
     unittest.main()

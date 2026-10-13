@@ -3,6 +3,7 @@ import argparse
 import errno
 import fcntl
 import shutil
+import stat
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -401,6 +402,91 @@ def protect_locked(source, destination, max_bytes, scheduled):
     return status
 
 
+NOTICE_TEXT = {
+    'failed': ('LDCookLog backup needs attention', 'The latest scheduled Mac backup check failed. Required recovery points are kept. Open LDCookLog and check Recovery protection.'),
+    'recovered': ('LDCookLog backup resumed', 'A scheduled Mac check has verified the current independent recovery copy again.'),
+    'capacity': ('LDCookLog backup storage warning', 'Managed recovery copies use at least 80 percent of their storage budget. Check Recovery protection before storage fills.')
+}
+
+
+def send_local_notice(kind):
+    if sys.platform != 'darwin' or kind not in NOTICE_TEXT:
+        return False
+    title, message = NOTICE_TEXT[kind]
+    # Only fixed application text, never paths, cook details or exception text.
+    script = 'display notification ' + json.dumps(message) + ' with title ' + json.dumps(title)
+    try:
+        result = subprocess.run(['/usr/bin/osascript', '-e', script], capture_output=True, timeout=8)
+        return result.returncode == 0  # Request accepted, not proof it was shown.
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def trim_worker_logs(home, maximum=1024*1024, retained=256*1024):
+    require(not home.is_symlink(), 'Managed log folder changed; maintenance stopped.')
+    for name in ('recovery-worker.log', 'recovery-worker-error.log'):
+        path = home / name
+        if not path.exists():
+            continue
+        fd = os.open(path, os.O_RDWR | os.O_NOFOLLOW)
+        try:
+            info = os.fstat(fd)
+            require(stat.S_ISREG(info.st_mode), 'Managed log is not a regular file; maintenance stopped.')
+            if info.st_size <= maximum:
+                continue
+            os.lseek(fd, -min(retained,info.st_size), os.SEEK_END)
+            tail = os.read(fd, retained)
+            atomic_write(home / (name + '.previous'), tail)
+            # Preserve the current inode used by launchd's stdout/stderr handle.
+            os.ftruncate(fd, 0)
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+
+
+def operational_maintenance(healthy, capacity=None, home=MAC_HOME, now=None):
+    # Optional operational metadata/alerts can never negate a verified backup.
+    if not home.is_dir() or home.is_symlink():
+        return
+    now = time.time() if now is None else now
+    try:
+        fd = os.open(home / '.maintenance.lock', os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            trim_worker_logs(home)
+            path = home / 'notification-status.json'
+            previous = {}
+            if path.exists():
+                require(not path.is_symlink() and path.stat().st_size <= 4096, 'Managed notification state changed.')
+                try:
+                    previous = json.loads(path.read_text())
+                    require(isinstance(previous,dict), 'Invalid notice state.')
+                except (ValueError,TypeError):
+                    previous = {}
+            def due(key,interval):
+                at = previous.get(key)
+                return type(at) not in (int,float) or not math.isfinite(at) or at>now+300 or now-at>=interval
+            failed = not healthy
+            high = bool(healthy and capacity and capacity.get('warning') is True)
+            notices = []
+            if failed and (previous.get('failed') is not True or due('failureAt',4*3600)):
+                notices.append(('failed','failureAt'))
+            elif healthy and previous.get('failed') is True:
+                notices.append(('recovered','recoveryAt'))
+            if high and (previous.get('highCapacity') is not True or due('capacityAt',24*3600)):
+                notices.append(('capacity','capacityAt'))
+            state = {key:previous[key] for key in ('failureAt','recoveryAt','capacityAt') if type(previous.get(key)) in (int,float) and math.isfinite(previous[key])}
+            state.update(failed=failed,highCapacity=high,checkedAt=now)
+            for kind,key in notices:
+                state[key] = now
+                state['lastRequestAccepted'] = send_local_notice(kind)
+            atomic_write(path, canonical(state).encode())
+        finally:
+            os.close(fd)
+    except (AuditFailure,OSError,ValueError,TypeError,AttributeError,KeyError):
+        pass
+
+
 def agent_plist(program, executable, destination):
     return dict(Label=LABEL, ProgramArguments=[str(executable), str(program), '--scheduled'], StartInterval=300, RunAtLoad=True,
                 ProcessType='Background', Umask=0o077, StandardOutPath=str(destination.parent / 'recovery-worker.log'),
@@ -503,6 +589,7 @@ def main():
     parser.add_argument('--icloud-root', type=Path, default=DEFAULT_SOURCE)
     parser.add_argument('--destination', type=Path, default=DEFAULT_DESTINATION)
     args = parser.parse_args()
+    standard_scheduled = args.scheduled and args.icloud_root == DEFAULT_SOURCE and args.destination == DEFAULT_DESTINATION
     stage('starting')
     try:
         if args.remove:
@@ -538,9 +625,13 @@ def main():
                     pass
             except (OSError, AuditFailure):
                 pass
+        if standard_scheduled:
+            operational_maintenance(False)
         print('NOT PROTECTED:', message)
         print('Source cooking files were not changed. Retention may have removed only eligible older Mac copies after verified replacement; required recovery points are kept.')
         return 1
+    if standard_scheduled:
+        operational_maintenance(True, status.get('capacity'))
     for index, report in enumerate(status['copies'], 1):
         print(f'MAC INDEPENDENT COPY PASS: device {index}; revision {report["revision"]}; {report["cooks"]} cooks; {report["events"]} events; {report["readings"]} readings; {report["archives"]} source archives.')
     if args.install:

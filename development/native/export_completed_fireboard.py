@@ -11,6 +11,7 @@ import os
 import warnings
 import socket
 import ssl
+import sys
 from pathlib import Path
 import tempfile
 import urllib.request
@@ -19,6 +20,16 @@ import urllib.error
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
+
+
+def https_opener():
+    context = ssl.create_default_context()
+    # The owner's Mac demonstrated that its Python default CA path is missing.
+    # Load macOS's existing trusted roots without disabling host/cert checks.
+    # Preserve an explicit operator SSL_CERT_FILE setting when one is supplied.
+    if sys.platform == 'darwin' and not os.environ.get('SSL_CERT_FILE') and Path('/etc/ssl/cert.pem').is_file():
+        context.load_verify_locations(cafile='/etc/ssl/cert.pem')
+    return urllib.request.build_opener(NoRedirect, urllib.request.HTTPSHandler(context=context))
 
 
 def connection_failure(error):
@@ -45,7 +56,7 @@ def diagnose():
     req = urllib.request.Request('https://fireboard.io/api/rest-auth/login/',
         headers={'User-Agent':'LDCookLog/2.0 connection-check', 'Accept':'application/json'})
     try:
-        with urllib.request.build_opener(NoRedirect).open(req, timeout=30) as response:
+        with https_opener().open(req, timeout=30) as response:
             code = response.status
     except urllib.error.HTTPError as error:
         code = error.code  # 405 is expected for GET on a POST-only endpoint.
@@ -67,7 +78,7 @@ def api(path, token=None, credentials=None):
         headers['Authorization'] = 'Token ' + token
     req = urllib.request.Request('https://fireboard.io/' + path, data=data, headers=headers)
     try:
-        with urllib.request.build_opener(NoRedirect).open(req, timeout=30) as response:
+        with https_opener().open(req, timeout=30) as response:
             raw = response.read(100 * 1024 * 1024 + 1)
             if len(raw) > 100 * 1024 * 1024:
                 raise RuntimeError('FireBoard response exceeds the supported size; no export written')

@@ -1,3 +1,45 @@
+## 2026-10-13 — Autonomous development; operational backup maintenance
+
+Owner authorizes continued independent development and requests batched device
+participation instead of prompts for each incremental change. Four-cook controls
+and labels appeared on the owner's phone; full four-comparable-cook traces are
+not physically accepted because suitable comparable history is unavailable.
+Automated four-trace integration remains the evidence for that case.
+
+Added best-effort Mac-local notices on failures of the standard scheduled worker,
+a recovery notice after a failure streak and storage-budget warnings. Messages
+contain only fixed application text, never cook data, paths or exception details.
+Failure repeats are at most every four hours; sustained capacity warnings at
+most daily, with rearming after conditions clear. No external recipient/server
+or credentials are involved. Requests use a bounded built-in osascript command;
+a successful request is not proof of visible delivery. Notification settings
+and Focus may suppress display. No alerts are sent by custom checks, manual
+runs, installation, diagnosis or synthetic rehearsals.
+
+Managed stdout/stderr logs exceeding 1 MiB retain their last 256 KiB in a private
+.previous file and truncate the existing inode. Only the two known worker-log
+paths are eligible; symlinks and non-regular files stop optional maintenance.
+Notification state is private bounded metadata, distinct from backup receipts.
+Optional maintenance failures never turn a failed backup into success or
+invalidate a verified independent copy. Retention/state schemas are unchanged.
+
+The FireBoard exporter now supplements its default TLS context with the Mac's
+existing /etc/ssl/cert.pem roots when no explicit SSL_CERT_FILE is supplied.
+Certificate and hostname verification remain enabled; redirects remain refused.
+This uses the same roots the owner already verified, with no certificate download,
+trust-settings modification or password retry. New TLS-context tests confirm
+verification and explicit operator certificate settings are preserved. Existing
+export/login/diagnostic tests pass (13 tests). The installed exporter needs its
+reviewed update to get automatic CA selection; older invocations still work.
+
+Local Mac discovery: 41 passes, two macOS-only skips (43 total). New tests cover
+failure cooldown/recovery/rearming, daily capacity warnings, fixed-text bounded
+notification requests, rejection, log bounds/inode preservation, symlinks and
+actual macOS compilation without delivering notifications. CI follows. The
+installed owner helper needs one update at the batch milestone to enable these
+features; actual visible notice delivery remains unverified. No production
+merge/deployment or private cooking data commit.
+
 ### Four-cook comparison verification checkpoint
 
 Source d1bf3919acf587abf6ea6cb9b3aa2239bee74d82, run 38394638727:
