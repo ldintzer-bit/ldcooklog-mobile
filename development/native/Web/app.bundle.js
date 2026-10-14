@@ -802,9 +802,12 @@ function cookingActions(cook) {
 async function openCook(id) {
   if(busy)return;
   window.__ldcNavigation?.beforeView();
-  const previous=current;current=id;
-  try {await render();showView('cook');}
+  const previous=current,lockedFields=[...document.querySelectorAll('input,select,textarea')].map(e=>[e,e.disabled]);let locked=true;
+  busy=true;document.querySelectorAll('button').forEach(e=>e.disabled=true);for(const [e] of lockedFields)e.disabled=true;
+  const unlock=()=>{if(!locked)return;locked=false;document.querySelectorAll('button').forEach(e=>e.disabled=false);for(const [e,disabled] of lockedFields)e.disabled=disabled;};
+  try {await draftWriteQueue;await render(()=>{current=id;unlock();});showView('cook');}
   catch(e){current=previous;status(e.message,true);}
+  finally{unlock();busy=false;const cook=journal.find(c=>c.id===current);if(cook)cookingActions(cook);window.__ldcNavigation?.refresh();if(damaged)$('new').querySelector('button').disabled=true;}
 }
 const fmt = at => new Date(at).toLocaleString();
 const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
@@ -831,9 +834,10 @@ async function protection() {
   }
   catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; $('backupBrief').textContent='Backup check unavailable · see details';$('backupSummary').dataset.warning='true'; }
 }
-async function render() {
+async function render(beforePaint) {
   window.__ldcNavigation?.beforeView();
   const {state} = await store.read(), query = $('search').value.toLowerCase();
+  beforePaint?.();
   journal = state.records;hydrateDrafts();if(draftError)draftFeedback(draftError,true);
   const cooks = state.records.filter(c => ($('showTests').checked || !c.isTestCook) && `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
   $('count').textContent = `${cooks.length} of ${state.records.length} cooks · ${state.relationalArchives.length} preserved database exports`;

@@ -24,7 +24,7 @@ function manager(root) {
   progress('launch browser');
   const browser=await chromium.launch({headless:true});
   const context=await browser.newContext({viewport:{width:390,height:844}});
-  let page,closeView,running;
+  let page,closeView,running,delayRead=0;
   let cloudAvailable=false;
   const createCloud=cloud.createDirectory;
   cloud.createDirectory=p=>{if(!cloudAvailable)throw Error('synthetic offline');return createCloud(p)};
@@ -56,8 +56,12 @@ function manager(root) {
         });
       }
       present(){presented=true;assert.equal(this.shouldAllowRequest({url:'https://ldcooklog.invalid/'}),true);return new Promise(resolve=>{closeView=resolve;announcePresentation()})}
-      evaluateJavaScript(code,callback) {
+      async evaluateJavaScript(code,callback) {
         if(code.includes('window.__ldcDeliver') && code.includes('\"pending\"')) assert.equal(presented,true,'Backup results arrive after presentation');
+        if(delayRead && code.startsWith('window.__ldcDeliver(')){
+          const reply=JSON.parse(code.slice('window.__ldcDeliver('.length,code.lastIndexOf(');')));
+          if(typeof reply.result==='string' && reply.result.startsWith('{"format":')){const delay=delayRead;delayRead=0;await new Promise(resolve=>setTimeout(resolve,delay));}
+        }
         return page.evaluate(callback ? `(() => new Promise(resolve => { window.completion = resolve; ${code} }))()` : code);
       }
     }
@@ -228,8 +232,12 @@ function manager(root) {
     await page.locator('#timeline').filter({hasText:'Meat On'}).waitFor();
     progress('Previous/Next and recent cooks honor search; navigation preserves full source bytes');
     assert.equal(await page.locator('#ldc-previous').isDisabled(),true);
-    await page.locator('#ldc-next').click();await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 1',exact:true}).waitFor();
+    await page.locator('#note').fill('Draft belongs to synthetic cook zero');await page.locator('#draftPersistence').filter({hasText:'Drafts saved on this phone'}).waitFor();
+    delayRead=1500;await page.locator('#ldc-next').click();assert.equal(await page.locator('#note').isDisabled(),true,'Edit controls are locked until the selected cook is ready');
+    await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 1',exact:true}).waitFor();
+    assert.notEqual(await page.locator('#note').inputValue(),'Draft belongs to synthetic cook zero');
     await page.locator('#ldc-previous').click();await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 0',exact:true}).waitFor();
+    assert.equal(await page.locator('#note').inputValue(),'Draft belongs to synthetic cook zero','Returning to a cook restores only that cook’s draft');
     await showHistory();await page.locator('#search').fill('Synthetic large history 29');await page.locator('#count').filter({hasText:'1 of 30'}).waitFor({state:'attached'});
     await page.locator('#history button').click();await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 29',exact:true}).waitFor();
     assert.equal(await page.locator('#ldc-previous').isDisabled(),true);assert.equal(await page.locator('#ldc-next').isDisabled(),true);

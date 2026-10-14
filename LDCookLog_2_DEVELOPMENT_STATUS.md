@@ -10,7 +10,11 @@ not cooking events, snapshots or migration content.
 Previous / Next in the sticky cook context follow History's current search and
 Show test cooks filter, ordered newest first. Previous moves toward newer cooks;
 Next toward older. Boundaries and cooks outside the filter disable navigation.
-The context shows cook name, phase and position in the filtered list. History adds
+The context shows cook name, phase and position in the filtered list. Cook switches
+lock editing controls, wait for pending draft writes, and keep the prior cook
+selected until the next journal read is ready; failed reads release controls and
+retain the prior selection. This prevents actions from targeting the next cook
+while the previous cook's form is still displayed. History adds
 up to five active/recently viewed matches, preserving its ordinary complete list.
 Recent test cooks are hidden when Show test cooks is off.
 
@@ -26,7 +30,11 @@ These convenience preferences are not promised as part of new-device recovery.
 corrupt metadata fallback, failed writes and namespace isolation. Added generated
 Scriptable tests for offline position/panel reopening, draft preservation, sticky
 identity, Previous/Next boundaries, filters, recent choices and byte-identical full
-source history. Browser CI acceptance remains pending at this checkpoint.
+source history. Browser CI acceptance remains pending at this checkpoint. Position
+checks exposed sticky-header layout/scroll-clearance interference; clearance is
+now on section destinations, with restoration reapplied after layout and cancelled
+by explicit jumps or user gestures. Early tests were corrected to expect remembered
+History position and to seed multiple cooks before exercising Previous/Next.
 Production remains unchanged; the guide must document newest-first order, filter
 behavior and the distinction between remembered navigation and saved cook edits.
 
