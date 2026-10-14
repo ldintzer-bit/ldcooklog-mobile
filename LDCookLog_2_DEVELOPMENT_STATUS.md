@@ -30,13 +30,36 @@ These convenience preferences are not promised as part of new-device recovery.
 corrupt metadata fallback, failed writes and namespace isolation. Added generated
 Scriptable tests for offline position/panel reopening, draft preservation, sticky
 identity, Previous/Next boundaries, filters, recent choices and byte-identical full
-source history. Browser CI acceptance remains pending at this checkpoint. Position
+source history. Installable source `409e663d2c65613a367515b97d1af72e64751e4c`:
+GitHub run `38573792491`, regression job `115885488731`, passed all 98 JavaScript
+tests, Python checks, reproducible generation, security checks and all three
+browser suites. The generated Scriptable test delayed a read to verify locked
+editing, exact draft isolation between cooks, positions/panels across offline
+relaunch, filtered Previous/Next, recent choices and unchanged full source bytes.
+It also exposed an existing draft-restoration bug: a non-setup draft could rebuild
+meat/rub rows as empty. Only profileForm drafts now rebuild these structures; the
+combined note/navigation/archived-piece tests passed after correction. This was a
+UI restoration defect; no original source archive was modified by the tests.
+
+Native job `115885489138` is still running at this documentation checkpoint. The
+earlier guarded-open source's native run (`38572572367`) completed successfully;
+latest iPhone acceptance is still required. One early native attempt failed on a
+simulator background-assertion timeout and a later run passed. Position
 checks exposed sticky-header layout/scroll-clearance interference; clearance is
 now on section destinations, with restoration reapplied after layout and cancelled
 by explicit jumps or user gestures. Early tests were corrected to expect remembered
 History position and to seed multiple cooks before exercising Previous/Next.
 Production remains unchanged; the guide must document newest-first order, filter
 behavior and the distinction between remembered navigation and saved cook edits.
+
+Owner instructions: install as the usual LDCookLog-2-Backup-Status.js, preserving
+the working namespace. History's Active and recently viewed choices open a cook.
+In Cook, the sticky name/phase identifies the selected cook. Previous means newer
+and Next means older in filtered History; disabled buttons indicate a boundary
+or a current cook excluded by that filter. Enable Show test cooks to include a
+test cook. Return from another tab or cook to regain its remembered panels/place.
+Go to section and Top override that position explicitly. Navigation never saves
+an edit; use the appropriate Save button for cooking backup protection.
 
 ## 2026-10-14 — Further scrolling improvements after owner feedback
 
