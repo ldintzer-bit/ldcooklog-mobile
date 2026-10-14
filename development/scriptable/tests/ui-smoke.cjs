@@ -120,7 +120,10 @@ function manager(root) {
     await scroll.evaluate(e=>{e.scrollTop=650});await page.waitForTimeout(700);
     const remembered=await scroll.evaluate(e=>e.scrollTop);assert.ok(remembered>500);
     await showHistory();await page.locator('#navCook').click();
-    await page.waitForFunction(top=>Math.abs(document.getElementById('ldc-scroll').scrollTop-top)<3,remembered);
+    try{await page.waitForFunction(top=>Math.abs(document.getElementById('ldc-scroll').scrollTop-top)<3,remembered);}catch(error){
+      const folder=path.join(root,'local/LDCookLog-2-Development/navigation'),file=fs.readdirSync(folder).sort().at(-1);
+      console.error('Synthetic navigation diagnostic',{expected:remembered,actual:await scroll.evaluate(e=>e.scrollTop),preferences:JSON.parse(fs.readFileSync(path.join(folder,file),'utf8'))});throw error;
+    }
     assert.ok(Math.abs(await scroll.evaluate(e=>e.scrollTop)-remembered)<3);assert.equal(await page.locator('#setupPanel').evaluate(e=>e.open),true);
     assert.match(await page.locator('#ldc-context-name').innerText(),/Synthetic Scriptable ribs/);
     assert.equal(await page.locator('#ldc-previous').isDisabled(),true);assert.equal(await page.locator('#ldc-next').isDisabled(),true);
