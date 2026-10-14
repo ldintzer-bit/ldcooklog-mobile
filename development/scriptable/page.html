@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-COIQ5UnVegPD2NwOBSf9Kqo57ZbEyJGPEPJlfiHP/Ks='; style-src 'sha256-YYbqcgDsWpe5HyrBH9jsn3baTcbsOs/QOikwJQjv920='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-mhWooLToRfJE9XHZ4GTJXOgc7DgWaDW5zAYqgbw10b4='; style-src 'sha256-INUauFQHYVp+IwaDhe9ZLyWtg19VA9Zsn9EjXUJi+HY='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
 
 input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-align:middle;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}summary{padding:12px 0;cursor:pointer}
 
@@ -31,6 +31,16 @@ body{max-width:none;margin:0;padding:0}
 #ldc-jump{font-size:1rem}
 #ldc-top{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));z-index:3;box-shadow:0 2px 8px #0008}
 body:has(#ldc-confirm) #ldc-top{display:none}
+#ldc-scroll nav{flex-wrap:wrap}
+#ldc-context{display:flex;align-items:center;gap:6px;flex:1 0 100%;min-width:0;border-top:1px solid #4a5a4e;padding-top:6px}
+.ldc-context-copy{flex:1;min-width:0}
+.ldc-context-copy strong,.ldc-context-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ldc-context-copy small{font-size:.72rem;color:#c7cebf}
+#ldc-context button{flex:0 0 auto;font-size:.75rem;min-height:44px;padding:8px}
+#ldc-scroll.ldc-has-context{scroll-padding-top:140px}
+#ldc-recent{border-bottom:1px solid #4a5a4e;padding-bottom:12px}
+#ldc-recent:empty{display:none}
+#ldc-recent button{display:block;width:100%;text-align:left;overflow-wrap:anywhere}
 </style></head><body><div id="ldc-scroll" tabindex="0" aria-label="Cooking journal">
 <header><p class="eyebrow">OFFLINE COOKING JOURNAL</p><h1>LDCookLog <small>2.0 · cooking pilot</small></h1><p>Pilot build · offline cooking with automatic recovery copies.</p></header>
 <p id="status" role="status">Opening your journal…</p>
@@ -122,9 +132,81 @@ body:has(#ldc-confirm) #ldc-top{display:none}
   };
 })();
 
+// Bounded, device-only navigation preferences. No cook content or credentials.
+function validateNavigation(text) {
+  if(typeof text!=='string' || text.length>32768)throw Error('Invalid navigation preferences');
+  const value=JSON.parse(text),id=s=>typeof s==='string' && /^[A-Za-z0-9_-]{1,128}$/.test(s);
+  if(value?.format!=='ldcooklog-navigation' || value.version!==1 || !(value.lastCook===null || id(value.lastCook)) ||
+     !Array.isArray(value.recent) || value.recent.length>8 || value.recent.some(s=>!id(s)) || new Set(value.recent).size!==value.recent.length ||
+     !Array.isArray(value.places) || value.places.length>80)throw Error('Invalid navigation preferences');
+  const seen=new Set();
+  for(const place of value.places){
+    if(!place || typeof place.key!=='string' || !/^(?:cook:[A-Za-z0-9_-]{1,128}|view:history|view:backups)$/.test(place.key) || seen.has(place.key) ||
+       !Number.isFinite(place.top) || place.top<0 || place.top>10000000 || !Array.isArray(place.open) || place.open.length>64 ||
+       place.open.some(s=>typeof s!=='string' || !/^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(s)) || new Set(place.open).size!==place.open.length)throw Error('Invalid navigation preferences');
+    seen.add(place.key);
+  }
+  return {format:value.format,version:1,lastCook:value.lastCook,recent:[...value.recent],places:value.places.map(p=>({key:p.key,top:p.top,open:[...p.open]}))};
+}
+
+
 // Navigation only. Never saves, discards drafts or reads private recovery files.
 (() => {
   const root=document.getElementById('ldc-scroll');
+  let state={format:'ldcooklog-navigation',version:1,lastCook:null,recent:[],places:[]},ready=false,view='cook',selected=null,records=[],choices=[],openCook=null,writeTimer=null,writing=Promise.resolve(),restoring=false;
+  const key=()=>view==='cook'?(selected?'cook:'+selected:null):'view:'+view;
+  const hintError=()=>{hint.textContent='Remembering your place is unavailable. Cooking records and drafts are unaffected.';hint.hidden=false;};
+  function persist(){
+    if(!ready)return;clearTimeout(writeTimer);writeTimer=setTimeout(()=>{
+      writeTimer=null;let text=JSON.stringify(state);
+      while(text.length>32768 && state.places.length){state.places.shift();text=JSON.stringify(state);}
+      writing=writing.catch(()=>{}).then(()=>window.ldcooklogHost.postMessage({operation:'writeNavigation',text})).catch(hintError);
+    },500);
+  }
+  function capture(){
+    const placeKey=key();if(!ready || restoring || !placeKey)return;
+    const open=view==='cook'?[...document.querySelectorAll('#cookView details[id]')].filter(e=>e.open).map(e=>e.id).slice(0,64):[];
+    state.places=state.places.filter(p=>p.key!==placeKey);state.places.push({key:placeKey,top:Math.max(0,root.scrollTop),open});state.places=state.places.slice(-80);persist();
+  }
+  function restore(){
+    if(!ready)return;const place=state.places.find(p=>p.key===key());restoring=true;
+    if(view==='cook')for(const detail of document.querySelectorAll('#cookView details[id]'))detail.open=!!place?.open.includes(detail.id);
+    root.scrollTo({top:place?.top || 0,behavior:'instant'});
+    requestAnimationFrame(()=>{restoring=false;});
+  }
+  const context=document.createElement('div');context.id='ldc-context';context.hidden=true;
+  const copy=document.createElement('span');copy.className='ldc-context-copy';const name=document.createElement('strong'),phase=document.createElement('small');name.id='ldc-context-name';phase.id='ldc-context-phase';copy.append(name,phase);
+  const previous=document.createElement('button'),next=document.createElement('button');previous.id='ldc-previous';previous.textContent='Previous';previous.type='button';next.id='ldc-next';next.textContent='Next';next.type='button';context.append(copy,previous,next);document.querySelector('nav').append(context);
+  const recent=document.createElement('div');recent.id='ldc-recent';document.getElementById('history').before(recent);
+  function refresh(){
+    const cook=records.find(c=>c.id===selected),index=choices.findIndex(c=>c.id===selected);
+    context.hidden=view!=='cook' || !cook;root.classList.toggle('ldc-has-context',!context.hidden);
+    if(cook){name.textContent=cook.food;name.title=cook.food+' · '+cook.cooker;phase.textContent=(cook.phase || (cook.finishedAt?'Finished':'Cooking'))+' · '+(index<0?'Outside History filter':`${index+1} of ${choices.length} · newest first`);}
+    previous.disabled=index<=0;next.disabled=index<0 || index>=choices.length-1;
+    previous.setAttribute('aria-label','Previous cook in filtered History, newer');next.setAttribute('aria-label','Next cook in filtered History, older');
+    recent.replaceChildren();const active=choices.filter(c=>c.source==='LDCookLog 2.0' && !c.finishedAt && c.phase!=='Finished').map(c=>c.id);
+    const ids=[...new Set([...active,...state.recent])].filter(id=>choices.some(c=>c.id===id)).slice(0,5);
+    if(ids.length){const title=document.createElement('h3');title.textContent='Active and recently viewed';recent.append(title);for(const id of ids){const c=choices.find(c=>c.id===id),button=document.createElement('button');button.type='button';button.textContent=c.food+(active.includes(id)?' · Active':'')+(c.isTestCook?' · Test cook':'');button.addEventListener('click',()=>openCook(id));recent.append(button);}}
+  }
+  previous.addEventListener('click',()=>{const index=choices.findIndex(c=>c.id===selected);if(index>0)openCook(choices[index-1].id);});
+  next.addEventListener('click',()=>{const index=choices.findIndex(c=>c.id===selected);if(index>=0 && index<choices.length-1)openCook(choices[index+1].id);});
+  window.__ldcNavigation={
+    load(text){try{if(text)state=validateNavigation(text);}catch{}},
+    lastCook(items){return items.some(c=>c.id===state.lastCook)?state.lastCook:null;},
+    beforeView:capture,
+    refresh,
+    restorePosition:restore,
+    afterView(nextView,scroll){view=nextView;refresh();if(scroll)restore();},
+    render(value){
+      const changed=selected!==value.current;records=value.records;choices=value.cooks;openCook=value.openCook;view=value.view;selected=records.some(c=>c.id===value.current)?value.current:null;ready=true;
+      const ids=new Set(records.map(c=>c.id));state.recent=state.recent.filter(id=>ids.has(id));state.places=state.places.filter(p=>!p.key.startsWith('cook:') || ids.has(p.key.slice(5)));
+      if(selected){state.lastCook=selected;if(changed)state.recent=[selected,...state.recent.filter(id=>id!==selected)].slice(0,8);}else if(!ids.has(state.lastCook))state.lastCook=null;
+      refresh();restore();persist();
+    }
+  };
+  root.addEventListener('scroll',capture,{passive:true});
+  document.getElementById('cookView').addEventListener('toggle',capture,true);
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)capture();});
   const label=document.createElement('label');label.id='ldc-jump-label';label.textContent='Go to section';
   const select=document.createElement('select');select.id='ldc-jump';
   select.append(new Option('Choose a section…',''));
@@ -866,6 +948,7 @@ const drafts = new Map();
 let draftWriteQueue=Promise.resolve(),draftBases=new Map(),pendingDraftEntries=null,draftCacheBlocked=false,draftError='',draftGeneration=0;
 function draftFeedback(text,error=false){$('draftPersistence').hidden=!text;$('draftPersistence').textContent=text;$('draftPersistence').dataset.error=String(error);$('discardDrafts').hidden=!drafts.size && !draftCacheBlocked;}
 async function initialDrafts(response){
+ window.__ldcNavigation?.load(response.navigation);
  if(response.draftError){draftError=response.draftError;draftCacheBlocked=true;return;}
  try{const loaded=await readDrafts(response.drafts);pendingDraftEntries=loaded.entries;if(loaded.recovered)draftError='Recovered an earlier private draft copy. Review edits before saving.';}catch(error){draftError=error.message;draftCacheBlocked=true;}
 }
@@ -889,12 +972,14 @@ $('discardDrafts').onclick=async()=>{let discarded=false;await action(async()=>{
 
 const editForms = ['event','profileForm','reviewForm','targetsForm','wrapForm'];
 function showView(next, scroll = true) {
+  window.__ldcNavigation?.beforeView();
   view = next;
   for (const name of ['cook','history','backups']) {
     $(name+'View').hidden = name !== view;
     $('nav'+name[0].toUpperCase()+name.slice(1)).setAttribute('aria-pressed', String(name === view));
   }
-  if (scroll) (document.getElementById('ldc-scroll') || window).scrollTo({top:0,behavior:'instant'});
+  if(window.__ldcNavigation)window.__ldcNavigation.afterView(next,scroll);
+  else if (scroll) (document.getElementById('ldc-scroll') || window).scrollTo({top:0,behavior:'instant'});
 }
 for (const name of ['Cook','History','Backups']) $('nav'+name).onclick=()=>showView(name.toLowerCase());
 $('backupSummary').onclick=()=>showView('backups');
@@ -947,6 +1032,7 @@ function cookingActions(cook) {
 }
 async function openCook(id) {
   if(busy)return;
+  window.__ldcNavigation?.beforeView();
   const previous=current;current=id;
   try {await render();showView('cook');}
   catch(e){current=previous;status(e.message,true);}
@@ -977,6 +1063,7 @@ async function protection() {
   catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; $('backupBrief').textContent='Backup check unavailable · see details';$('backupSummary').dataset.warning='true'; }
 }
 async function render() {
+  window.__ldcNavigation?.beforeView();
   const {state} = await store.read(), query = $('search').value.toLowerCase();
   journal = state.records;hydrateDrafts();if(draftError)draftFeedback(draftError,true);
   const cooks = state.records.filter(c => ($('showTests').checked || !c.isTestCook) && `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
@@ -989,7 +1076,7 @@ async function render() {
     open.textContent = 'Open cook'; open.onclick = () => openCook(cook.id);
     article.append(title,text,open); $('history').append(article);
   }
-  if(!current && !damaged)current=state.records.filter(c=>c.source==='LDCookLog 2.0' && !c.isTestCook && !c.finishedAt && c.phase!=='Finished').sort((a,b)=>b.startedAt.localeCompare(a.startedAt))[0]?.id || null;
+  if(!current && !damaged)current=state.records.filter(c=>c.source==='LDCookLog 2.0' && !c.isTestCook && !c.finishedAt && c.phase!=='Finished').sort((a,b)=>b.startedAt.localeCompare(a.startedAt))[0]?.id || window.__ldcNavigation?.lastCook(state.records) || null;
   const cook = state.records.find(c => c.id === current);
   $('cookEmpty').hidden = !!cook;
   $('active').hidden = !cook;
@@ -1038,6 +1125,7 @@ async function render() {
     restoreDrafts();
     refreshComparison();
   }
+  window.__ldcNavigation?.render({records:journal,cooks,current,view,openCook});
 }
 function fillProbes(select,cook,previous=select.value) {
   select.replaceChildren();
@@ -1144,6 +1232,7 @@ async function action(work, form = null) {
     for(const [e,disabled] of lockedFields)e.disabled=disabled;
     if (damaged) $('new').querySelector('button').disabled = true;
     const selected=journal.find(c=>c.id===current);if(selected){cookingActions(selected);refreshComparison();refreshFireboardSetup();}
+    window.__ldcNavigation?.refresh();
     await protection();
   }
 }
@@ -1203,7 +1292,7 @@ $('import').onchange = e => {
 };
 (async () => {
   if (!window.ldcooklogHost && !window.webkit?.messageHandlers?.recovery) { status('Open this development app through its iPhone host. Browser storage cannot provide automatic iCloud backups.',true); document.querySelectorAll('button,input,select').forEach(e => e.disabled = true); return; }
-  try { await render(); status('Journal ready. Offline cooking pilot.'); }
+  try { await render(); status('Journal ready. Offline cooking pilot.');window.__ldcNavigation?.restorePosition(); }
   catch (e) { damaged = true;showView('backups',false);$('recoveryTools').open=true; $('new').querySelector('button').disabled = true; status('Journal could not open. Choose a recovery snapshot; no data was reset. '+e.message,true); }
   setInterval(updateTimers,1000);
   window.__ldcResolveStartup(document.getElementById("status").textContent);

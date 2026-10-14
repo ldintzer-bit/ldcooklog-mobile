@@ -1,5 +1,6 @@
 // Scriptable FileManager APIs only. No database, credentials or network requests.
 // Injectable validator runs the shared recovery/migration checks in WebView.
+const {validateNavigation} = require('./navigation.cjs');
 function createStorage({local, cloud, verify, uuid, namespace = 'development', waitForDownload = work => work(), waitForVerification = work => work()}) {
   if (!['development','restore-check'].includes(namespace)) throw Error('Unsupported journal namespace');
   const isolated = namespace === 'restore-check';
@@ -184,6 +185,24 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
     }
   }
   const tokens = new Map();
+  const navigationRoot=local.joinPath(root,'navigation');
+  const navigationPattern=/^(\d{16})-[a-f0-9-]{36}\.nav\.json$/i;
+  const navigationFiles=()=>local.fileExists(navigationRoot)?local.listContents(navigationRoot).filter(n=>navigationPattern.test(n)).sort().reverse():[];
+  async function readNavigation(){
+    for(const name of navigationFiles().slice(0,3))try{const text=local.readString(local.joinPath(navigationRoot,name));validateNavigation(text);return text;}catch{}
+    return null; // UI preferences may be forgotten; cooking data is untouched.
+  }
+  async function writeNavigation(text){
+    validateNavigation(text);local.createDirectory(navigationRoot,true);
+    const files=navigationFiles();if(files.length>=10)throw Error('Navigation preferences need cleanup');
+    const generation=Math.max(Date.now(),files.length?Number(files[0].slice(0,16))+1:0),id=uuid();if(!validID(id))throw Error('Invalid navigation identity');
+    const path=local.joinPath(navigationRoot,String(generation).padStart(16,'0')+'-'+id+'.nav.json');
+    if(local.fileExists(path))throw Error('Navigation collision');
+    try{local.writeString(path,text);if(local.readString(path)!==text)throw Error('Navigation readback failed');}
+    catch(error){try{if(local.fileExists(path))local.remove(path);}catch{}throw error;}
+    for(const name of navigationFiles().slice(3))try{local.remove(local.joinPath(navigationRoot,name));}catch{}
+    return true;
+  }
   async function listSnapshots() {
     tokens.clear();
     const found = [];
@@ -238,6 +257,8 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
     read: () => serialized(read),
     readDrafts: () => serialized(readDrafts),
     writeDrafts: text => serialized(() => writeDrafts(text)),
+    readNavigation: () => serialized(readNavigation),
+    writeNavigation: text => serialized(() => writeNavigation(text)),
     commit: (text, expectedRevision) => serialized(() => append(text, expectedRevision)),
     repair: (text, reseal) => serialized(() => append(text, null, reseal)),
     backupStatus: () => serialized(backupStatus),

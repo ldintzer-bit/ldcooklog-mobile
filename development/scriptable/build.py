@@ -27,7 +27,8 @@ poll_marker = '  setInterval(() => { if (!busy && !document.hidden) protection()
 assert app.count(poll_marker) == 1, 'Review Scriptable backup scheduling'
 app = app.replace(poll_marker, '')
 readiness = 'window.__ldcStartupReady = new Promise(resolve => { window.__ldcResolveStartup = resolve; });\n'
-script = (root / 'bridge.js').read_text() + '\n' + (root / 'confirm.js').read_text() + '\n' + (root / 'scroll.js').read_text() + '\n' + readiness + app
+navigation_schema=(root / 'navigation.cjs').read_text().replace('module.exports = {validateNavigation};','')
+script = (root / 'bridge.js').read_text() + '\n' + (root / 'confirm.js').read_text() + '\n' + navigation_schema + '\n' + (root / 'scroll.js').read_text() + '\n' + readiness + app
 style = (web / 'style.css').read_text() + '\n' + (root / 'confirm.css').read_text()
 style += '\n' + (root / 'scroll.css').read_text()
 def hash_source(text):
@@ -43,7 +44,7 @@ html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + styl
 html = html.replace('<script src="app.bundle.js"></script>', '<script>' + script + '</script>')
 html = html.replace('iCloud uploads need connectivity and a signed app.', 'Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification.')
 html = html.replace('LDCookLog <small>2.0 Dev</small>', 'LDCookLog <small>2.0 · cooking pilot</small>')
-storage = (root / 'storage.cjs').read_text().replace('module.exports = {createStorage};', '')
+storage = navigation_schema+'\n'+(root / 'storage.cjs').read_text().replace("const {validateNavigation} = require('./navigation.cjs');",'').replace('module.exports = {createStorage};', '')
 header = '// LDCookLog 2.0 offline cooking pilot — keep the original migration archive.\n'
 output = header + 'const LDC_HTML = ' + json.dumps(html, ensure_ascii=True) + ';\n' + storage + '\n' + (root / 'launcher.js').read_text()
 (root / 'LDCookLog-2-Development.js').write_text(output)

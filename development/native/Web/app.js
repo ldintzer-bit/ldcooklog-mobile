@@ -124,6 +124,7 @@ const drafts = new Map();
 let draftWriteQueue=Promise.resolve(),draftBases=new Map(),pendingDraftEntries=null,draftCacheBlocked=false,draftError='',draftGeneration=0;
 function draftFeedback(text,error=false){$('draftPersistence').hidden=!text;$('draftPersistence').textContent=text;$('draftPersistence').dataset.error=String(error);$('discardDrafts').hidden=!drafts.size && !draftCacheBlocked;}
 async function initialDrafts(response){
+ window.__ldcNavigation?.load(response.navigation);
  if(response.draftError){draftError=response.draftError;draftCacheBlocked=true;return;}
  try{const loaded=await readDrafts(response.drafts);pendingDraftEntries=loaded.entries;if(loaded.recovered)draftError='Recovered an earlier private draft copy. Review edits before saving.';}catch(error){draftError=error.message;draftCacheBlocked=true;}
 }
@@ -147,12 +148,14 @@ $('discardDrafts').onclick=async()=>{let discarded=false;await action(async()=>{
 
 const editForms = ['event','profileForm','reviewForm','targetsForm','wrapForm'];
 function showView(next, scroll = true) {
+  window.__ldcNavigation?.beforeView();
   view = next;
   for (const name of ['cook','history','backups']) {
     $(name+'View').hidden = name !== view;
     $('nav'+name[0].toUpperCase()+name.slice(1)).setAttribute('aria-pressed', String(name === view));
   }
-  if (scroll) (document.getElementById('ldc-scroll') || window).scrollTo({top:0,behavior:'instant'});
+  if(window.__ldcNavigation)window.__ldcNavigation.afterView(next,scroll);
+  else if (scroll) (document.getElementById('ldc-scroll') || window).scrollTo({top:0,behavior:'instant'});
 }
 for (const name of ['Cook','History','Backups']) $('nav'+name).onclick=()=>showView(name.toLowerCase());
 $('backupSummary').onclick=()=>showView('backups');
@@ -205,6 +208,7 @@ function cookingActions(cook) {
 }
 async function openCook(id) {
   if(busy)return;
+  window.__ldcNavigation?.beforeView();
   const previous=current;current=id;
   try {await render();showView('cook');}
   catch(e){current=previous;status(e.message,true);}
@@ -235,6 +239,7 @@ async function protection() {
   catch { $('protection').textContent = 'iCloud backup could not complete. Your local saves remain available. Retry when connected.'; $('backupBrief').textContent='Backup check unavailable · see details';$('backupSummary').dataset.warning='true'; }
 }
 async function render() {
+  window.__ldcNavigation?.beforeView();
   const {state} = await store.read(), query = $('search').value.toLowerCase();
   journal = state.records;hydrateDrafts();if(draftError)draftFeedback(draftError,true);
   const cooks = state.records.filter(c => ($('showTests').checked || !c.isTestCook) && `${c.food} ${c.cooker}`.toLowerCase().includes(query)).sort((a,b) => b.startedAt.localeCompare(a.startedAt));
@@ -247,7 +252,7 @@ async function render() {
     open.textContent = 'Open cook'; open.onclick = () => openCook(cook.id);
     article.append(title,text,open); $('history').append(article);
   }
-  if(!current && !damaged)current=state.records.filter(c=>c.source==='LDCookLog 2.0' && !c.isTestCook && !c.finishedAt && c.phase!=='Finished').sort((a,b)=>b.startedAt.localeCompare(a.startedAt))[0]?.id || null;
+  if(!current && !damaged)current=state.records.filter(c=>c.source==='LDCookLog 2.0' && !c.isTestCook && !c.finishedAt && c.phase!=='Finished').sort((a,b)=>b.startedAt.localeCompare(a.startedAt))[0]?.id || window.__ldcNavigation?.lastCook(state.records) || null;
   const cook = state.records.find(c => c.id === current);
   $('cookEmpty').hidden = !!cook;
   $('active').hidden = !cook;
@@ -296,6 +301,7 @@ async function render() {
     restoreDrafts();
     refreshComparison();
   }
+  window.__ldcNavigation?.render({records:journal,cooks,current,view,openCook});
 }
 function fillProbes(select,cook,previous=select.value) {
   select.replaceChildren();
@@ -402,6 +408,7 @@ async function action(work, form = null) {
     for(const [e,disabled] of lockedFields)e.disabled=disabled;
     if (damaged) $('new').querySelector('button').disabled = true;
     const selected=journal.find(c=>c.id===current);if(selected){cookingActions(selected);refreshComparison();refreshFireboardSetup();}
+    window.__ldcNavigation?.refresh();
     await protection();
   }
 }
@@ -461,7 +468,7 @@ $('import').onchange = e => {
 };
 (async () => {
   if (!window.ldcooklogHost && !window.webkit?.messageHandlers?.recovery) { status('Open this development app through its iPhone host. Browser storage cannot provide automatic iCloud backups.',true); document.querySelectorAll('button,input,select').forEach(e => e.disabled = true); return; }
-  try { await render(); status('Journal ready. Offline cooking pilot.'); }
+  try { await render(); status('Journal ready. Offline cooking pilot.');window.__ldcNavigation?.restorePosition(); }
   catch (e) { damaged = true;showView('backups',false);$('recoveryTools').open=true; $('new').querySelector('button').disabled = true; status('Journal could not open. Choose a recovery snapshot; no data was reset. '+e.message,true); }
   setInterval(updateTimers,1000);
   await protection();

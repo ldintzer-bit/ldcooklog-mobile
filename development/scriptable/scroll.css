@@ -8,3 +8,13 @@ body{max-width:none;margin:0;padding:0}
 #ldc-jump{font-size:1rem}
 #ldc-top{position:fixed;right:max(12px,env(safe-area-inset-right));bottom:calc(12px + env(safe-area-inset-bottom));z-index:3;box-shadow:0 2px 8px #0008}
 body:has(#ldc-confirm) #ldc-top{display:none}
+#ldc-scroll nav{flex-wrap:wrap}
+#ldc-context{display:flex;align-items:center;gap:6px;flex:1 0 100%;min-width:0;border-top:1px solid #4a5a4e;padding-top:6px}
+.ldc-context-copy{flex:1;min-width:0}
+.ldc-context-copy strong,.ldc-context-copy small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ldc-context-copy small{font-size:.72rem;color:#c7cebf}
+#ldc-context button{flex:0 0 auto;font-size:.75rem;min-height:44px;padding:8px}
+#ldc-scroll.ldc-has-context{scroll-padding-top:140px}
+#ldc-recent{border-bottom:1px solid #4a5a4e;padding-bottom:12px}
+#ldc-recent:empty{display:none}
+#ldc-recent button{display:block;width:100%;text-align:left;overflow-wrap:anywhere}

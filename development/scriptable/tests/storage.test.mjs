@@ -248,3 +248,15 @@ test('failed draft writes preserve the last readable draft and all cooking snaps
  const {sealDrafts}=await import('../../native/Web/drafts.js');const {store,local,config}=setup(t);const good=await sealDrafts([{key:'new:new',base:'new',fields:{food:'Keep this'}}]);await store.writeDrafts(good);const write=local.writeString;local.writeString=(p,text)=>{if(p.includes('/drafts/'))throw Error('Synthetic draft disk full');return write(p,text)};
  await assert.rejects(store.writeDrafts(await sealDrafts([])),/disk full/);assert.deepEqual(await createStorage(config).readDrafts(),[good]);assert.equal(await store.read(),null);
 });
+
+test('private navigation reopens independently, falls back after damage and preserves history on write failure',async t=>{
+ const f=setup(t),saved=await snapshot(1);await f.store.commit(saved,0);
+ const preference=n=>JSON.stringify({format:'ldcooklog-navigation',version:1,lastCook:'synthetic-cook',recent:['synthetic-cook'],places:[{key:'cook:synthetic-cook',top:n,open:['setupPanel']}]});
+ for(let n=1;n<=6;n++)await f.store.writeNavigation(preference(n));
+ assert.equal(await createStorage(f.config).readNavigation(),preference(6));assert.equal(await createStorage({...f.config,namespace:'restore-check'}).readNavigation(),null);
+ const folder=path.join(f.root,'local/LDCookLog-2-Development/navigation'),names=fs.readdirSync(folder).sort();assert.equal(names.length,3);
+ fs.writeFileSync(path.join(folder,names.at(-1)),'broken');assert.equal(await f.store.readNavigation(),preference(5));
+ const write=f.local.writeString;f.local.writeString=(p,text)=>{if(p.includes('/navigation/'))throw Error('Synthetic disk full');return write(p,text)};
+ await assert.rejects(f.store.writeNavigation(preference(7)),/disk full/);assert.equal(await createStorage(f.config).readNavigation(),preference(5));
+ assert.equal(await f.store.read(),saved);assert.equal(fs.readdirSync(f.journal).length,1);assert.equal(fs.readdirSync(path.join(f.root,'cloud')).length,0);
+});

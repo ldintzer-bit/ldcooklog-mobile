@@ -1,3 +1,35 @@
+## 2026-10-14 — Remembered navigation, adjacent cooks and recent history implemented
+
+Owner accepted the smoother scrolling and requested all four proposed navigation
+improvements. Scriptable now remembers per-cook scroll position and open named
+panels, plus History/Backups position. Returning from a tab or another cook restores
+that place. Relaunch resumes an unfinished real cook first; if none exists, it can
+reopen the last viewed cook. Position and panels are private device preferences,
+not cooking events, snapshots or migration content.
+
+Previous / Next in the sticky cook context follow History's current search and
+Show test cooks filter, ordered newest first. Previous moves toward newer cooks;
+Next toward older. Boundaries and cooks outside the filter disable navigation.
+The context shows cook name, phase and position in the filtered list. History adds
+up to five active/recently viewed matches, preserving its ordinary complete list.
+Recent test cooks are hidden when Show test cooks is off.
+
+Preference documents store identifiers, pixel positions and panel identifiers only.
+They are schema-validated, bounded to 32 KiB / 80 places / eight recent identifiers,
+and written to three readback-verified local generations. Damaged latest metadata
+can fall back; failed writes keep previous copies and never affect journal/drafts.
+Working and restore-test preferences stay in separate namespaces. Scroll writes
+are debounced and do not stage iCloud cooking backups or trigger history scans.
+These convenience preferences are not promised as part of new-device recovery.
+
+98 local JavaScript tests passed, including preference validation, local reopening,
+corrupt metadata fallback, failed writes and namespace isolation. Added generated
+Scriptable tests for offline position/panel reopening, draft preservation, sticky
+identity, Previous/Next boundaries, filters, recent choices and byte-identical full
+source history. Browser CI acceptance remains pending at this checkpoint.
+Production remains unchanged; the guide must document newest-first order, filter
+behavior and the distinction between remembered navigation and saved cook edits.
+
 ## 2026-10-14 — Further scrolling improvements after owner feedback
 
 Owner reports scrolling improved, with more improvement desired. No claim that

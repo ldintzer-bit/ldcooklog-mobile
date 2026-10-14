@@ -49,8 +49,9 @@ async function handle(request) {
   let result, error;
   try {
     switch(body.operation) {
-      case 'read': { const journal=await storage.read(); if(body.includeDrafts){let drafts=[],draftError='';try{drafts=await storage.readDrafts();}catch(e){draftError=e.message || 'Private drafts could not be read';}result={journal,drafts,draftError};}else result=journal;break; }
+      case 'read': { const journal=await storage.read(); if(body.includeDrafts){let drafts=[],draftError='',navigation=null;try{drafts=await storage.readDrafts();}catch(e){draftError=e.message || 'Private drafts could not be read';}try{navigation=await storage.readNavigation();}catch{}result={journal,drafts,draftError,navigation};}else result=journal;break; }
       case 'writeDrafts': result = await storage.writeDrafts(body.text); break;
+      case 'writeNavigation': result = await storage.writeNavigation(body.text); break;
       case 'commit': result = await storage.commit(body.text, body.expectedRevision); break;
       case 'repair': result = await storage.repair(body.text, reseal); break;
       case 'backupStatus': result = await storage.backupStatus(); break;

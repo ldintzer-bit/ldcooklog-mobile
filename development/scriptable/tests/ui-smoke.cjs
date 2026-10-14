@@ -6,7 +6,7 @@ const {randomUUID}=require('node:crypto');
 const assert=require('node:assert/strict');
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 let stage='initialization';
-const watchdog=setTimeout(()=>{console.error('FAIL: Scriptable browser integration timed out at '+stage);process.exit(1)},120000);
+const watchdog=setTimeout(()=>{console.error('FAIL: Scriptable browser integration timed out at '+stage);process.exit(1)},180000);
 watchdog.unref();
 function progress(value){stage=value;console.log('CHECK: '+stage)}
 function manager(root) {
@@ -114,6 +114,16 @@ function manager(root) {
     await page.locator('#ldc-top').click();await page.locator('#ldc-jump').selectOption('reviewPanel');assert.equal(await page.locator('#reviewPanel').evaluate(e=>e.open),true);
     await page.locator('#ldc-top').click();await page.locator('#ldc-jump').selectOption('active');
     assert.deepEqual(fs.readdirSync(path.join(root,'local/LDCookLog-2-Development/journal')).sort().map(n=>fs.readFileSync(path.join(root,'local/LDCookLog-2-Development/journal',n),'utf8')),beforeScroll);
+    progress('cook location and panels survive tab return and offline relaunch');
+    await scroll.evaluate(e=>{e.scrollTop=650});await page.waitForTimeout(700);
+    const remembered=await scroll.evaluate(e=>e.scrollTop);assert.ok(remembered>500);
+    await showHistory();await page.locator('#navCook').click();
+    assert.ok(Math.abs(await scroll.evaluate(e=>e.scrollTop)-remembered)<3);assert.equal(await page.locator('#setupPanel').evaluate(e=>e.open),true);
+    assert.match(await page.locator('#ldc-context-name').innerText(),/Synthetic Scriptable ribs/);
+    assert.equal(await page.locator('#ldc-previous').isDisabled(),true);assert.equal(await page.locator('#ldc-next').isDisabled(),true);
+    await page.waitForTimeout(700);await close();await open();
+    assert.ok(Math.abs(await page.locator('#ldc-scroll').evaluate(e=>e.scrollTop)-remembered)<3,'Private navigation reopens at the same position');
+    assert.equal(await page.locator('#setupPanel').evaluate(e=>e.open),true);assert.equal(await page.locator('#note').inputValue(),'Section navigation preserves this draft');
     await expand('fireboardPanel');await page.locator('#fbModel').selectOption('FireBoard 2');await expand('fbChannel1');
     await page.locator('#fbRole1').selectOption('Pit / ambient');await page.locator('#fbProbe1').selectOption('Wired');await page.locator('#fbPlacement1').fill('Synthetic grate');
     await page.locator('#type').selectOption('Meat On');
@@ -163,6 +173,16 @@ function manager(root) {
     await showHistory();await page.locator('#history button').click();await expand('setupPanel');
     await page.locator('#phase').filter({hasText:'Cooking'}).waitFor();
     await page.locator('#timeline').filter({hasText:'Meat On'}).waitFor();
+    progress('Previous/Next and recent cooks honor search; navigation preserves full source bytes');
+    assert.equal(await page.locator('#ldc-previous').isDisabled(),true);
+    await page.locator('#ldc-next').click();await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 1',exact:true}).waitFor();
+    await page.locator('#ldc-previous').click();await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 0',exact:true}).waitFor();
+    await showHistory();await page.locator('#search').fill('Synthetic large history 29');await page.locator('#count').filter({hasText:'1 of 30'}).waitFor({state:'attached'});
+    await page.locator('#history button').click();await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 29',exact:true}).waitFor();
+    assert.equal(await page.locator('#ldc-previous').isDisabled(),true);assert.equal(await page.locator('#ldc-next').isDisabled(),true);
+    await showHistory();assert.equal(await page.locator('#ldc-recent button').count(),1);await page.locator('#search').fill('');await page.locator('#count').filter({hasText:'30 of 30'}).waitFor({state:'attached'});
+    await page.locator('#ldc-recent button').filter({hasText:'Synthetic large history 0',exact:true}).click();await page.locator('#ldc-context-name').filter({hasText:'Synthetic large history 0',exact:true}).waitFor();
+    assert.equal(fs.readFileSync(snapshot,'utf8'),originalLarge,'Navigation cannot create or change a cooking snapshot');
     assert.deepEqual(fs.readdirSync(originalJournal).sort().map(n=>fs.readFileSync(path.join(originalJournal,n),'utf8')),originalBytes);
     await close();await open(false,true);
     await showHistory();await page.locator('#history').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
