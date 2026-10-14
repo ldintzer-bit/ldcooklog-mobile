@@ -1,7 +1,7 @@
 // Navigation only. Never saves, discards drafts or reads private recovery files.
 (() => {
   const root=document.getElementById('ldc-scroll');
-  let state={format:'ldcooklog-navigation',version:1,lastCook:null,recent:[],places:[]},ready=false,view='cook',selected=null,records=[],choices=[],openCook=null,writeTimer=null,writing=Promise.resolve(),restoring=false;
+  let state={format:'ldcooklog-navigation',version:1,lastCook:null,recent:[],places:[]},ready=false,view='cook',selected=null,records=[],choices=[],openCook=null,writeTimer=null,writing=Promise.resolve(),restoring=false,restoreGeneration=0;
   const key=()=>view==='cook'?(selected?'cook:'+selected:null):'view:'+view;
   const hintError=()=>{hint.textContent='Remembering your place is unavailable. Cooking records and drafts are unaffected.';hint.hidden=false;};
   function persist(){
@@ -17,11 +17,12 @@
     state.places=state.places.filter(p=>p.key!==placeKey);state.places.push({key:placeKey,top:Math.max(0,root.scrollTop),open});state.places=state.places.slice(-80);persist();
   }
   function restore(){
-    if(!ready)return;const place=state.places.find(p=>p.key===key());restoring=true;
+    if(!ready)return;const place=state.places.find(p=>p.key===key()),generation=++restoreGeneration;restoring=true;
     if(view==='cook')for(const detail of document.querySelectorAll('#cookView details[id]'))detail.open=!!place?.open.includes(detail.id);
     root.scrollTo({top:place?.top || 0,behavior:'instant'});
-    requestAnimationFrame(()=>{restoring=false;});
+    requestAnimationFrame(()=>{if(generation!==restoreGeneration)return;root.scrollTo({top:place?.top || 0,behavior:'instant'});restoring=false;});
   }
+  function cancelRestore(){restoreGeneration++;restoring=false;}
   const context=document.createElement('div');context.id='ldc-context';context.hidden=true;
   const copy=document.createElement('span');copy.className='ldc-context-copy';const name=document.createElement('strong'),phase=document.createElement('small');name.id='ldc-context-name';phase.id='ldc-context-phase';copy.append(name,phase);
   const previous=document.createElement('button'),next=document.createElement('button');previous.id='ldc-previous';previous.textContent='Previous';previous.type='button';next.id='ldc-next';next.textContent='Next';next.type='button';context.append(copy,previous,next);document.querySelector('nav').append(context);
@@ -53,6 +54,7 @@
     }
   };
   root.addEventListener('scroll',capture,{passive:true});
+  for(const type of ['pointerdown','touchstart','wheel'])root.addEventListener(type,cancelRestore,{passive:true});
   document.getElementById('cookView').addEventListener('toggle',capture,true);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)capture();});
   const label=document.createElement('label');label.id='ldc-jump-label';label.textContent='Go to section';
@@ -64,14 +66,16 @@
   select.addEventListener('change',()=>{
     const target=document.getElementById(select.value);select.value='';if(!target)return;
     document.getElementById('navCook').click();
+    cancelRestore();
     if(target.closest('[hidden]')){hint.textContent='Open a cook from History first, then choose its section.';hint.hidden=false;return;}
     hint.hidden=true;
     for(let ancestor=target;ancestor && ancestor!==root;ancestor=ancestor.parentElement)if(ancestor.tagName==='DETAILS')ancestor.open=true;
     target.scrollIntoView({behavior:'instant',block:'start'});
+    capture();
     const summary=target.tagName==='DETAILS'?target.querySelector('summary'):null;
     if(summary)summary.focus({preventScroll:true});
   });
   const top=document.createElement('button');top.id='ldc-top';top.type='button';top.textContent='Top ↑';top.setAttribute('aria-label','Back to top and section choices');
-  top.addEventListener('click',()=>{root.scrollTo({top:0,behavior:'instant'});select.focus({preventScroll:true});});
+  top.addEventListener('click',()=>{cancelRestore();root.scrollTo({top:0,behavior:'instant'});select.focus({preventScroll:true});capture();});
   document.body.append(top);
 })();

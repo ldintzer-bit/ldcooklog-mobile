@@ -120,10 +120,12 @@ function manager(root) {
     await scroll.evaluate(e=>{e.scrollTop=650});await page.waitForTimeout(700);
     const remembered=await scroll.evaluate(e=>e.scrollTop);assert.ok(remembered>500);
     await showHistory();await page.locator('#navCook').click();
+    await page.waitForFunction(top=>Math.abs(document.getElementById('ldc-scroll').scrollTop-top)<3,remembered);
     assert.ok(Math.abs(await scroll.evaluate(e=>e.scrollTop)-remembered)<3);assert.equal(await page.locator('#setupPanel').evaluate(e=>e.open),true);
     assert.match(await page.locator('#ldc-context-name').innerText(),/Synthetic Scriptable ribs/);
     assert.equal(await page.locator('#ldc-previous').isDisabled(),true);assert.equal(await page.locator('#ldc-next').isDisabled(),true);
     await page.waitForTimeout(700);await close();await open();
+    await page.waitForFunction(top=>Math.abs(document.getElementById('ldc-scroll').scrollTop-top)<3,remembered);
     assert.ok(Math.abs(await page.locator('#ldc-scroll').evaluate(e=>e.scrollTop)-remembered)<3,'Private navigation reopens at the same position');
     assert.equal(await page.locator('#setupPanel').evaluate(e=>e.open),true);assert.equal(await page.locator('#note').inputValue(),'Section navigation preserves this draft');
     await expand('fireboardPanel');await page.locator('#fbModel').selectOption('FireBoard 2');await expand('fbChannel1');
