@@ -773,7 +773,7 @@ function restoreDrafts() {
     const draft=drafts.get(draftKey(form));
     if(draft && form==='profileForm'){try{const base=JSON.parse(draftBases.get(draftKey(form))),cook=journal.find(c=>c.id===current);for(const [field,key] of [['editStart','startedAt'],['editFinish','finishedAt']])if(draft[field]===localDate(base[key]))draft[field]=localDate(cook[key]);}catch{}}
     if(draft && form==='profileForm')rebuildFireboardRows(Object.keys(draft).filter(id=>/^fbRole\d+$/.test(id)).map(id=>Number(id.slice(6))));
-    if(draft){for(const kind of ['piece','rub']){const ids=[...new Set(Object.keys(draft).filter(id=>new RegExp('^'+kind+(kind==='piece'?'meatCut':'name')+'\\d+$').test(id)).map(id=>Number(id.match(/\d+$/)[0])))];rebuildStructuredRows(kind,ids.map(()=>kind==='piece'?blankMeatPiece():{name:'',level:'Not recorded',notes:''}));}}
+    if(draft && form==='profileForm'){for(const kind of ['piece','rub']){const ids=[...new Set(Object.keys(draft).filter(id=>new RegExp('^'+kind+(kind==='piece'?'meatCut':'name')+'\\d+$').test(id)).map(id=>Number(id.match(/\d+$/)[0])))];rebuildStructuredRows(kind,ids.map(()=>kind==='piece'?blankMeatPiece():{name:'',level:'Not recorded',notes:''}));}}
     if(draft)for(const [id,value] of Object.entries(draft)){const e=$(id);if(!e || !$(form).contains(e))continue;if(e.type==='checkbox')e.checked=value;else if(e.tagName!=='SELECT' || [...e.options].some(o=>o.value===value))e.value=value;else if(id==='type')e.value='Note';}
     feedback(form,draft?'Unsaved changes. Save before closing the app.':'');
   }
