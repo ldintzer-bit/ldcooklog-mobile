@@ -22,10 +22,21 @@ The local storage advisory now explains that protected copies may remain over
 21 journal reads and 21 validations per backup check, preserve exact bytes, and
 still flag later corruption while keeping all recovery points. Generated-launcher
 browser tests now exercise section jumps, automatic nested panel opening, Top,
-draft preservation and refusal to invent a cook when none is open. CI browser
-acceptance is pending at this implementation checkpoint. The guide should show
-Go to section and Top as alternatives to repeated long swipes. Physical iPhone
-smoothness remains to be assessed after installation.
+draft preservation and refusal to invent a cook when none is open.
+
+Installable source `33bbc1c89d7bf68fae6279a1fe496a0ee97c2bfd`: GitHub run
+`38565256396`, regression job `115856179942`, completed successfully. All three
+browser suites, 95 JavaScript tests, Python checks, reproducible generation and
+security checks passed. The generated-launcher suite exercised the new controls
+and exact preservation of synthetic history. Native sources were not changed;
+the preceding source's native job (`38562924047` / `115848266318`) also completed
+successfully. This run's native job remains in progress at this checkpoint.
+
+Guide steps: near the top choose Go to section, then a destination. The app opens
+the required panels and moves there. Use Top ↑ at bottom right to return to the
+section choices; it does not save or clear edits. Open a cook from History first
+for cook-specific destinations. Physical iPhone smoothness remains to be assessed
+after installation. Production has not been merged or deployed.
 
 ## 2026-10-14 — Scriptable scrolling and repeated backup scans improved
 
