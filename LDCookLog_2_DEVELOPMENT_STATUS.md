@@ -1,3 +1,32 @@
+## 2026-10-14 — Further scrolling improvements after owner feedback
+
+Owner reports scrolling improved, with more improvement desired. No claim that
+native dismissal or all remaining pauses are resolved. Added Go to section near
+the top of Scriptable's page and a floating Top button: jump directly to actions,
+setup, FireBoard probes, targets, wrap, evaluation, comparison or New cook. Nested
+panels open automatically; navigation preserves drafts and never saves a cook.
+The Top control is hidden during confirmation and has footer clearance. These
+controls are generated Scriptable-only changes, not native app changes.
+
+Removed duplicate backup work without weakening validation: every staged snapshot
+is still validated on each check, including filename/revision agreement. When all
+21 copies are already covered by recent/first-copy protection, cleanup performs
+no second full history validation. Storage byte counts are collected on the first
+read and reused within that check, avoiding another full disk read and large
+URI-encoded temporary strings. No cross-check validation cache is introduced.
+Actual deletion candidates retain the existing full validation/readback gates.
+The local storage advisory now explains that protected copies may remain over
+128 MiB and should not be deleted manually.
+
+95 local JavaScript tests passed. A new test proves 21 validated snapshots require
+21 journal reads and 21 validations per backup check, preserve exact bytes, and
+still flag later corruption while keeping all recovery points. Generated-launcher
+browser tests now exercise section jumps, automatic nested panel opening, Top,
+draft preservation and refusal to invent a cook when none is open. CI browser
+acceptance is pending at this implementation checkpoint. The guide should show
+Go to section and Top as alternatives to repeated long swipes. Physical iPhone
+smoothness remains to be assessed after installation.
+
 ## 2026-10-14 — Scriptable scrolling and repeated backup scans improved
 
 Owner reported scrolling sticking or dismissing the cooking interface. The exact

@@ -79,6 +79,9 @@ function manager(root) {
   try {
     await open();
     await context.setOffline(true);
+    await page.locator('#ldc-jump').selectOption('fireboardPanel');
+    assert.match(await page.locator('#ldc-jump-hint').innerText(),/Open a cook from History first/);
+    assert.deepEqual(fs.readdirSync(path.join(root,'local/LDCookLog-2-Development/journal')),[],'Section selection cannot create an empty cooking save');
     await page.locator('#food').fill('Synthetic Scriptable ribs');
     progress('save initial cook');
     await page.locator('#new button').click();
@@ -102,6 +105,15 @@ function manager(root) {
     assert.equal(await scroll.evaluate(e=>e.scrollTop),0,'Tab navigation resets the correct scroll surface');
     assert.deepEqual(fs.readdirSync(path.join(root,'local/LDCookLog-2-Development/journal')).sort().map(n=>fs.readFileSync(path.join(root,'local/LDCookLog-2-Development/journal',n),'utf8')),beforeScroll);
     await page.locator('#history button').click();await expand('setupPanel');
+    progress('section choices open nested panels; Top and navigation preserve unsaved notes');
+    await page.locator('#note').fill('Section navigation preserves this draft');await page.locator('#draftPersistence').filter({hasText:'Drafts saved on this phone'}).waitFor();
+    await page.locator('#ldc-top').click();assert.equal(await scroll.evaluate(e=>e.scrollTop),0);
+    await page.locator('#ldc-jump').selectOption('fireboardPanel');
+    assert.equal(await page.locator('#setupPanel').evaluate(e=>e.open),true);assert.equal(await page.locator('#fireboardPanel').evaluate(e=>e.open),true);
+    assert.equal(await page.locator('#note').inputValue(),'Section navigation preserves this draft');
+    await page.locator('#ldc-top').click();await page.locator('#ldc-jump').selectOption('reviewPanel');assert.equal(await page.locator('#reviewPanel').evaluate(e=>e.open),true);
+    await page.locator('#ldc-top').click();await page.locator('#ldc-jump').selectOption('active');
+    assert.deepEqual(fs.readdirSync(path.join(root,'local/LDCookLog-2-Development/journal')).sort().map(n=>fs.readFileSync(path.join(root,'local/LDCookLog-2-Development/journal',n),'utf8')),beforeScroll);
     await expand('fireboardPanel');await page.locator('#fbModel').selectOption('FireBoard 2');await expand('fbChannel1');
     await page.locator('#fbRole1').selectOption('Pit / ambient');await page.locator('#fbProbe1').selectOption('Wired');await page.locator('#fbPlacement1').fill('Synthetic grate');
     await page.locator('#type').selectOption('Meat On');

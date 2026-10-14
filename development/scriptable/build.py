@@ -27,7 +27,7 @@ poll_marker = '  setInterval(() => { if (!busy && !document.hidden) protection()
 assert app.count(poll_marker) == 1, 'Review Scriptable backup scheduling'
 app = app.replace(poll_marker, '')
 readiness = 'window.__ldcStartupReady = new Promise(resolve => { window.__ldcResolveStartup = resolve; });\n'
-script = (root / 'bridge.js').read_text() + '\n' + (root / 'confirm.js').read_text() + '\n' + readiness + app
+script = (root / 'bridge.js').read_text() + '\n' + (root / 'confirm.js').read_text() + '\n' + (root / 'scroll.js').read_text() + '\n' + readiness + app
 style = (web / 'style.css').read_text() + '\n' + (root / 'confirm.css').read_text()
 style += '\n' + (root / 'scroll.css').read_text()
 def hash_source(text):

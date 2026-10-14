@@ -78,13 +78,17 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
   async function backupStatus() {
     let files = entries();
     let staged = 0, failed = 0, current = null;
+    // Per-check byte counts only: no persistent trust cache or retained archives.
+    const sizes = new Map();
     try {
       const destination = cloud.joinPath(cloudRoot(), device);
       cloud.createDirectory(destination, true);
       for (const name of files) {
         try {
           const text = local.readString(local.joinPath(journal, name));
-          await verify(text);
+          sizes.set(name, utf8Length(text));
+          const body = await verify(text);
+          if (body.revision !== rev(name)) throw Error('Snapshot revision mismatch');
           if (name === files[0]) current = {revision:rev(name), sha256:JSON.parse(text).sha256};
           const path = cloud.joinPath(destination, name);
           if (!cloud.fileExists(path)) cloud.writeString(path, text);
@@ -106,15 +110,28 @@ function createStorage({local, cloud, verify, uuid, namespace = 'development', w
       catch { retention = 'Snapshot cleanup paused; current recovery copies remain available.'; }
     }
     let bytes = 0;
-    for (const name of files) { try { bytes += encodeURIComponent(local.readString(local.joinPath(journal,name))).replace(/%[A-F0-9]{2}/g,'x').length; } catch {} }
-    const capacity = `Local snapshots use about ${Math.ceil(bytes/1048576)} MiB.` + (bytes >= 128*1048576 ? ' Storage warning: over 128 MiB. Keep the Mac awake for verification and cleanup.' : '');
+    for (const name of files) { try { bytes += sizes.has(name) ? sizes.get(name) : utf8Length(local.readString(local.joinPath(journal,name))); } catch {} }
+    const capacity = `Local snapshots use about ${Math.ceil(bytes/1048576)} MiB.` + (bytes >= 128*1048576 ? ' Storage advisory: over 128 MiB. Protected recovery copies may remain above this threshold; do not delete them manually.' : '');
     return {local: files.length, uploaded: 0, pending: files.length, failed, storageWarning:bytes >= 128*1048576, mac,
       message: `${staged} copies staged in iCloud Drive; ${failed} could not be staged. Upload completion is unconfirmed. ${mac.message} ${retention} ${capacity}`};
+  }
+  function utf8Length(text) {
+    let bytes=0;
+    for(let i=0;i<text.length;i++){
+      const code=text.charCodeAt(i);
+      if(code<=0x7f)bytes++;else if(code<=0x7ff)bytes+=2;
+      else if(code>=0xd800 && code<=0xdbff && i+1<text.length && text.charCodeAt(i+1)>=0xdc00 && text.charCodeAt(i+1)<=0xdfff){bytes+=4;i++;}
+      else bytes+=3;
+    }
+    return bytes;
   }
   async function retainSnapshots(files) {
     if (files.length <= 20) return 'Recovery retention is within its 20-recent-copy target.';
     // Only this device/namespace, after proof of its exact newest snapshot.
     const keep = new Set([...files.slice(0,20), files.at(-1)]), archives = new Set(), revisions = new Set(), candidates = [];
+    // No deletion is possible when every copy is already protected. All were
+    // validated and staged above; avoid a second full history validation pass.
+    if (files.every(name=>keep.has(name))) return `All ${files.length} snapshots are protected by the recent/first-copy retention policy; none need removal.`;
     const destination=cloud.joinPath(cloudRoot(),device);
     for (const name of files) {
       const path=local.joinPath(journal,name), text=local.readString(path), body=await verify(text);

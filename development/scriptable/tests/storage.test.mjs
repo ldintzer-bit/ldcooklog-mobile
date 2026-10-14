@@ -221,6 +221,23 @@ test('corrupt older snapshots stop retention and deletion failures preserve curr
  fs.writeFileSync(file,original);f.cloud.remove=()=>{throw Error('disk issue')};const result=await f.store.backupStatus();assert.match(result.message,/cleanup paused/);assert.equal(await f.store.read(),last);assert.equal(fs.readdirSync(f.journal).length,23);
 });
 
+test('twenty-one protected snapshots validate once per check without size rereads; later corruption still blocks cleanup',async t=>{
+ const f=setup(t),working=new CookStore(f.store);await working.add('Synthetic 漢字 🔥 ribs','Test cooker');
+ const state=(await working.read()).state;let last;
+ for(let n=2;n<=21;n++){last=JSON.stringify(await seal(state,n));await f.store.commit(last,n-1)}
+ macReport(f,last);
+ let reads=0,checks=0;const read=f.local.readString;
+ f.local.readString=p=>{if(p.startsWith(f.journal+'/'))reads++;return read(p)};
+ const store=createStorage({...f.config,verify:async text=>{checks++;return unseal(JSON.parse(text))}});
+ const before=fs.readdirSync(f.journal).sort().map(n=>fs.readFileSync(path.join(f.journal,n),'utf8'));
+ const result=await store.backupStatus();assert.equal(reads,21);assert.equal(checks,21);assert.equal(result.failed,0);assert.equal(result.mac.verified,true);
+ assert.match(result.message,/All 21 snapshots are protected/);
+ const expected=Math.ceil(before.reduce((sum,text)=>sum+Buffer.byteLength(text),0)/1048576);assert.ok(result.message.includes(`Local snapshots use about ${expected} MiB.`));
+ assert.deepEqual(fs.readdirSync(f.journal).sort().map(n=>fs.readFileSync(path.join(f.journal,n),'utf8')),before);
+ fs.writeFileSync(path.join(f.journal,fs.readdirSync(f.journal).sort()[1]),'damaged');
+ const damaged=await store.backupStatus();assert.equal(damaged.failed,1);assert.equal(fs.readdirSync(f.journal).length,21);assert.equal(await store.read(),last);
+});
+
 test('private draft generations survive reopening, stay bounded and never enter journal/cloud backups',async t=>{
  const {sealDrafts}=await import('../../native/Web/drafts.js');const {store,config,journal}=setup(t);const saved=await snapshot(1);await store.commit(saved,0);const files=fs.readdirSync(journal);
  let latest;for(let i=0;i<8;i++){latest=await sealDrafts([{key:'new:new',base:'new',fields:{food:'Draft '+i}}]);await store.writeDrafts(latest);}
