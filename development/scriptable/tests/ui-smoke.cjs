@@ -88,7 +88,9 @@ function manager(root) {
     await page.locator('#title').filter({hasText:'Synthetic Scriptable ribs'}).waitFor();
     assert.equal(await page.locator('#cookView').isVisible(),true);
     await page.locator('#count').filter({hasText:'1 of 1'}).waitFor({state:'attached'});
-    await showHistory();await page.locator('#history button').click();await expand('setupPanel');
+    await showHistory();await page.locator('#history button').scrollIntoViewIfNeeded();
+    const historyPlace=await page.locator('#ldc-scroll').evaluate(e=>e.scrollTop);
+    await page.locator('#history button').click();await expand('setupPanel');
     progress('scroll long setup within the page without changing journal data');
     const scroll=page.locator('#ldc-scroll');
     await scroll.evaluate(e=>{e.scrollTop=0});
@@ -102,7 +104,7 @@ function manager(root) {
     await page.mouse.wheel(0,-700);
     await page.waitForFunction(()=>{const e=document.getElementById('ldc-scroll');return e.scrollTop<e.scrollHeight-e.clientHeight-100});
     await showHistory();
-    assert.equal(await scroll.evaluate(e=>e.scrollTop),0,'Tab navigation resets the correct scroll surface');
+    assert.ok(Math.abs(await scroll.evaluate(e=>e.scrollTop)-historyPlace)<3,'Tab navigation restores the remembered History position');
     assert.deepEqual(fs.readdirSync(path.join(root,'local/LDCookLog-2-Development/journal')).sort().map(n=>fs.readFileSync(path.join(root,'local/LDCookLog-2-Development/journal',n),'utf8')),beforeScroll);
     await page.locator('#history button').click();await expand('setupPanel');
     progress('section choices open nested panels; Top and navigation preserve unsaved notes');

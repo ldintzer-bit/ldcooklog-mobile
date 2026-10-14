@@ -8,4 +8,5 @@ test('navigation preferences retain exact cook identifiers, panel choices and po
 test('invalid or unbounded navigation preferences are rejected before storage',()=>{
  for(const change of [{lastCook:'../secret'},{recent:['duplicate','duplicate']},{places:[{key:'other:private',top:0,open:[]}]},{places:[{key:'view:history',top:-1,open:[]}]},{places:[{key:'view:history',top:1,open:['bad <id>']}]},{places:[...value().places,...value().places]},{version:2}])assert.throws(()=>validateNavigation(JSON.stringify({...value(),...change})),/Invalid/);
  assert.throws(()=>validateNavigation(' '.repeat(32769)),/Invalid/);
+ assert.throws(()=>validateNavigation(JSON.stringify({...value(),notes:'Cooking content cannot enter navigation preferences'})),/Invalid/);
 });
