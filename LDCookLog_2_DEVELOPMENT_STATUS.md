@@ -1,3 +1,45 @@
+## 2026-10-14 — User-guide instructions clarified after owner navigation feedback
+
+The user guide must give the exact control names, the next tap, and the expected
+result. Owner feedback showed that action selection and collapsed backup details
+were easy to mistake for completed actions or missing information. These are the
+instructions to include in the updated guide:
+
+1. Open an unfinished cook. For a test cook, open History, enable Show test cooks,
+   and open that cook.
+2. To finish using the Action / note dropdown, choose Cook Finished, then tap
+   Save action beneath the Note field. Choosing the dropdown item only selects
+   the action; it does not finish the cook or open confirmation.
+3. Alternatively, tap the gold Cook Finished action button to open confirmation
+   directly. The confirmation is titled Confirm journal change and has Finish
+   cook and Cancel buttons. Cancel keeps the cook open. Finish cook records the
+   finish and stops its timer.
+4. Setup edits require Save cook setup; evaluation edits require Save review.
+   Wrap and target forms require Save wrap and Save targets respectively. State
+   each form's Save button explicitly instead of saying only “select” or “enter.”
+5. For unsaved edits, wait for “Drafts saved on this phone. Tap Save to include
+   them in cooking backups.” before closing. Reopen the same cook to continue.
+   Drafts are local to this phone; the appropriate Save button is still needed
+   to include edits in cooking recovery backups.
+6. To inspect backup protection, tap Backups, then tap Backup details under
+   Recovery protection to expand it. Read or copy the paragraph that appears
+   beneath Backup details. Check / retry iCloud requests another check. Restore
+   or import data opens recovery tools and is not needed to read backup status.
+7. Journal ready / Offline cooking pilot and Saved locally / backup needs
+   attention are status banners. A finish confirmation has its own message and
+   Finish cook / Cancel buttons. A backup warning needs the expanded Backup
+   details paragraph to identify its cause.
+
+The owner has acknowledged the action instructions and reported the collapsed
+backup controls. The expanded protection message is still pending, so the latest
+backup warning remains unresolved. The pasted installation command is not proof
+of its execution or of a successful backup check. Physical iPhone acceptance of
+the new finish-cancel and draft-reopen safeguards has not yet been explicitly
+reported. Automated acceptance evidence remains recorded below.
+
+Documentation was checked against the current UI markup, action handlers and
+Scriptable confirmation labels. No application code or private data changed.
+
 ## 2026-10-13 — Finish confirmation and durable private drafts accepted by automated checks
 
 Installable source `a6f5d49eb09bb230d8d804c8b45b1c4530226095` on the separate
