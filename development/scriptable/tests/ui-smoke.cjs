@@ -95,7 +95,7 @@ function manager(root) {
     assert.equal(await page.evaluate(()=>window.scrollY),0,'Native document remains stationary');
     await scroll.evaluate(e=>{e.scrollTop=e.scrollHeight});
     await page.mouse.wheel(0,800);
-    assert.equal(await page.locator('#new button').isVisible(),true);
+    assert.equal(await scroll.evaluate(e=>Math.abs(e.scrollHeight-e.clientHeight-e.scrollTop)<2),true,'Downward boundary wheel leaves the page at its bottom');
     await page.mouse.wheel(0,-700);
     await page.waitForFunction(()=>{const e=document.getElementById('ldc-scroll');return e.scrollTop<e.scrollHeight-e.clientHeight-100});
     await showHistory();
