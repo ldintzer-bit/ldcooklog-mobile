@@ -1,3 +1,25 @@
+## 2026-10-14 — Owner backup warning identified as local storage advisory
+
+Owner read the expanded Backup details: current revision 23 independently verified
+on the Mac; 21 snapshots staged, zero staging failures; local snapshots about
+164 MiB; Mac recovery storage 115 / 1024 MiB. The warning is the fixed 128 MiB
+local advisory, not a reported backup failure. iCloud upload completion remains
+unconfirmed; the exact-revision Mac receipt provides separate recovery evidence.
+
+Current phone retention preserves the newest 20 snapshots plus the first and
+source-archive recovery points. With 21 copies, zero eligible removals is consistent
+with that policy. Keeping the Mac awake alone cannot reduce copies that the policy
+requires retaining. The warning's cleanup wording should be improved to explain
+this situation; a storage advisory should be distinguishable from backup failure.
+No manual deletion or restoration is needed to address this report.
+
+Owner also reported copying from the screen produced code. The cause is not
+established; do not attribute it to user error or a particular iOS feature without
+reproduction. Guide alternatives: read/type the paragraph or provide a screenshot
+of expanded Backup details. A dedicated plain-text backup report copying control
+is a remaining UI improvement. This report does not establish physical acceptance
+of the new finish-cancel or draft-reopen safeguards.
+
 ## 2026-10-14 — User-guide instructions clarified after owner navigation feedback
 
 The user guide must give the exact control names, the next tap, and the expected
