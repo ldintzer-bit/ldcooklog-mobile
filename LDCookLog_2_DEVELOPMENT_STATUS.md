@@ -16,10 +16,23 @@ validation a plausible contributor to pauses, not a proven cause of dismissal.
 
 Added generated-launcher browser checks for long-form scrolling in both directions,
 fixed document position, tab reset and exact preservation of journal bytes.
-Local checks: 94 JavaScript tests passed; 58 Python tests passed, with two Mac-only
-checks skipped on Linux. Local browser download was unavailable; browser and
-native jobs must complete in GitHub CI before release acceptance is recorded.
-Physical iPhone scrolling/keyboard/edge-drag confirmation remains required.
+Installable source: `95a82d5cff6143b5b223569eb8c106af8b958880`. GitHub run
+`38562924047` regression job `115848265749` passed: 94 JavaScript tests, 58 Python
+passes with two Mac-only Linux skips, reproducible bundles, security checks and
+all three browser suites. The generated Scriptable suite passed the new scroll
+checks plus offline drafts, finish confirmation, recovery and full synthetic
+30-cook / 18,000-reading history. The first test attempted to inspect a collapsed
+create form; it was corrected to assert the actual bottom scroll boundary.
+
+Native job `115848266318` passed Mac checks, native storage and both app builds;
+the simulator integration test is still running at this documentation checkpoint.
+Local browser downloads were unavailable, so browser acceptance came from CI.
+Physical iPhone scrolling/keyboard/edge-drag confirmation remains required; the
+browser harness simulates Scriptable host APIs and cannot prove native gesture
+dismissal is resolved. Save current edits, close Scriptable, replace the usual
+LDCookLog-2-Backup-Status.js script, reopen the usual shortcut, and scroll a long
+setup panel down and up to its boundaries. Report any remaining sticking or
+dismissal before resuming the finish/draft acceptance checks.
 
 ## 2026-10-14 — Owner backup warning identified as local storage advisory
 
