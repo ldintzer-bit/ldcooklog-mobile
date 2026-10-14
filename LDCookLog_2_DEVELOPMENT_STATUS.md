@@ -1,3 +1,26 @@
+## 2026-10-14 — Scriptable scrolling and repeated backup scans improved
+
+Owner reported scrolling sticking or dismissing the cooking interface. The exact
+iPhone gesture has not been reproduced. Scriptable already requests fullscreen
+presentation; this change adds one bounded page scroll surface with momentum
+scrolling and overscroll containment, leaving confirmation overlays outside it.
+Tab navigation resets that surface without smooth-scroll animation. The working
+journal namespace, recovery files and backup retention rules are unchanged.
+
+Scriptable no longer rescans all snapshots every 30 seconds while the owner is
+using the screen. Full staging/validation remains at launch, foreground return,
+after cooking saves and explicit Check / retry iCloud. The independent five-minute
+Mac worker is unchanged. Displayed Mac evidence may age while the screen remains
+open; use retry for a fresh report. Large snapshot sets make repeated page-based
+validation a plausible contributor to pauses, not a proven cause of dismissal.
+
+Added generated-launcher browser checks for long-form scrolling in both directions,
+fixed document position, tab reset and exact preservation of journal bytes.
+Local checks: 94 JavaScript tests passed; 58 Python tests passed, with two Mac-only
+checks skipped on Linux. Local browser download was unavailable; browser and
+native jobs must complete in GitHub CI before release acceptance is recorded.
+Physical iPhone scrolling/keyboard/edge-drag confirmation remains required.
+
 ## 2026-10-14 — Owner backup warning identified as local storage advisory
 
 Owner read the expanded Backup details: current revision 23 independently verified

@@ -745,7 +745,7 @@ function showView(next, scroll = true) {
     $(name+'View').hidden = name !== view;
     $('nav'+name[0].toUpperCase()+name.slice(1)).setAttribute('aria-pressed', String(name === view));
   }
-  if (scroll) window.scrollTo({top:0,behavior:'smooth'});
+  if (scroll) (document.getElementById('ldc-scroll') || window).scrollTo({top:0,behavior:'instant'});
 }
 for (const name of ['Cook','History','Backups']) $('nav'+name).onclick=()=>showView(name.toLowerCase());
 $('backupSummary').onclick=()=>showView('backups');

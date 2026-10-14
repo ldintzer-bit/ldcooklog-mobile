@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-tLZUYEAgXS6j6VbJQ+/mls4qo+hvCHulUYfFAqwXXHA='; style-src 'sha256-bB6fMtck9S95eHUEn2VpT94vkHgksXytEJEK97KPBis='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'sha256-KsK1yoir5VU0gJqRSB1F1OKHcNRbz/GXDmPsefK3Wfg='; style-src 'sha256-aY38fqYEa1mS4J0J9zyrUe/PO2yokDDS00VetEZ17Fo='; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>LDCookLog Development</title><style>:root{font-family:system-ui,-apple-system,sans-serif;color:#efeee5;background:#15201c;color-scheme:dark}*{box-sizing:border-box}body{max-width:780px;margin:auto;padding:20px 18px 50px}header{padding:18px 0;border-bottom:1px solid #68766a}h1{font-size:2rem;margin:8px 0}h1 small{font-size:1rem;color:#daba7c}h2{font-size:1.2rem}h3{font-size:1rem}.eyebrow{color:#daba7c;letter-spacing:.15em;font-size:.75rem}section{background:#213029;padding:18px;border:1px solid #4a5a4e;border-radius:14px;margin:16px 0}label{display:block;margin:12px 0}input,select,button,textarea{font:inherit;min-height:48px;border:1px solid #88998a;border-radius:8px;padding:10px}input,select,textarea{display:block;width:100%;margin-top:6px;background:#17231c;color:#fff}textarea{min-height:100px}button{background:#daba7c;color:#192218;font-weight:600;margin:4px 6px 4px 0}button:disabled{opacity:.45}button:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid #9ac6ff}#status{background:#2b3c31;border-left:4px solid #daba7c;padding:14px;white-space:pre-wrap}#status[data-error=true]{border-color:#ff8f7a}article{border-top:1px solid #596a5c;padding:15px 0}p,li{line-height:1.5}li{margin:10px 0}.hint,footer{font-size:.85rem;color:#c7cebf}#snapshots button{display:block;max-width:100%;overflow-wrap:anywhere;text-align:left}footer{padding:20px 0}svg{width:100%;height:auto}svg text{font:16px system-ui;fill:#efeee5}
 
 input[type=checkbox]{display:inline-block;width:24px;min-height:24px;vertical-align:middle;margin-right:8px}pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.85rem}summary{padding:12px 0;cursor:pointer}
 
@@ -20,7 +20,14 @@ nav{display:flex;gap:8px;position:sticky;top:0;background:#15201c;padding:10px 0
 #draftPersistence:not([hidden]){min-height:4.5em}
 
 #ldc-confirm{position:fixed;inset:0;z-index:1000;margin:0;border:0;border-radius:0;padding:24px 18px;overflow:auto;background:#15201cf5;display:flex;align-items:flex-start;justify-content:center}#ldc-confirm .ldc-confirm-card{max-width:680px;width:100%;margin:24px 0;padding:22px;background:#213029;border:2px solid #daba7c;border-radius:14px}#ldc-confirm p{white-space:pre-wrap}#ldc-confirm button{display:block;width:100%;margin-top:14px}
-</style></head><body>
+
+/* A single bounded scroll surface for Scriptable's fullscreen WebView. */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+body{max-width:none;margin:0;padding:0}
+#ldc-scroll{width:100%;max-width:780px;height:100%;height:100dvh;margin:0 auto;padding:20px 18px max(50px,env(safe-area-inset-bottom));overflow-x:hidden;overflow-y:auto;overscroll-behavior:none;-webkit-overflow-scrolling:touch;scroll-padding-top:80px}
+#ldc-scroll nav{top:-20px;padding-top:12px}
+#ldc-confirm{overscroll-behavior:none;-webkit-overflow-scrolling:touch}
+</style></head><body><div id="ldc-scroll" tabindex="0" aria-label="Cooking journal">
 <header><p class="eyebrow">OFFLINE COOKING JOURNAL</p><h1>LDCookLog <small>2.0 · cooking pilot</small></h1><p>Pilot build · offline cooking with automatic recovery copies.</p></header>
 <p id="status" role="status">Opening your journal…</p>
 <nav aria-label="Journal views"><button id="navCook" aria-pressed="true">Cook</button><button id="navHistory" aria-pressed="false">History</button><button id="navBackups" aria-pressed="false">Backups</button></nav>
@@ -48,7 +55,7 @@ nav{display:flex;gap:8px;position:sticky;top:0;background:#15201c;padding:10px 0
 <div id="backupsView" hidden><section><h2>Recovery protection</h2><details id="backupDetails"><summary>Backup details</summary><p id="protection">Checking automatic backups…</p></details><button id="retry">Check / retry iCloud</button><details id="recoveryTools"><summary>Restore or import data</summary><button id="browse">Find recovery snapshots</button><div id="snapshots"></div><label>Migration or recovery file<input id="import" type="file" accept=".json,application/json"></label><p class="hint">Import the private .relational.json made on your Mac. Your original database archive stays untouched.</p></details></section>
 </div>
 </main>
-<footer>Every save creates a separate recovery file. Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification. Live temperatures stay in FireBoard.</footer><script>// Embedded before the app; no native credentials or private files in the page.
+<footer>Every save creates a separate recovery file. Copies are staged in Scriptable’s iCloud folder; upload completion needs independent verification. Live temperatures stay in FireBoard.</footer></div><script>// Embedded before the app; no native credentials or private files in the page.
 (() => {
   const queue = [], pending = new Map();
   let next = 1, signalsEnabled = false;
@@ -859,7 +866,7 @@ function showView(next, scroll = true) {
     $(name+'View').hidden = name !== view;
     $('nav'+name[0].toUpperCase()+name.slice(1)).setAttribute('aria-pressed', String(name === view));
   }
-  if (scroll) window.scrollTo({top:0,behavior:'smooth'});
+  if (scroll) (document.getElementById('ldc-scroll') || window).scrollTo({top:0,behavior:'instant'});
 }
 for (const name of ['Cook','History','Backups']) $('nav'+name).onclick=()=>showView(name.toLowerCase());
 $('backupSummary').onclick=()=>showView('backups');
@@ -1173,7 +1180,6 @@ $('import').onchange = e => {
   setInterval(updateTimers,1000);
   window.__ldcResolveStartup(document.getElementById("status").textContent);
   await protection();
-  setInterval(() => { if (!busy && !document.hidden) protection(); },30000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden){updateTimers();if(!busy)protection();} });
 })();
 

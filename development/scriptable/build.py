@@ -20,12 +20,23 @@ app = app.replace("button.onclick = () => action(async () => restore(JSON.parse(
 ready_marker = '  await protection();\n  setInterval'
 assert app.count(ready_marker) == 1, 'Review startup readiness hook after upstream changes'
 app = app.replace(ready_marker, '  window.__ldcResolveStartup(document.getElementById("status").textContent);\n' + ready_marker)
+# Full snapshot validation can be expensive with large archives. Keep launch,
+# foreground, save and explicit retry checks, without repeating them while the
+# owner is scrolling/typing. The native app retains its existing polling policy.
+poll_marker = '  setInterval(() => { if (!busy && !document.hidden) protection(); },30000);\n'
+assert app.count(poll_marker) == 1, 'Review Scriptable backup scheduling'
+app = app.replace(poll_marker, '')
 readiness = 'window.__ldcStartupReady = new Promise(resolve => { window.__ldcResolveStartup = resolve; });\n'
 script = (root / 'bridge.js').read_text() + '\n' + (root / 'confirm.js').read_text() + '\n' + readiness + app
 style = (web / 'style.css').read_text() + '\n' + (root / 'confirm.css').read_text()
+style += '\n' + (root / 'scroll.css').read_text()
 def hash_source(text):
     return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode()).digest()).decode() + "'"
 html = (web / 'index.html').read_text()
+# Scroll inside the page instead of passing boundary drags to the native host.
+# Confirmation overlays are appended to body, outside this scrolling surface.
+html = html.replace('<body>', '<body><div id="ldc-scroll" tabindex="0" aria-label="Cooking journal">')
+html = html.replace('</footer><script', '</footer></div><script')
 html = html.replace("script-src 'self'", 'script-src ' + hash_source(script))
 html = html.replace("style-src 'self'", 'style-src ' + hash_source(style))
 html = html.replace('<link rel="stylesheet" href="style.css">', '<style>' + style + '</style>')
