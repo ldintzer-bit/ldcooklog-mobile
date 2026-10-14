@@ -214,7 +214,7 @@ async function openCook(id) {
   const unlock=()=>{if(!locked)return;locked=false;document.querySelectorAll('button').forEach(e=>e.disabled=false);for(const [e,disabled] of lockedFields)e.disabled=disabled;};
   try {await draftWriteQueue;await render(()=>{current=id;unlock();});showView('cook');}
   catch(e){current=previous;status(e.message,true);}
-  finally{unlock();busy=false;const cook=journal.find(c=>c.id===current);if(cook)cookingActions(cook);window.__ldcNavigation?.refresh();if(damaged)$('new').querySelector('button').disabled=true;}
+  finally{unlock();busy=false;const cook=journal.find(c=>c.id===current);if(cook)cookingActions(cook);refreshFireboardSetup();window.__ldcNavigation?.refresh();if(damaged)$('new').querySelector('button').disabled=true;}
 }
 const fmt = at => new Date(at).toLocaleString();
 const localDate = value => { if (!value) return ''; const d=new Date(value);return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,16); };
